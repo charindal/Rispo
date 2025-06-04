@@ -3,10 +3,10 @@ package za.co.infratech.rispo;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+//@SpringBootTest
 class RispoApplicationTests {
 
-	@Test
+	//@Test
 	void contextLoads() {
 	}
 

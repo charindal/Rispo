@@ -1,4 +1,12 @@
 package za.co.infratech.rispo.model;
 
-public class TournamentPlayerId {
+import lombok.*;
+import java.io.Serializable;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class TournamentPlayerId implements Serializable {
+    private Long tournament;
+    private Long player;
 }
