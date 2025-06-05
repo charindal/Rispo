@@ -1,4 +1,5 @@
 package za.co.infratech.rispo.model;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -6,6 +7,7 @@ import lombok.*;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "player")
 public class Player {
 
     @Id
@@ -16,11 +18,21 @@ public class Player {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
+    @Column(nullable = false)
     private String name;
 
+    @Column(nullable = false)
     private Integer rating = 1200;
-    private Integer matchesPlayed = 0;
-    private Integer wins = 0;
-    private Integer losses = 0;
-}
 
+    @Column(name = "matches_played", nullable = false)
+    private Integer matchesPlayed = 0;
+
+    @Column(nullable = false)
+    private Integer wins = 0;
+
+    @Column(nullable = false)
+    private Integer losses = 0;
+
+    @Column(nullable = false)
+    private Integer draws = 0;
+}

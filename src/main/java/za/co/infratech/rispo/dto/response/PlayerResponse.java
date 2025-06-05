@@ -10,4 +10,5 @@ public class PlayerResponse {
     private int matchesPlayed;
     private int wins;
     private int losses;
+    private int draws;
 }

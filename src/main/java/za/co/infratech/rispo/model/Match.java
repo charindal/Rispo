@@ -1,8 +1,8 @@
 package za.co.infratech.rispo.model;
 
-
 import jakarta.persistence.*;
 import lombok.*;
+import za.co.infratech.rispo.dto.enums.MatchResult;
 import java.time.LocalDateTime;
 
 @Entity
@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Table(name = "match")
 public class Match {
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,13 +25,16 @@ public class Match {
     @JoinColumn(name = "player2_id", nullable = false)
     private Player player2;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "result", nullable = false)
+    private MatchResult result;
+
     @ManyToOne
-    @JoinColumn(name = "winner_id", nullable = false)
-    private Player winner;
+    @JoinColumn(name = "winner_id")
+    private Player winner;  // nullable if draw
 
     private LocalDateTime datePlayed;
 
     private Integer player1RatingChange;
     private Integer player2RatingChange;
 }
-
