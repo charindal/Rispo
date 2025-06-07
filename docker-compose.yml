@@ -1,0 +1,33 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:17
+    container_name: rispo-db
+    environment:
+      POSTGRES_DB: rispo
+      POSTGRES_USER: rispo_admin
+      POSTGRES_PASSWORD: R!#po123##
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  app:
+    build: .
+    container_name: rispo-app
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/rispo
+      SPRING_DATASOURCE_USERNAME: rispo_admin
+      SPRING_DATASOURCE_PASSWORD: R!#po123##
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+    ports:
+      - "8080:8080"
+    # optional: restart policy
+    restart: on-failure
+
+volumes:
+  db-data:
