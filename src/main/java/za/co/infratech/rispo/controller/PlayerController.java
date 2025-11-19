@@ -1,21 +1,58 @@
 package za.co.infratech.rispo.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import za.co.infratech.rispo.dto.request.PlayerRequest;
-import za.co.infratech.rispo.dto.response.PlayerResponse;
+import za.co.infratech.rispo.dto.response.PlayerDTO;
 import za.co.infratech.rispo.service.PlayerService;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/players")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:3000")
 public class PlayerController {
 
     private final PlayerService playerService;
 
-    @PostMapping
-    public ResponseEntity<PlayerResponse> createPlayer(@RequestBody PlayerRequest request) {
-        return ResponseEntity.ok(playerService.createPlayer(request));
+    @GetMapping
+    public ResponseEntity<List<PlayerDTO>> getAllPlayers() {
+        return ResponseEntity.ok(playerService.getAllPlayers());
     }
+
+    @GetMapping("/unverified")
+    public ResponseEntity<List<PlayerDTO>> getUnverifiedPlayers() {
+        return ResponseEntity.ok(playerService.getUnverifiedPlayers());
+    }
+
+    @PutMapping("/{playerId}/verify")
+    public ResponseEntity<?> verifyPlayer(
+            @PathVariable Long playerId,
+            @RequestParam Long adminUserId) {
+        try {
+            PlayerDTO player = playerService.verifyPlayer(playerId, adminUserId);
+            return ResponseEntity.ok(player);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{playerId}/unverify")
+    public ResponseEntity<?> unverifyPlayer(
+            @PathVariable Long playerId,
+            @RequestParam Long adminUserId) {
+        try {
+            PlayerDTO player = playerService.unverifyPlayer(playerId, adminUserId);
+            return ResponseEntity.ok(player);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    // Inner class for error responses
+    private record ErrorResponse(String message) {}
 }

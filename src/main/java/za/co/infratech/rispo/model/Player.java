@@ -2,6 +2,7 @@ package za.co.infratech.rispo.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Data
@@ -27,6 +28,9 @@ public class Player {
     @Column(name = "matches_played", nullable = false)
     private Integer matchesPlayed = 0;
 
+    @Column(name = "games_played", nullable = false)
+    private Integer gamesPlayed = 0;
+
     @Column(nullable = false)
     private Integer wins = 0;
 
@@ -35,4 +39,41 @@ public class Player {
 
     @Column(nullable = false)
     private Integer draws = 0;
+
+    @Column(name = "is_verified", nullable = false)
+    private Boolean isVerified = false;
+
+    @ManyToOne
+    @JoinColumn(name = "verified_by")
+    private UserEntity verifiedBy;
+
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "club_id")
+    private Club club;
+
+    private String email;
+
+    private String phone;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+
 }

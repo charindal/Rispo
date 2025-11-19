@@ -1,44 +1,50 @@
 package za.co.infratech.rispo.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import za.co.infratech.rispo.dto.enums.MatchResult;
-
 import java.time.LocalDateTime;
 
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 @Table(name = "match")
-@Data
-@NoArgsConstructor
 public class Match {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
+    @JoinColumn(name = "tournament_id")
+    private Tournament tournament;
+
+    @Column(nullable = false)
+    private Integer round = 1;
+
+    @ManyToOne
     @JoinColumn(name = "player1_id", nullable = false)
     private Player player1;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "player2_id", nullable = false)
     private Player player2;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "winner_id")
     private Player winner;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private MatchResult result = MatchResult.PLAYER1_WIN;
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
-    @Column(name = "date_played", nullable = false)
-    private LocalDateTime datePlayed;
-
-    @Column(name = "player1_rating_change")
-    private Integer player1RatingChange;
-
-    @Column(name = "player2_rating_change")
-    private Integer player2RatingChange;
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

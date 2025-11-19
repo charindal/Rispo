@@ -1,0 +1,172 @@
+package za.co.infratech.rispo.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import za.co.infratech.rispo.dto.request.LoginRequest;
+import za.co.infratech.rispo.dto.request.RegisterRequest;
+import za.co.infratech.rispo.dto.response.AuthResponse;
+import za.co.infratech.rispo.model.AdminToken;
+import za.co.infratech.rispo.model.Club;
+import za.co.infratech.rispo.model.Player;
+import za.co.infratech.rispo.model.UserEntity;
+import za.co.infratech.rispo.repository.AdminTokenRepository;
+import za.co.infratech.rispo.repository.ClubRepository;
+import za.co.infratech.rispo.repository.PlayerRepository;
+import za.co.infratech.rispo.repository.UserRepository;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final PlayerRepository playerRepository;
+    private final ClubRepository clubRepository;
+    private final AdminTokenRepository adminTokenRepository;
+
+    @Transactional
+    public AuthResponse register(RegisterRequest request) {
+        // Validate unique username
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new RuntimeException("Username already exists");
+        }
+
+        // Validate unique email
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        // Validate unique national ID
+        if (userRepository.findByNationalId(request.getNationalId()).isPresent()) {
+            throw new RuntimeException("National ID already registered");
+        }
+
+        // Set role (default to PLAYER if not specified)
+        String roleStr = request.getRole() != null ? request.getRole().toUpperCase() : "PLAYER";
+        UserEntity.Role role = UserEntity.Role.valueOf(roleStr);
+
+        // Validate admin token for admin roles
+        AdminToken adminToken = null;
+        Club tokenClub = null;
+        if (role == UserEntity.Role.CLUB_ADMIN || role == UserEntity.Role.RATING_ADMIN) {
+            if (request.getAdminToken() == null || request.getAdminToken().isEmpty()) {
+                throw new RuntimeException("Admin token required for " + role + " registration");
+            }
+
+            adminToken = adminTokenRepository.findByToken(request.getAdminToken())
+                    .orElseThrow(() -> new RuntimeException("Invalid admin token"));
+
+            if (!adminToken.isValid()) {
+                throw new RuntimeException("Token is expired or already used");
+            }
+
+            if (adminToken.getRole() != role) {
+                throw new RuntimeException("Token is for " + adminToken.getRole() + ", not " + role);
+            }
+
+            tokenClub = adminToken.getClub();
+        }
+
+        // Get club if specified
+        Club club = null;
+        if (request.getClubId() != null) {
+            club = clubRepository.findById(request.getClubId())
+                    .orElseThrow(() -> new RuntimeException("Club not found"));
+        } else if (tokenClub != null) {
+            // Use club from token if no club specified
+            club = tokenClub;
+        }
+
+        // Create user entity
+        UserEntity user = new UserEntity();
+        user.setUsername(request.getUsername());
+        user.setPassword(request.getPassword()); // TODO: Add password encryption
+        user.setEmail(request.getEmail());
+        user.setNationalId(request.getNationalId());
+        user.setIsActive(true);
+        user.setRole(role);
+        user.setClub(club);
+        
+        user = userRepository.save(user);
+
+        // Mark token as used
+        if (adminToken != null) {
+            adminToken.setIsUsed(true);
+            adminToken.setUsedBy(user);
+            adminToken.setUsedAt(LocalDateTime.now());
+            adminTokenRepository.save(adminToken);
+        }
+
+        // Create player profile if role is PLAYER or if admin wants player profile
+        Player player = null;
+        if (role == UserEntity.Role.PLAYER || (request.getCreatePlayerProfile() != null && request.getCreatePlayerProfile())) {
+            player = new Player();
+            player.setUser(user);
+            player.setName(request.getName());
+            player.setEmail(request.getEmail());
+            player.setPhone(request.getPhone());
+            player.setClub(club);
+            player.setRating(1200); // Default rating
+            player.setMatchesPlayed(0);
+            player.setGamesPlayed(0);
+            player.setWins(0);
+            player.setLosses(0);
+            player.setDraws(0);
+            player.setIsVerified(false);
+            
+            player = playerRepository.save(player);
+        }
+
+        // Build response
+        AuthResponse response = new AuthResponse();
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setEmail(user.getEmail());
+        response.setRole(user.getRole().toString());
+        response.setPlayerId(player != null ? player.getId() : null);
+        response.setIsVerified(player != null ? player.getIsVerified() : null);
+        response.setMessage("Registration successful");
+        response.setToken("mock-jwt-token-" + user.getId()); // TODO: Implement real JWT
+
+        return response;
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        // Find user by username
+        UserEntity user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+
+        // Validate password (TODO: Add proper password hashing)
+        if (!user.getPassword().equals(request.getPassword())) {
+            throw new RuntimeException("Invalid username or password");
+        }
+
+        // Check if user is active
+        if (!user.getIsActive()) {
+            throw new RuntimeException("Account is not active");
+        }
+
+        // Get player info if user is a player
+        Player player = null;
+        if (user.getRole() == UserEntity.Role.PLAYER) {
+            Optional<Player> playerOpt = playerRepository.findByUserId(user.getId());
+            player = playerOpt.orElse(null);
+        }
+
+        // Build response
+        AuthResponse response = new AuthResponse();
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setEmail(user.getEmail());
+        response.setRole(user.getRole().toString());
+        response.setPlayerId(player != null ? player.getId() : null);
+        response.setIsVerified(player != null ? player.getIsVerified() : null);
+        response.setMessage("Login successful");
+        response.setToken("mock-jwt-token-" + user.getId()); // TODO: Implement real JWT
+
+        return response;
+    }
+}

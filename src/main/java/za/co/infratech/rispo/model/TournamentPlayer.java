@@ -8,6 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @IdClass(TournamentPlayerId.class)
+@Table(name = "tournament_player")
 public class TournamentPlayer {
 
     @Id

@@ -1,5 +1,7 @@
 package za.co.infratech.rispo.repository;
 
+import io.micrometer.common.KeyValues;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import za.co.infratech.rispo.model.Match;
@@ -14,11 +16,13 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     List<Match> findByPlayer1IdOrPlayer2Id(Long playerId1, Long playerId2);
 
     // Find match by ID
-    Optional<Match> findById(Long id);
+    @NotNull Optional<Match> findById(@NotNull Long id);
 
     // Find all matches for a particular player, either as player1 or player2
     List<Match> findByPlayer1Id(Long playerId);
 
     List<Match> findByPlayer2Id(Long playerId);
+
+    List<Match> findAllByTournamentId(Long tournamentId);
 }
 

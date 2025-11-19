@@ -21,9 +21,22 @@ public class UserEntity {
     @Column(nullable = false)
     private String password;
 
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @Column(name = "national_id", unique = true, nullable = false)
+    private String nationalId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "club_id")
+    private Club club;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -40,6 +53,7 @@ public class UserEntity {
     }
     public enum Role {
         PLAYER,
+        CLUB_ADMIN,
         RATING_ADMIN,
         SYSTEM_ADMIN
     }

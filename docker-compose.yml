@@ -1,5 +1,9 @@
 version: "3.9"
+
 services:
+  # ========================
+  # Database
+  # ========================
   db:
     image: postgres:17
     container_name: rispo-db
@@ -11,7 +15,12 @@ services:
       - db-data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
+    networks:
+      - rispo-net
 
+  # ========================
+  # Rispo Application
+  # ========================
   app:
     build: .
     container_name: rispo-app
@@ -26,8 +35,17 @@ services:
       SPRING_FLYWAY_LOCATIONS: classpath:db/migration
     ports:
       - "8080:8080"
-    # optional: restart policy
     restart: on-failure
+    networks:
+      - rispo-net
 
+# ========================
+# Shared Resources
+# ========================
 volumes:
   db-data:
+
+networks:
+  rispo-net:
+    name: rispo-net
+    driver: bridge

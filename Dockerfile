@@ -1,21 +1,48 @@
-# Stage 1: build
-FROM maven:3.9.6-eclipse-temurin-21 AS build
+# =========================
+# Stage 1: Build React App
+# =========================
+FROM node:18-alpine AS frontend-build
+WORKDIR /frontend
+
+# Copy package files
+COPY rispo-app/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy React app source
+COPY rispo-app/ ./
+
+# Build React app for production
+RUN npm run build
+
+# =========================
+# Stage 2: Build Spring Boot App
+# =========================
+FROM maven:3.9.6-eclipse-temurin-21 AS backend-build
 WORKDIR /app
 
-# Copy pom + source
+# Copy Maven project files
 COPY pom.xml .
 COPY src ./src
 
-# Build the jar
+# Build the application JAR (skip tests for faster builds)
 RUN mvn clean package -DskipTests
 
-# Stage 2: runtime
+# =========================
+# Stage 3: Runtime
+# =========================
 FROM eclipse-temurin:21-jdk-jammy
 WORKDIR /app
 
-# Copy the fat jar from builder
-COPY --from=build /app/target/rispo-0.0.1-SNAPSHOT.jar app.jar
+# Copy the built JAR from the backend build stage
+COPY --from=backend-build /app/target/rispo-0.0.1-SNAPSHOT.jar app.jar
 
-# Expose port and entrypoint
+# Copy the built React app from the frontend build stage
+COPY --from=frontend-build /frontend/build /app/static
+
+# Expose your app port
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","app.jar"]
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
