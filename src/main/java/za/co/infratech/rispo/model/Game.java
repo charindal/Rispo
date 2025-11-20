@@ -39,6 +39,10 @@ public class Game {
     @Enumerated(EnumType.STRING)
     private GameResult result;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "result_type", nullable = false)
+    private GameResultType resultType = GameResultType.COMPLETED;
+
     @ManyToOne
     @JoinColumn(name = "winner_id")
     private Player winner; // Nullable if draw
@@ -55,4 +59,11 @@ public class Game {
     @CreationTimestamp
     @Column(name = "date_played")
     private LocalDateTime datePlayed;
+
+    public enum GameResultType {
+        COMPLETED,
+        NO_RESULT,
+        ABANDONED,
+        CANCELLED
+    }
 }

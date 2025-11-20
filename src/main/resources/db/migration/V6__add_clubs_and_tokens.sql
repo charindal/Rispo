@@ -10,7 +10,7 @@ CREATE TABLE club (
     status VARCHAR(50) DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_club_created_by FOREIGN KEY (created_by) REFERENCES users(user_id)
+    CONSTRAINT fk_club_created_by FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
 -- Create admin tokens table for club admin registration
@@ -26,8 +26,8 @@ CREATE TABLE admin_token (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     used_at TIMESTAMP,
     CONSTRAINT fk_admin_token_club FOREIGN KEY (club_id) REFERENCES club(club_id),
-    CONSTRAINT fk_admin_token_generated_by FOREIGN KEY (generated_by) REFERENCES users(user_id),
-    CONSTRAINT fk_admin_token_used_by FOREIGN KEY (used_by) REFERENCES users(user_id)
+    CONSTRAINT fk_admin_token_generated_by FOREIGN KEY (generated_by) REFERENCES users(id),
+    CONSTRAINT fk_admin_token_used_by FOREIGN KEY (used_by) REFERENCES users(id)
 );
 
 -- Add club_id to users table

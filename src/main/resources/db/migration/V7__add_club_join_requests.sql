@@ -11,7 +11,7 @@ CREATE TABLE club_join_request (
     review_notes TEXT,
     CONSTRAINT fk_join_request_player FOREIGN KEY (player_id) REFERENCES player(id),
     CONSTRAINT fk_join_request_club FOREIGN KEY (club_id) REFERENCES club(club_id),
-    CONSTRAINT fk_join_request_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users(user_id),
+    CONSTRAINT fk_join_request_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users(id),
     CONSTRAINT unique_pending_request UNIQUE (player_id, club_id, status)
 );
 

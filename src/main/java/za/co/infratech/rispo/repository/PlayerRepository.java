@@ -13,4 +13,10 @@ public interface PlayerRepository extends JpaRepository<Player, Long> {
     Optional<Player> findByUserId(@Param("userId") Long userId);
     
     List<Player> findByIsVerified(Boolean isVerified);
+    
+    @Query("SELECT p FROM Player p WHERE p.club.id = :clubId AND p.isVerified = true ORDER BY p.name ASC")
+    List<Player> findByClubIdAndIsVerifiedOrderByNameAsc(@Param("clubId") Long clubId);
+    
+    @Query("SELECT p FROM Player p WHERE p.club.id = :clubId AND p.isVerified = true AND LOWER(p.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) ORDER BY p.name ASC")
+    List<Player> searchByClubIdAndName(@Param("clubId") Long clubId, @Param("searchTerm") String searchTerm);
 }

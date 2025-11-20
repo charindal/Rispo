@@ -53,6 +53,13 @@ public class PlayerController {
         }
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<PlayerDTO>> searchPlayers(
+            @RequestParam Long clubId,
+            @RequestParam(required = false) String searchTerm) {
+        return ResponseEntity.ok(playerService.searchPlayersByClub(clubId, searchTerm));
+    }
+
     // Inner class for error responses
     private record ErrorResponse(String message) {}
 }

@@ -119,6 +119,20 @@ public class PlayerService {
         return convertToDTO(player);
     }
 
+    public List<PlayerDTO> searchPlayersByClub(Long clubId, String searchTerm) {
+        List<Player> players;
+        
+        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            players = playerRepository.searchByClubIdAndName(clubId, searchTerm.trim());
+        } else {
+            players = playerRepository.findByClubIdAndIsVerifiedOrderByNameAsc(clubId);
+        }
+        
+        return players.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
     private PlayerDTO convertToDTO(Player player) {
         PlayerDTO dto = new PlayerDTO();
         dto.setId(player.getId());
@@ -137,6 +151,7 @@ public class PlayerService {
         dto.setVerifiedAt(player.getVerifiedAt() != null ? player.getVerifiedAt().toString() : null);
         dto.setClubId(player.getClub() != null ? player.getClub().getClubId() : null);
         dto.setClubName(player.getClub() != null ? player.getClub().getName() : null);
+        dto.setCreatedAt(player.getCreatedAt() != null ? player.getCreatedAt().toString() : null);
         return dto;
     }
 }

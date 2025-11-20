@@ -38,11 +38,14 @@ WORKDIR /app
 # Copy the built JAR from the backend build stage
 COPY --from=backend-build /app/target/rispo-0.0.1-SNAPSHOT.jar app.jar
 
+# Create directory for static resources
+RUN mkdir -p /app/static
+
 # Copy the built React app from the frontend build stage
 COPY --from=frontend-build /frontend/build /app/static
 
 # Expose your app port
 EXPOSE 8080
 
-# Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Run the application with static resource location
+ENTRYPOINT ["java", "-Dspring.web.resources.static-locations=file:/app/static/", "-jar", "app.jar"]

@@ -5,7 +5,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import za.co.infratech.rispo.dto.request.LoginRequest;
 import za.co.infratech.rispo.dto.request.RegisterRequest;
+import za.co.infratech.rispo.dto.request.UpdateProfileRequest;
 import za.co.infratech.rispo.dto.response.AuthResponse;
+import za.co.infratech.rispo.dto.response.UserProfileResponse;
 import za.co.infratech.rispo.model.AdminToken;
 import za.co.infratech.rispo.model.Club;
 import za.co.infratech.rispo.model.Player;
@@ -29,6 +31,15 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        // Validate required fields
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("Email is required");
+        }
+        
+        if (request.getPhone() == null || request.getPhone().trim().isEmpty()) {
+            throw new RuntimeException("Phone number is required");
+        }
+
         // Validate unique username
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new RuntimeException("Username already exists");
@@ -168,5 +179,95 @@ public class AuthService {
         response.setToken("mock-jwt-token-" + user.getId()); // TODO: Implement real JWT
 
         return response;
+    }
+
+    public UserProfileResponse getUserProfile(Long userId) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        UserProfileResponse response = new UserProfileResponse();
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setEmail(user.getEmail());
+        response.setNationalId(user.getNationalId());
+        response.setRole(user.getRole().toString());
+        
+        if (user.getClub() != null) {
+            response.setClubId(user.getClub().getClubId());
+            response.setClubName(user.getClub().getName());
+        }
+
+        // Get player profile if exists
+        Optional<Player> playerOpt = playerRepository.findByUserId(userId);
+        if (playerOpt.isPresent()) {
+            Player player = playerOpt.get();
+            response.setPlayerId(player.getId());
+            response.setName(player.getName());
+            response.setPhone(player.getPhone());
+            response.setRating(player.getRating());
+            response.setIsVerified(player.getIsVerified());
+        }
+
+        return response;
+    }
+
+    @Transactional
+    public UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Validate required fields
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("Email is required");
+        }
+        
+        if (request.getPhone() == null || request.getPhone().trim().isEmpty()) {
+            throw new RuntimeException("Phone number is required");
+        }
+
+        // Check if email is being changed and if it's already taken
+        if (!user.getEmail().equals(request.getEmail())) {
+            if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                throw new RuntimeException("Email already in use");
+            }
+            user.setEmail(request.getEmail());
+        }
+
+        // Update club if specified
+        if (request.getClubId() != null) {
+            Club club = clubRepository.findById(request.getClubId())
+                    .orElseThrow(() -> new RuntimeException("Club not found"));
+            user.setClub(club);
+        }
+
+        userRepository.save(user);
+
+        // Update player profile if exists
+        Optional<Player> playerOpt = playerRepository.findByUserId(userId);
+        if (playerOpt.isPresent()) {
+            Player player = playerOpt.get();
+            
+            if (request.getEmail() != null) {
+                player.setEmail(request.getEmail());
+            }
+            
+            if (request.getPhone() != null) {
+                player.setPhone(request.getPhone());
+            }
+            
+            if (request.getName() != null && !request.getName().trim().isEmpty()) {
+                player.setName(request.getName());
+            }
+            
+            if (request.getClubId() != null) {
+                Club club = clubRepository.findById(request.getClubId())
+                        .orElseThrow(() -> new RuntimeException("Club not found"));
+                player.setClub(club);
+            }
+            
+            playerRepository.save(player);
+        }
+
+        return getUserProfile(userId);
     }
 }

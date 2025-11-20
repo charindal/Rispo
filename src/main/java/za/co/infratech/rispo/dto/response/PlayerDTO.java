@@ -24,4 +24,5 @@ public class PlayerDTO {
     private String verifiedAt;
     private Long clubId;
     private String clubName;
+    private String createdAt;
 }
