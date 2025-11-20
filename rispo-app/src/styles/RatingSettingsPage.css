@@ -1,0 +1,248 @@
+.rating-settings-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.settings-navbar {
+  background: white;
+  padding: 16px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-bottom: 3px solid #1e3c72;
+}
+
+.settings-navbar .navbar-brand h2 {
+  margin: 0;
+  color: #1e3c72;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.back-btn {
+  padding: 8px 16px;
+  background: #f0f0f0;
+  color: #333;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.3s ease;
+}
+
+.back-btn:hover {
+  background: #e0e0e0;
+}
+
+.settings-container {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.settings-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+}
+
+.settings-header {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.settings-header h1 {
+  color: #1e3c72;
+  font-size: 28px;
+  margin: 0 0 8px 0;
+}
+
+.settings-header p {
+  color: #666;
+  margin: 0;
+}
+
+.settings-form .form-section {
+  margin-bottom: 40px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.settings-form .form-section:last-of-type {
+  border-bottom: none;
+}
+
+.settings-form .form-section h2 {
+  color: #1e3c72;
+  font-size: 20px;
+  margin: 0 0 8px 0;
+}
+
+.settings-form .section-description {
+  color: #666;
+  margin: 0 0 24px 0;
+  font-size: 14px;
+}
+
+.settings-form .form-group {
+  margin-bottom: 24px;
+}
+
+.settings-form .form-group label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.settings-form .form-group .tooltip {
+  display: block;
+  font-weight: 400;
+  color: #666;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.settings-form .form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: border-color 0.3s ease;
+}
+
+.settings-form .form-group input:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+.settings-form .form-group input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.settings-form .form-group small {
+  display: block;
+  color: #666;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 30px;
+}
+
+.save-btn {
+  flex: 1;
+  padding: 14px;
+  background: linear-gradient(135deg, #4a90e2 0%, #1e3c72 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(30, 60, 114, 0.3);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.reset-btn {
+  padding: 14px 24px;
+  background: white;
+  color: #666;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.reset-btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.reset-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-footer {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+  color: #666;
+  font-size: 13px;
+}
+
+.settings-footer p {
+  margin: 4px 0;
+}
+
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #c3e6cb;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #f5c6cb;
+}
+
+.loading-screen {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .settings-navbar {
+    padding: 12px 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .settings-container {
+    padding: 0 16px;
+    margin: 20px auto;
+  }
+
+  .settings-card {
+    padding: 24px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+}
