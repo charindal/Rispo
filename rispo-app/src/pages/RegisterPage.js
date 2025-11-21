@@ -19,8 +19,14 @@ const RegisterPage = () => {
     createPlayerProfile: false
   });
   const [clubs, setClubs] = useState([]);
+  const [filteredClubs, setFilteredClubs] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showClubSearch, setShowClubSearch] = useState(false);
+  const [searchName, setSearchName] = useState('');
+  const [searchCity, setSearchCity] = useState('');
+  const [searchSuburb, setSearchSuburb] = useState('');
+  const [searching, setSearching] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,6 +35,7 @@ const RegisterPage = () => {
       try {
         const clubsData = await clubService.getActiveClubs();
         setClubs(clubsData);
+        setFilteredClubs(clubsData);
       } catch (err) {
         console.error('Error loading clubs:', err);
       }
@@ -90,13 +97,44 @@ const RegisterPage = () => {
       alert('Registration successful! Please login.');
       navigate('/login');
     } catch (err) {
-      setError(err.toString());
+      setError(typeof err === 'string' ? err : err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const isAdminRole = formData.role === 'CLUB_ADMIN' || formData.role === 'RATING_ADMIN';
+  const handleSearchClubs = async () => {
+    if (!searchName && !searchCity && !searchSuburb) {
+      setFilteredClubs(clubs);
+      return;
+    }
+    
+    setSearching(true);
+    try {
+      const results = await clubService.searchClubs(searchName, searchCity, searchSuburb);
+      setFilteredClubs(results);
+    } catch (error) {
+      console.error('Error searching clubs:', error);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const resetSearch = () => {
+    setSearchName('');
+    setSearchCity('');
+    setSearchSuburb('');
+    setFilteredClubs(clubs);
+  };
+
+  const selectClub = (clubId) => {
+    setFormData({ ...formData, clubId });
+    setShowClubSearch(false);
+    resetSearch();
+  };
+
+  const isAdminRole = formData.role === 'SYSTEM_ADMIN' || formData.role === 'CLUB_ADMIN' || formData.role === 'RATING_ADMIN';
+  const requiresClub = formData.role === 'CLUB_ADMIN' || formData.role === 'RATING_ADMIN';
 
   return (
     <div className="register-container">
@@ -221,9 +259,9 @@ const RegisterPage = () => {
               disabled={loading}
             >
               <option value="PLAYER">Player</option>
+              <option value="SYSTEM_ADMIN">System Admin</option>
               <option value="CLUB_ADMIN">Club Admin</option>
               <option value="RATING_ADMIN">Rating Admin</option>
-              <option value="SYSTEM_ADMIN">System Admin</option>
             </select>
             <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
               {isAdminRole ? 'Admin roles require a valid registration token' : 'Regular player account'}
@@ -251,22 +289,37 @@ const RegisterPage = () => {
 
           <div className="form-group">
             <label htmlFor="clubId">Club Affiliation (Optional)</label>
-            <select
-              id="clubId"
-              name="clubId"
-              value={formData.clubId}
-              onChange={handleChange}
-              disabled={loading}
-            >
-              <option value="">No Club / Register Later</option>
-              {clubs.map(club => (
-                <option key={club.clubId} value={club.clubId}>
-                  {club.name}
-                </option>
-              ))}
-            </select>
+            <div className="club-selection">
+              <input
+                type="text"
+                value={clubs.find(c => c.clubId === formData.clubId)?.name || ''}
+                placeholder="Click 'Search Clubs' to find a club"
+                readOnly
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowClubSearch(true)}
+                className="search-club-btn"
+                disabled={loading}
+              >
+                Search Clubs
+              </button>
+              {formData.clubId && (
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, clubId: '' })}
+                  className="clear-club-btn"
+                  disabled={loading}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
-              {formData.role === 'PLAYER' ? 'Players without clubs may take longer to verify' : 'Select your affiliated club'}
+              {formData.role === 'PLAYER' ? 'You can join a club during registration or later' : 
+               formData.role === 'SYSTEM_ADMIN' ? 'System admins are not affiliated with clubs' :
+               'Select your affiliated club'}
             </small>
           </div>
 
@@ -303,6 +356,108 @@ const RegisterPage = () => {
           <p>Already have an account? <a href="/login">Login here</a></p>
         </div>
       </div>
+
+      {/* Club Search Modal */}
+      {showClubSearch && (
+        <div className="modal-overlay" onClick={() => { setShowClubSearch(false); resetSearch(); }}>
+          <div className="modal-content club-search-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Find a Club</h2>
+            
+            <div className="search-section">
+              <h3>Search by Location</h3>
+              <div className="search-filters">
+                <div className="filter-group">
+                  <label>Club Name</label>
+                  <input
+                    type="text"
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                    placeholder="e.g., Downtown Chess Club"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label>City</label>
+                  <input
+                    type="text"
+                    value={searchCity}
+                    onChange={(e) => setSearchCity(e.target.value)}
+                    placeholder="e.g., Johannesburg"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label>Suburb</label>
+                  <input
+                    type="text"
+                    value={searchSuburb}
+                    onChange={(e) => setSearchSuburb(e.target.value)}
+                    placeholder="e.g., Sandton"
+                  />
+                </div>
+              </div>
+              <div className="search-actions">
+                <button 
+                  type="button" 
+                  onClick={handleSearchClubs} 
+                  className="search-btn"
+                  disabled={searching}
+                >
+                  {searching ? 'Searching...' : '🔍 Search'}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={resetSearch} 
+                  className="reset-btn"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div className="clubs-results">
+              <h3>Select a Club ({filteredClubs.length} found)</h3>
+              <div className="clubs-list">
+                {filteredClubs.length === 0 ? (
+                  <div className="no-clubs-message">
+                    <p>No clubs found. Try adjusting your search filters.</p>
+                  </div>
+                ) : (
+                  filteredClubs.map(club => (
+                    <div 
+                      key={club.clubId} 
+                      className="club-option"
+                      onClick={() => selectClub(club.clubId)}
+                    >
+                      <div className="club-info">
+                        <h4>{club.name}</h4>
+                        {(club.city || club.suburb) && (
+                          <p className="club-location">
+                            📍 {[club.suburb, club.city].filter(Boolean).join(', ')}
+                          </p>
+                        )}
+                        {club.description && (
+                          <p className="club-description">{club.description}</p>
+                        )}
+                        {club.address && (
+                          <p className="club-address">🏢 {club.address}</p>
+                        )}
+                      </div>
+                      <button className="select-btn">Select</button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <button 
+              type="button" 
+              onClick={() => { setShowClubSearch(false); resetSearch(); }} 
+              className="close-modal-btn"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -96,8 +96,7 @@ public class ChallengeService {
                 .challenge(challenge)
                 .round(1)
                 .adminCreated(false)
-                .status(Match.MatchStatus.PENDING)
-                .acknowledgmentStatus(Match.AcknowledgmentStatus.NOT_REQUIRED)
+                .status(Match.MatchStatus.PENDING_REVIEW)
                 .build();
 
         matchRepository.save(match);
@@ -158,113 +157,6 @@ public class ChallengeService {
 
         log.info("Challenge {} cancelled", challengeId);
         return convertToResponse(challenge);
-    }
-
-    @Transactional
-    public void acknowledgeMatchResult(Long matchId, Long playerId, AcknowledgeResultRequest request) {
-        log.info("Player {} acknowledging match result for match {}", playerId, matchId);
-
-        Match match = matchRepository.findById(matchId)
-                .orElseThrow(() -> new RuntimeException("Match not found"));
-
-        if (match.getAcknowledgmentStatus() != Match.AcknowledgmentStatus.PENDING_ACKNOWLEDGMENT) {
-            throw new RuntimeException("Match is not pending acknowledgment");
-        }
-
-        // Determine which player should acknowledge
-        Player player1 = match.getPlayer1();
-        Player player2 = match.getPlayer2();
-        
-        // Get the submitter (either from resultRecordedBy or submittedBy)
-        UserEntity submitterUser = match.getResultRecordedBy() != null ? 
-                match.getResultRecordedBy() : match.getSubmittedBy();
-        
-        if (submitterUser == null) {
-            throw new RuntimeException("Cannot determine who recorded the result");
-        }
-        
-        Player recordedByPlayer = playerRepository.findByUserId(submitterUser.getId())
-                .orElseThrow(() -> new RuntimeException("Submitter player not found"));
-
-        // Determine which player is the acknowledger (the opponent)
-        Long acknowledgerPlayerId;
-        if (recordedByPlayer.getId().equals(player1.getId())) {
-            acknowledgerPlayerId = player2.getId();
-        } else if (recordedByPlayer.getId().equals(player2.getId())) {
-            acknowledgerPlayerId = player1.getId();
-        } else {
-            throw new RuntimeException("Result recorded by player not in match");
-        }
-
-        if (!playerId.equals(acknowledgerPlayerId)) {
-            throw new RuntimeException("Only the opponent can acknowledge this result");
-        }
-
-        Player acknowledgerPlayer = playerRepository.findById(playerId)
-                .orElseThrow(() -> new RuntimeException("Player not found"));
-        UserEntity acknowledger = userRepository.findById(acknowledgerPlayer.getUser().getId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (request.getAcknowledged()) {
-            match.setAcknowledgmentStatus(Match.AcknowledgmentStatus.ACKNOWLEDGED);
-            match.setAcknowledgedBy(acknowledger);
-            match.setAcknowledgedAt(LocalDateTime.now());
-            log.info("Match {} acknowledged by player {}", matchId, playerId);
-        } else {
-            match.setAcknowledgmentStatus(Match.AcknowledgmentStatus.DISPUTED);
-            log.info("Match {} disputed by player {}", matchId, playerId);
-
-            // Create a flag for the player who recorded the result
-            flagPlayer(recordedByPlayer, match, PlayerFlag.FlagType.DISPUTE,
-                    "Result disputed: " + (request.getNotes() != null ? request.getNotes() : "No reason provided"),
-                    acknowledger);
-        }
-
-        matchRepository.save(match);
-    }
-
-    @Transactional
-    public void checkAcknowledgmentDeadlines() {
-        log.info("Checking acknowledgment deadlines");
-
-        List<Match> pendingMatches = matchRepository.findByAcknowledgmentStatus(
-                Match.AcknowledgmentStatus.PENDING_ACKNOWLEDGMENT);
-
-        LocalDateTime now = LocalDateTime.now();
-        for (Match match : pendingMatches) {
-            if (match.getAcknowledgmentDeadline() != null &&
-                    now.isAfter(match.getAcknowledgmentDeadline())) {
-
-                // Determine which player failed to acknowledge
-                Player player1 = match.getPlayer1();
-                Player player2 = match.getPlayer2();
-                
-                Player recordedByPlayer = match.getResultRecordedBy() != null ?
-                        playerRepository.findByUserId(match.getResultRecordedBy().getId()).orElse(null) : null;
-
-                Player failedToAcknowledge = null;
-                if (recordedByPlayer != null) {
-                    if (recordedByPlayer.getId().equals(player1.getId())) {
-                        failedToAcknowledge = player2;
-                    } else if (recordedByPlayer.getId().equals(player2.getId())) {
-                        failedToAcknowledge = player1;
-                    }
-                }
-
-                if (failedToAcknowledge != null) {
-                    log.warn("Player {} failed to acknowledge match {} by deadline", 
-                            failedToAcknowledge.getId(), match.getId());
-
-                    flagPlayer(failedToAcknowledge, match, PlayerFlag.FlagType.NO_ACKNOWLEDGMENT,
-                            "Failed to acknowledge match result within " + ACKNOWLEDGMENT_DEADLINE_DAYS + " days",
-                            null);
-
-                    // Match still goes to admin for review
-                    match.setAcknowledgmentStatus(Match.AcknowledgmentStatus.DISPUTED);
-                    matchRepository.save(match);
-                }
-            }
-        }
     }
 
     @Transactional

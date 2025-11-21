@@ -60,6 +60,18 @@ public class PlayerController {
         return ResponseEntity.ok(playerService.searchPlayersByClub(clubId, searchTerm));
     }
 
+    @GetMapping("/search/global")
+    public ResponseEntity<List<PlayerDTO>> searchPlayersGlobal(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long clubId) {
+        return ResponseEntity.ok(playerService.searchPlayersGlobal(name, clubId));
+    }
+
+    @GetMapping("/rankings/top10")
+    public ResponseEntity<List<PlayerDTO>> getTop10Players() {
+        return ResponseEntity.ok(playerService.getTop10Players());
+    }
+
     // Inner class for error responses
     private record ErrorResponse(String message) {}
 }

@@ -44,15 +44,19 @@ public class PlayerService {
         UserEntity admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new RuntimeException("Admin user not found"));
 
-        // Check if admin has permission
-        if (admin.getRole() != UserEntity.Role.CLUB_ADMIN &&
-            admin.getRole() != UserEntity.Role.RATING_ADMIN && 
-            admin.getRole() != UserEntity.Role.SYSTEM_ADMIN) {
-            throw new RuntimeException("User does not have permission to verify players");
+        // Check if admin has permission (SUPER_USER, RATING_ADMIN, CLUB_ADMIN can verify)
+        if (admin.getRole() != UserEntity.Role.SUPER_USER &&
+            admin.getRole() != UserEntity.Role.RATING_ADMIN &&
+            admin.getRole() != UserEntity.Role.CLUB_ADMIN) {
+            throw new RuntimeException("Only SuperUser, Rating Admins, and Club Admins can verify players");
         }
 
+        // SuperUser can verify any player, skip club checks
+        if (admin.getRole() == UserEntity.Role.SUPER_USER) {
+            // No restrictions
+        }
         // Club admins can only verify players from their club
-        if (admin.getRole() == UserEntity.Role.CLUB_ADMIN) {
+        else if (admin.getRole() == UserEntity.Role.CLUB_ADMIN) {
             if (admin.getClub() == null) {
                 throw new RuntimeException("Admin is not associated with any club");
             }
@@ -62,7 +66,7 @@ public class PlayerService {
         }
 
         // Rating admins can verify players from their club (faster) or unaffiliated players
-        if (admin.getRole() == UserEntity.Role.RATING_ADMIN) {
+        else if (admin.getRole() == UserEntity.Role.RATING_ADMIN) {
             if (admin.getClub() != null && player.getClub() != null) {
                 // If both have clubs, they must match
                 if (!player.getClub().getClubId().equals(admin.getClub().getClubId())) {
@@ -89,29 +93,27 @@ public class PlayerService {
         UserEntity admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new RuntimeException("Admin user not found"));
 
-        // Check if admin has permission
-        if (admin.getRole() != UserEntity.Role.CLUB_ADMIN &&
-            admin.getRole() != UserEntity.Role.RATING_ADMIN && 
-            admin.getRole() != UserEntity.Role.SYSTEM_ADMIN) {
-            throw new RuntimeException("User does not have permission to unverify players");
+        // Check if admin has permission (SUPER_USER, SYSTEM_ADMIN, RATING_ADMIN can suspend/enable)
+        if (admin.getRole() != UserEntity.Role.SUPER_USER &&
+            admin.getRole() != UserEntity.Role.SYSTEM_ADMIN &&
+            admin.getRole() != UserEntity.Role.RATING_ADMIN &&
+            admin.getRole() != UserEntity.Role.CLUB_ADMIN) {
+            throw new RuntimeException("Only SuperUser, System Admins, Rating Admins, and Club Admins can suspend/enable players");
         }
 
+        // SuperUser, SystemAdmin, and RatingAdmin can unverify any player
+        if (admin.getRole() == UserEntity.Role.SUPER_USER || 
+            admin.getRole() == UserEntity.Role.SYSTEM_ADMIN ||
+            admin.getRole() == UserEntity.Role.RATING_ADMIN) {
+            // No restrictions
+        }
         // Club admins can only unverify players from their club
-        if (admin.getRole() == UserEntity.Role.CLUB_ADMIN) {
+        else if (admin.getRole() == UserEntity.Role.CLUB_ADMIN) {
             if (admin.getClub() == null) {
                 throw new RuntimeException("Admin is not associated with any club");
             }
             if (player.getClub() == null || !player.getClub().getClubId().equals(admin.getClub().getClubId())) {
                 throw new RuntimeException("Club admins can only unverify players from their own club");
-            }
-        }
-
-        // Rating admins can unverify players from their club
-        if (admin.getRole() == UserEntity.Role.RATING_ADMIN) {
-            if (admin.getClub() != null && player.getClub() != null) {
-                if (!player.getClub().getClubId().equals(admin.getClub().getClubId())) {
-                    throw new RuntimeException("Rating admins can only unverify players from their club");
-                }
             }
         }
 
@@ -135,6 +137,35 @@ public class PlayerService {
         }
         
         return players.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<PlayerDTO> searchPlayersGlobal(String name, Long clubId) {
+        List<Player> players;
+        
+        if (name != null && !name.trim().isEmpty() && clubId != null) {
+            // Search by both name and club
+            players = playerRepository.searchByClubIdAndName(clubId, name.trim());
+        } else if (name != null && !name.trim().isEmpty()) {
+            // Search by name only
+            players = playerRepository.findByNameContainingIgnoreCaseOrderByRatingDesc(name.trim());
+        } else if (clubId != null) {
+            // Search by club only
+            players = playerRepository.findByClubIdAndIsVerifiedOrderByNameAsc(clubId);
+        } else {
+            // Return all players sorted by rating
+            players = playerRepository.findAllByOrderByRatingDesc();
+        }
+        
+        return players.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<PlayerDTO> getTop10Players() {
+        return playerRepository.findTop10ByIsVerifiedTrueOrderByRatingDesc()
+                .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }

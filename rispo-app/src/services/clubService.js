@@ -15,6 +15,22 @@ const clubService = {
     }
   },
 
+  // Search clubs by name, city, or suburb
+  searchClubs: async (name, city, suburb) => {
+    try {
+      const params = new URLSearchParams();
+      if (name) params.append('name', name);
+      if (city) params.append('city', city);
+      if (suburb) params.append('suburb', suburb);
+      
+      const response = await axios.get(`${API_BASE_URL}/clubs/search?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error searching clubs:', error);
+      return [];
+    }
+  },
+
   // Get all clubs (admin only)
   getAllClubs: async () => {
     try {
@@ -35,6 +51,18 @@ const clubService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message || 'Failed to create club';
+    }
+  },
+
+  // Update club details (system admin only)
+  updateClub: async (clubId, clubData, userId) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/clubs/${clubId}`, clubData, {
+        headers: { 'X-User-Id': userId }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to update club';
     }
   },
 
@@ -61,6 +89,19 @@ const clubService = {
     }
   },
 
+  // Get my tokens (for SYSTEM_ADMIN)
+  getMyTokens: async (userId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/clubs/tokens/my-tokens`, {
+        headers: { 'X-User-Id': userId }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching my tokens:', error);
+      return [];
+    }
+  },
+
   // Request to join a club
   requestToJoinClub: async (clubId, message, playerId) => {
     try {
@@ -81,6 +122,17 @@ const clubService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching player join requests:', error);
+      return [];
+    }
+  },
+
+  // Get player's join request history (all statuses)
+  getPlayerJoinRequestHistory: async (playerId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/clubs/join-requests/player/${playerId}/history`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching player join request history:', error);
       return [];
     }
   },

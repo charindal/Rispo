@@ -24,7 +24,7 @@ function AdminDashboard() {
     }
 
     // Check if user is admin
-    if (currentUser.role !== 'RATING_ADMIN' && currentUser.role !== 'SYSTEM_ADMIN' && currentUser.role !== 'CLUB_ADMIN') {
+    if (currentUser.role !== 'SUPER_USER' && currentUser.role !== 'SYSTEM_ADMIN' && currentUser.role !== 'RATING_ADMIN' && currentUser.role !== 'CLUB_ADMIN') {
       navigate('/player-dashboard');
       return;
     }
@@ -79,7 +79,10 @@ function AdminDashboard() {
         <div className="navbar-brand">
           <h2>🎯 Rispo Admin</h2>
           <span className="admin-badge">
-            {user.role === 'SYSTEM_ADMIN' ? 'System Admin' : user.role === 'CLUB_ADMIN' ? 'Club Admin' : 'Rating Admin'}
+            {user.role === 'SUPER_USER' ? 'Super User' : 
+             user.role === 'SYSTEM_ADMIN' ? 'System Admin' : 
+             user.role === 'CLUB_ADMIN' ? 'Club Admin' : 
+             user.role === 'RATING_ADMIN' ? 'Rating Admin' : 'Admin'}
           </span>
         </div>
         <div className="navbar-actions">
@@ -154,7 +157,7 @@ function AdminDashboard() {
               <p>Review and verify player accounts</p>
             </button>
 
-            {(user.role === 'SYSTEM_ADMIN' || user.role === 'CLUB_ADMIN') && (
+            {(user.role === 'SUPER_USER' || user.role === 'SYSTEM_ADMIN' || user.role === 'CLUB_ADMIN') && (
               <button className="action-card" onClick={() => navigate('/club-management')}>
                 <div className="action-icon">🏢</div>
                 <h3>Club Management</h3>
@@ -162,7 +165,7 @@ function AdminDashboard() {
               </button>
             )}
 
-            {user.role === 'SYSTEM_ADMIN' && (
+            {(user.role === 'SUPER_USER' || user.role === 'SYSTEM_ADMIN') && (
               <button className="action-card" onClick={() => navigate('/rating-settings')}>
                 <div className="action-icon">⚙️</div>
                 <h3>Rating Settings</h3>

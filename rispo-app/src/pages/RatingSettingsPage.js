@@ -29,7 +29,7 @@ const RatingSettingsPage = () => {
     }
 
     // Only system admins can access
-    if (currentUser.role !== 'SYSTEM_ADMIN') {
+    if (currentUser.role !== 'SUPER_USER' && currentUser.role !== 'SYSTEM_ADMIN') {
       navigate('/admin-dashboard');
       return;
     }

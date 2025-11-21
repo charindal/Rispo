@@ -28,8 +28,6 @@ public class MatchService {
     private final ChallengeRepository challengeRepository;
     private final MessageProducerService messageProducer;
 
-    private static final int ACKNOWLEDGMENT_DEADLINE_DAYS = 7;
-
     @Transactional
     public MatchResponse submitMatch(SubmitMatchRequest request, Long submitterUserId) throws Exception {
         // Get submitter and their player profile
@@ -73,27 +71,18 @@ public class MatchService {
         match.setPlayer2(opponent);
         match.setSubmittedBy(submitter);
         match.setSubmittedAt(LocalDateTime.now());
-        match.setStatus(Match.MatchStatus.PENDING);
+        match.setStatus(Match.MatchStatus.PENDING_REVIEW);
         match.setIsRated(false);
         match.setTournament(null); // Individual match
         match.setRound(1);
         match.setChallenge(challenge);
         
-        // Determine if admin created or needs acknowledgment
+        // Determine if admin created (SYSTEM_ADMIN cannot process match results)
         boolean isAdmin = submitter.getRole() == UserEntity.Role.RATING_ADMIN ||
-                         submitter.getRole() == UserEntity.Role.SYSTEM_ADMIN ||
+                         submitter.getRole() == UserEntity.Role.SUPER_USER ||
                          submitter.getRole() == UserEntity.Role.CLUB_ADMIN;
         
         match.setAdminCreated(isAdmin);
-        
-        if (isAdmin) {
-            match.setAcknowledgmentStatus(Match.AcknowledgmentStatus.NOT_REQUIRED);
-        } else {
-            match.setAcknowledgmentStatus(Match.AcknowledgmentStatus.PENDING_ACKNOWLEDGMENT);
-            match.setResultRecordedBy(submitter);
-            match.setResultRecordedAt(LocalDateTime.now());
-            match.setAcknowledgmentDeadline(LocalDateTime.now().plusDays(ACKNOWLEDGMENT_DEADLINE_DAYS));
-        }
 
         match = matchRepository.save(match);
 
@@ -144,18 +133,18 @@ public class MatchService {
         Match match = matchRepository.findById(matchId)
                 .orElseThrow(() -> new Exception("Match not found"));
 
-        if (match.getStatus() != Match.MatchStatus.PENDING) {
+        if (match.getStatus() != Match.MatchStatus.PENDING_REVIEW) {
             throw new Exception("Only pending matches can be reviewed");
         }
 
         UserEntity reviewer = userRepository.findById(reviewerUserId)
                 .orElseThrow(() -> new Exception("Reviewer not found"));
 
-        // Check if reviewer is an admin
+        // Check if reviewer is an admin (SYSTEM_ADMIN cannot process match results)
         if (reviewer.getRole() != UserEntity.Role.RATING_ADMIN && 
-            reviewer.getRole() != UserEntity.Role.SYSTEM_ADMIN &&
+            reviewer.getRole() != UserEntity.Role.SUPER_USER &&
             reviewer.getRole() != UserEntity.Role.CLUB_ADMIN) {
-            throw new Exception("Only admins can review matches");
+            throw new Exception("Only SuperUser, Rating Admins, and Club Admins can review matches");
         }
 
         // For club admins, verify they can only review matches from their club
@@ -205,76 +194,13 @@ public class MatchService {
     }
 
     public List<MatchResponse> getPendingMatches() {
-        List<Match> matches = matchRepository.findByStatus(Match.MatchStatus.PENDING);
+        List<Match> matches = matchRepository.findByStatus(Match.MatchStatus.PENDING_REVIEW);
         return matches.stream()
                 .map(match -> convertToResponse(match, gameRepository.findByMatchId(match.getId())))
                 .collect(Collectors.toList());
     }
 
-    public List<MatchResponse> getMatchesPendingAcknowledgment(Long playerId) {
-        log.info("Getting pending acknowledgments for playerId: {}", playerId);
-        
-        // Get matches where this player needs to acknowledge
-        List<Match> matches = matchRepository.findByAcknowledgmentStatus(
-                Match.AcknowledgmentStatus.PENDING_ACKNOWLEDGMENT);
-        
-        log.info("Found {} matches with PENDING_ACKNOWLEDGMENT status", matches.size());
-        
-        return matches.stream()
-                .filter(match -> {
-                    log.debug("Processing match {}: player1={}, player2={}", 
-                            match.getId(), match.getPlayer1().getId(), match.getPlayer2().getId());
-                    
-                    // Get the submitter (either from resultRecordedBy or submittedBy)
-                    UserEntity submitterUser = match.getResultRecordedBy() != null ? 
-                            match.getResultRecordedBy() : match.getSubmittedBy();
-                    
-                    if (submitterUser == null) {
-                        log.warn("Match {} has no submitter information", match.getId());
-                        return false;
-                    }
-                    
-                    Player recordedByPlayer = playerRepository.findByUserId(submitterUser.getId()).orElse(null);
-                    
-                    if (recordedByPlayer == null) {
-                        log.warn("Cannot find player for submitter user {}", submitterUser.getId());
-                        return false;
-                    }
-                    
-                    Long recordedById = recordedByPlayer.getId();
-                    log.debug("Match {} was submitted by player {}", match.getId(), recordedById);
-                    
-                    // If player1 recorded, player2 acknowledges
-                    if (recordedById.equals(match.getPlayer1().getId())) {
-                        boolean shouldAcknowledge = playerId.equals(match.getPlayer2().getId());
-                        log.debug("Player1 submitted → Player2 should acknowledge. PlayerId {} should acknowledge: {}", 
-                                playerId, shouldAcknowledge);
-                        return shouldAcknowledge;
-                    }
-                    // If player2 recorded, player1 acknowledges
-                    if (recordedById.equals(match.getPlayer2().getId())) {
-                        boolean shouldAcknowledge = playerId.equals(match.getPlayer1().getId());
-                        log.debug("Player2 submitted → Player1 should acknowledge. PlayerId {} should acknowledge: {}", 
-                                playerId, shouldAcknowledge);
-                        return shouldAcknowledge;
-                    }
-                    
-                    log.warn("Submitter player {} is neither player1 nor player2 in match {}", 
-                            recordedById, match.getId());
-                    return false;
-                })
-                .map(match -> convertToResponse(match, gameRepository.findByMatchId(match.getId())))
-                .collect(Collectors.toList());
-    }
 
-    public List<MatchResponse> getDisputedMatches() {
-        List<Match> matches = matchRepository.findByAcknowledgmentStatus(
-                Match.AcknowledgmentStatus.DISPUTED);
-        
-        return matches.stream()
-                .map(match -> convertToResponse(match, gameRepository.findByMatchId(match.getId())))
-                .collect(Collectors.toList());
-    }
 
     public List<MatchResponse> getMatchesByPlayer(Long playerId) {
         List<Match> matches = matchRepository.findByPlayer1IdOrPlayer2Id(playerId, playerId);

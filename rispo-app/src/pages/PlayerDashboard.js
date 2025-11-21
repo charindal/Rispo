@@ -10,13 +10,17 @@ const PlayerDashboard = () => {
   const [user, setUser] = useState(null);
   const [playerData, setPlayerData] = useState(null);
   const [clubs, setClubs] = useState([]);
+  const [filteredClubs, setFilteredClubs] = useState([]);
   const [incomingChallenges, setIncomingChallenges] = useState([]);
-  const [pendingAcknowledgments, setPendingAcknowledgments] = useState([]);
   const [showJoinClubModal, setShowJoinClubModal] = useState(false);
   const [selectedClubId, setSelectedClubId] = useState('');
   const [joinMessage, setJoinMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [requestingVerification, setRequestingVerification] = useState(false);
+  const [searchName, setSearchName] = useState('');
+  const [searchCity, setSearchCity] = useState('');
+  const [searchSuburb, setSearchSuburb] = useState('');
+  const [searching, setSearching] = useState(false);
   const navigate = useNavigate();
 
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
@@ -43,12 +47,8 @@ const PlayerDashboard = () => {
 
   const loadChallenges = async (currentUser) => {
     try {
-      const [incoming, acknowledgments] = await Promise.all([
-        challengeService.getIncomingChallenges(currentUser.userId),
-        challengeService.getPendingAcknowledgments(currentUser.userId)
-      ]);
+      const incoming = await challengeService.getIncomingChallenges(currentUser.userId);
       setIncomingChallenges(incoming.filter(c => c.status === 'PENDING'));
-      setPendingAcknowledgments(acknowledgments);
     } catch (error) {
       console.error('Error loading challenges:', error);
     }
@@ -58,6 +58,7 @@ const PlayerDashboard = () => {
     try {
       const clubsData = await clubService.getActiveClubs();
       setClubs(clubsData);
+      setFilteredClubs(clubsData);
     } catch (error) {
       console.error('Error loading clubs:', error);
     }
@@ -101,9 +102,40 @@ const PlayerDashboard = () => {
       setShowJoinClubModal(false);
       setSelectedClubId('');
       setJoinMessage('');
+      resetSearch();
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert('Error: ' + (typeof error === 'string' ? error : error.message || 'Failed to submit join request'));
     }
+  };
+
+  const handleSearchClubs = async () => {
+    if (!searchName && !searchCity && !searchSuburb) {
+      setFilteredClubs(clubs);
+      return;
+    }
+    
+    setSearching(true);
+    try {
+      const results = await clubService.searchClubs(searchName, searchCity, searchSuburb);
+      setFilteredClubs(results);
+    } catch (error) {
+      console.error('Error searching clubs:', error);
+      alert('Error searching clubs. Please try again.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const resetSearch = () => {
+    setSearchName('');
+    setSearchCity('');
+    setSearchSuburb('');
+    setFilteredClubs(clubs);
+  };
+
+  const openJoinClubModal = () => {
+    setShowJoinClubModal(true);
+    loadClubs(); // Refresh clubs when opening modal
   };
 
   if (loading) {
@@ -118,7 +150,7 @@ const PlayerDashboard = () => {
           <span className="player-badge">Player</span>
         </div>
         <div className="navbar-user">
-          {(user?.role === 'RATING_ADMIN' || user?.role === 'SYSTEM_ADMIN' || user?.role === 'CLUB_ADMIN') && (
+          {(user?.role === 'SUPER_USER' || user?.role === 'SYSTEM_ADMIN' || user?.role === 'RATING_ADMIN' || user?.role === 'CLUB_ADMIN') && (
             <button onClick={() => navigate('/admin-dashboard')} className="admin-mode-btn">
               ⚙️ Admin Mode
             </button>
@@ -153,21 +185,14 @@ const PlayerDashboard = () => {
         )}
 
         {/* Challenge Notifications */}
-        {(incomingChallenges.length > 0 || pendingAcknowledgments.length > 0) && (
+        {incomingChallenges.length > 0 && (
           <div className="challenges-alert">
             <div className="alert-icon">🎯</div>
             <div className="alert-content">
               <h3>Action Required!</h3>
-              {incomingChallenges.length > 0 && (
-                <p>
-                  <strong>{incomingChallenges.length}</strong> new challenge{incomingChallenges.length > 1 ? 's' : ''} waiting for your response
-                </p>
-              )}
-              {pendingAcknowledgments.length > 0 && (
-                <p>
-                  <strong>{pendingAcknowledgments.length}</strong> match result{pendingAcknowledgments.length > 1 ? 's' : ''} need acknowledgment
-                </p>
-              )}
+              <p>
+                <strong>{incomingChallenges.length}</strong> new challenge{incomingChallenges.length > 1 ? 's' : ''} waiting for your response
+              </p>
               <button 
                 onClick={() => navigate('/challenges')}
                 className="view-challenges-btn"
@@ -291,7 +316,7 @@ const PlayerDashboard = () => {
               <span className="info-label">Club:</span>
               <span className="info-value">
                 {playerData?.clubName || (
-                  <button onClick={() => setShowJoinClubModal(true)} className="join-club-btn">
+                  <button onClick={openJoinClubModal} className="join-club-btn">
                     Join a Club
                   </button>
                 )}
@@ -303,24 +328,102 @@ const PlayerDashboard = () => {
 
       {/* Join Club Modal */}
       {showJoinClubModal && (
-        <div className="modal-overlay" onClick={() => setShowJoinClubModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Request to Join a Club</h2>
+        <div className="modal-overlay" onClick={() => { setShowJoinClubModal(false); resetSearch(); }}>
+          <div className="modal-content club-search-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Find & Join a Club</h2>
+            
+            {/* Search Filters */}
+            <div className="search-section">
+              <h3>Search Clubs</h3>
+              <div className="search-filters">
+                <div className="filter-group">
+                  <label>Club Name</label>
+                  <input
+                    type="text"
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                    placeholder="e.g., Downtown Chess Club"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label>City</label>
+                  <input
+                    type="text"
+                    value={searchCity}
+                    onChange={(e) => setSearchCity(e.target.value)}
+                    placeholder="e.g., Johannesburg"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label>Suburb</label>
+                  <input
+                    type="text"
+                    value={searchSuburb}
+                    onChange={(e) => setSearchSuburb(e.target.value)}
+                    placeholder="e.g., Sandton"
+                  />
+                </div>
+              </div>
+              <div className="search-actions">
+                <button 
+                  type="button" 
+                  onClick={handleSearchClubs} 
+                  className="search-btn"
+                  disabled={searching}
+                >
+                  {searching ? 'Searching...' : '🔍 Search'}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={resetSearch} 
+                  className="reset-btn"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            {/* Club Selection Form */}
             <form onSubmit={handleJoinClub}>
               <div className="form-group">
-                <label>Select Club *</label>
-                <select
-                  value={selectedClubId}
-                  onChange={(e) => setSelectedClubId(e.target.value)}
-                  required
-                >
-                  <option value="">Choose a club...</option>
-                  {clubs.map(club => (
-                    <option key={club.clubId} value={club.clubId}>
-                      {club.name}
-                    </option>
-                  ))}
-                </select>
+                <label>Select Club * ({filteredClubs.length} clubs found)</label>
+                <div className="clubs-list">
+                  {filteredClubs.length === 0 ? (
+                    <div className="no-clubs-message">
+                      <p>No clubs found. Try adjusting your search filters.</p>
+                    </div>
+                  ) : (
+                    filteredClubs.map(club => (
+                      <div 
+                        key={club.clubId} 
+                        className={`club-option ${selectedClubId === club.clubId ? 'selected' : ''}`}
+                        onClick={() => setSelectedClubId(club.clubId)}
+                      >
+                        <input
+                          type="radio"
+                          name="club"
+                          value={club.clubId}
+                          checked={selectedClubId === club.clubId}
+                          onChange={() => setSelectedClubId(club.clubId)}
+                        />
+                        <div className="club-info">
+                          <h4>{club.name}</h4>
+                          {(club.city || club.suburb) && (
+                            <p className="club-location">
+                              📍 {[club.suburb, club.city].filter(Boolean).join(', ')}
+                            </p>
+                          )}
+                          {club.description && (
+                            <p className="club-description">{club.description}</p>
+                          )}
+                          {club.address && (
+                            <p className="club-address">🏢 {club.address}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
               <div className="form-group">
                 <label>Message (Optional)</label>
@@ -332,10 +435,10 @@ const PlayerDashboard = () => {
                 />
               </div>
               <div className="modal-actions">
-                <button type="button" onClick={() => setShowJoinClubModal(false)} className="cancel-btn">
+                <button type="button" onClick={() => { setShowJoinClubModal(false); resetSearch(); }} className="cancel-btn">
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn">
+                <button type="submit" className="submit-btn" disabled={!selectedClubId}>
                   Send Request
                 </button>
               </div>

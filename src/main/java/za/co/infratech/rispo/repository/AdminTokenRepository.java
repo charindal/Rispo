@@ -18,5 +18,7 @@ public interface AdminTokenRepository extends JpaRepository<AdminToken, Long> {
     
     List<AdminToken> findByIsUsedFalse();
     
+    List<AdminToken> findByGeneratedBy_IdAndIsUsedFalse(Long userId);
+    
     List<AdminToken> findByClub_ClubIdAndIsUsedFalse(Long clubId);
 }

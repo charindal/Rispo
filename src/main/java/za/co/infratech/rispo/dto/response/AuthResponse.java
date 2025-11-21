@@ -14,6 +14,7 @@ public class AuthResponse {
     private String role;
     private Long playerId;
     private Boolean isVerified;
+    private Boolean mustChangePassword;
     private String message;
     private String token;
 }

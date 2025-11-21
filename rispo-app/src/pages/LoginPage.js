@@ -8,6 +8,13 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [passwordChangeData, setPasswordChangeData] = useState({
+    userId: null,
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -18,8 +25,21 @@ const LoginPage = () => {
     try {
       const userData = await authService.login(username, password);
       
+      // Check if user must change password
+      if (userData.mustChangePassword) {
+        setPasswordChangeData({
+          userId: userData.userId,
+          oldPassword: password,
+          newPassword: '',
+          confirmPassword: ''
+        });
+        setShowPasswordChange(true);
+        setLoading(false);
+        return;
+      }
+      
       // Route based on user role and player profile
-      if (userData.role === 'RATING_ADMIN' || userData.role === 'SYSTEM_ADMIN' || userData.role === 'CLUB_ADMIN') {
+      if (userData.role === 'SUPER_USER' || userData.role === 'SYSTEM_ADMIN' || userData.role === 'RATING_ADMIN' || userData.role === 'CLUB_ADMIN') {
         // If admin has a player profile, go to player dashboard, otherwise admin dashboard
         if (userData.playerId) {
           navigate('/player-dashboard');
@@ -31,6 +51,46 @@ const LoginPage = () => {
       }
     } catch (err) {
       setError(err.toString());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    // Validate passwords match
+    if (passwordChangeData.newPassword !== passwordChangeData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    // Validate password length
+    if (passwordChangeData.newPassword.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await authService.changePassword(passwordChangeData.userId, {
+        oldPassword: passwordChangeData.oldPassword,
+        newPassword: passwordChangeData.newPassword
+      });
+
+      alert('Password changed successfully! Please login with your new password.');
+      setShowPasswordChange(false);
+      setPassword('');
+      setPasswordChangeData({
+        userId: null,
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (err) {
+      setError(typeof err === 'string' ? err : err.message || 'Failed to change password');
     } finally {
       setLoading(false);
     }
@@ -86,6 +146,59 @@ const LoginPage = () => {
           <p>Don't have an account? <a href="/register">Register here</a></p>
         </div>
       </div>
+
+      {/* Password Change Modal */}
+      {showPasswordChange && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{maxWidth: '500px'}}>
+            <h2 style={{color: '#e74c3c', marginBottom: '10px'}}>⚠️ Password Change Required</h2>
+            <p style={{marginBottom: '20px', color: '#666'}}>
+              You must change your password before continuing. Please choose a secure password.
+            </p>
+            
+            <form onSubmit={handlePasswordChange}>
+              <div className="form-group">
+                <label>New Password *</label>
+                <input
+                  type="password"
+                  value={passwordChangeData.newPassword}
+                  onChange={(e) => setPasswordChangeData({...passwordChangeData, newPassword: e.target.value})}
+                  placeholder="Enter new password (min 6 characters)"
+                  required
+                  minLength={6}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Confirm New Password *</label>
+                <input
+                  type="password"
+                  value={passwordChangeData.confirmPassword}
+                  onChange={(e) => setPasswordChangeData({...passwordChangeData, confirmPassword: e.target.value})}
+                  placeholder="Re-enter new password"
+                  required
+                  minLength={6}
+                  disabled={loading}
+                />
+              </div>
+
+              {error && <div className="error-message">{error}</div>}
+
+              <div style={{marginTop: '20px'}}>
+                <button 
+                  type="submit" 
+                  className="login-button"
+                  disabled={loading}
+                  style={{width: '100%'}}
+                >
+                  {loading ? 'Changing Password...' : 'Change Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

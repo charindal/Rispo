@@ -8,6 +8,7 @@ import za.co.infratech.rispo.dto.request.ClubJoinRequestRequest;
 import za.co.infratech.rispo.dto.request.CreateClubRequest;
 import za.co.infratech.rispo.dto.request.GenerateTokenRequest;
 import za.co.infratech.rispo.dto.request.ReviewJoinRequestRequest;
+import za.co.infratech.rispo.dto.request.UpdateClubRequest;
 import za.co.infratech.rispo.dto.response.ClubJoinRequestResponse;
 import za.co.infratech.rispo.dto.response.ClubResponse;
 import za.co.infratech.rispo.dto.response.TokenResponse;
@@ -78,6 +79,24 @@ public class ClubController {
         return ResponseEntity.ok(clubService.getUnusedTokens());
     }
 
+    @GetMapping("/tokens/my-tokens")
+    public ResponseEntity<List<TokenResponse>> getMyTokens(@RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(clubService.getTokensByGenerator(userId));
+    }
+
+    @PutMapping("/{clubId}")
+    public ResponseEntity<?> updateClub(
+            @PathVariable Long clubId,
+            @RequestBody UpdateClubRequest request,
+            @RequestHeader("X-User-Id") Long systemAdminId) {
+        try {
+            ClubResponse response = clubService.updateClub(clubId, request, systemAdminId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PatchMapping("/{clubId}/status")
     public ResponseEntity<?> updateClubStatus(
             @PathVariable Long clubId,
@@ -132,8 +151,21 @@ public class ClubController {
         return ResponseEntity.ok(clubService.getPlayerJoinRequests(playerId));
     }
 
+    @GetMapping("/join-requests/player/{playerId}/history")
+    public ResponseEntity<List<ClubJoinRequestResponse>> getPlayerJoinRequestHistory(@PathVariable Long playerId) {
+        return ResponseEntity.ok(clubService.getPlayerJoinRequestHistory(playerId));
+    }
+
     @GetMapping("/join-requests/pending")
     public ResponseEntity<List<ClubJoinRequestResponse>> getPendingJoinRequests() {
         return ResponseEntity.ok(clubService.getPendingJoinRequests());
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<ClubResponse>> searchClubs(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String suburb) {
+        return ResponseEntity.ok(clubService.searchClubs(name, city, suburb));
     }
 }

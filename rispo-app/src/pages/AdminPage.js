@@ -79,7 +79,7 @@ const AdminPage = () => {
     );
   }
 
-  const isAdmin = currentUser.role === 'RATING_ADMIN' || currentUser.role === 'SYSTEM_ADMIN' || currentUser.role === 'CLUB_ADMIN';
+  const isAdmin = currentUser.role === 'SUPER_USER' || currentUser.role === 'SYSTEM_ADMIN' || currentUser.role === 'RATING_ADMIN' || currentUser.role === 'CLUB_ADMIN';
 
   if (!isAdmin) {
     return (

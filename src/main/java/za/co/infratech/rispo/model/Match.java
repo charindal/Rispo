@@ -49,29 +49,7 @@ public class Match {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private MatchStatus status = MatchStatus.PENDING;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "acknowledgment_status", nullable = false)
-    @Builder.Default
-    private AcknowledgmentStatus acknowledgmentStatus = AcknowledgmentStatus.NOT_REQUIRED;
-
-    @ManyToOne
-    @JoinColumn(name = "result_recorded_by")
-    private UserEntity resultRecordedBy;
-
-    @Column(name = "result_recorded_at")
-    private LocalDateTime resultRecordedAt;
-
-    @ManyToOne
-    @JoinColumn(name = "acknowledged_by")
-    private UserEntity acknowledgedBy;
-
-    @Column(name = "acknowledged_at")
-    private LocalDateTime acknowledgedAt;
-
-    @Column(name = "acknowledgment_deadline")
-    private LocalDateTime acknowledgmentDeadline;
+    private MatchStatus status = MatchStatus.PENDING_REVIEW;
 
     @ManyToOne
     @JoinColumn(name = "submitted_by")
@@ -126,16 +104,8 @@ public class Match {
     }
 
     public enum MatchStatus {
-        PENDING,
+        PENDING_REVIEW,
         APPROVED,
         REJECTED
-    }
-
-    public enum AcknowledgmentStatus {
-        NOT_REQUIRED,
-        PENDING_ACKNOWLEDGMENT,
-        ACKNOWLEDGED,
-        DISPUTED,
-        ACKNOWLEDGED_BY_ADMIN
     }
 }

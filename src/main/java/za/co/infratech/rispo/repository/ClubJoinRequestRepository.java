@@ -14,6 +14,8 @@ public interface ClubJoinRequestRepository extends JpaRepository<ClubJoinRequest
     
     List<ClubJoinRequest> findByPlayer_Id(Long playerId);
     
+    List<ClubJoinRequest> findByPlayer_IdOrderByRequestedAtDesc(Long playerId);
+    
     List<ClubJoinRequest> findByStatus(ClubJoinRequest.RequestStatus status);
     
     List<ClubJoinRequest> findByClub_ClubIdAndStatus(Long clubId, ClubJoinRequest.RequestStatus status);

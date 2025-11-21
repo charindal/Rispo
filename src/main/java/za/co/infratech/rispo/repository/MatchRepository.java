@@ -28,9 +28,6 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     // Find matches by status
     List<Match> findByStatus(Match.MatchStatus status);
 
-    // Find matches by acknowledgment status
-    List<Match> findByAcknowledgmentStatus(Match.AcknowledgmentStatus acknowledgmentStatus);
-
     // Find match by challenge
     Optional<Match> findByChallenge(za.co.infratech.rispo.model.Challenge challenge);
 }

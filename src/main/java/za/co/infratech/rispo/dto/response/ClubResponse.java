@@ -16,6 +16,8 @@ public class ClubResponse {
     private String name;
     private String description;
     private String address;
+    private String city;
+    private String suburb;
     private String contactEmail;
     private String contactPhone;
     private String status;

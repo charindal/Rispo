@@ -79,48 +79,6 @@ const challengeService = {
     }
   },
 
-  // Get matches pending acknowledgment
-  getPendingAcknowledgments: async (userId) => {
-    try {
-      const response = await axios.get(
-        `${API_BASE_URL}/challenges/matches/pending-acknowledgment`,
-        { headers: getAuthHeader(userId) }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching pending acknowledgments:', error);
-      return [];
-    }
-  },
-
-  // Acknowledge a match result
-  acknowledgeMatch: async (matchId, acknowledge, userId) => {
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/challenges/matches/${matchId}/acknowledge`,
-        { acknowledged: acknowledge },
-        { headers: getAuthHeader(userId) }
-      );
-      return response.data;
-    } catch (error) {
-      throw error.response?.data?.message || error.message || 'Failed to acknowledge match';
-    }
-  },
-
-  // Get disputed matches (for admins)
-  getDisputedMatches: async (userId) => {
-    try {
-      const response = await axios.get(
-        `${API_BASE_URL}/challenges/matches/disputed`,
-        { headers: getAuthHeader(userId) }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching disputed matches:', error);
-      return [];
-    }
-  },
-
   // Get player flags
   getPlayerFlags: async (playerId, userId) => {
     try {

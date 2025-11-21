@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import za.co.infratech.rispo.dto.request.ChangePasswordRequest;
 import za.co.infratech.rispo.dto.request.LoginRequest;
 import za.co.infratech.rispo.dto.request.RegisterRequest;
 import za.co.infratech.rispo.dto.request.UpdateProfileRequest;
@@ -70,6 +71,22 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/change-password/{userId}")
+    public ResponseEntity<?> changePassword(
+            @PathVariable Long userId,
+            @RequestBody ChangePasswordRequest request) {
+        try {
+            authService.changePassword(userId, request);
+            return ResponseEntity.ok(new SuccessResponse("Password changed successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
     // Inner class for error responses
     private record ErrorResponse(String message) {}
+    
+    // Inner class for success responses
+    private record SuccessResponse(String message) {}
 }

@@ -423,6 +423,173 @@
   animation: slideUp 0.3s ease-out;
 }
 
+.modal-content.club-search-modal {
+  max-width: 700px;
+  max-height: 85vh;
+}
+
+.search-section {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.search-section h3 {
+  margin: 0 0 16px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.search-filters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.filter-group input {
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.filter-group input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.search-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.search-btn,
+.reset-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  flex: 1;
+}
+
+.search-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.search-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.reset-btn {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.reset-btn:hover {
+  background: #d0d0d0;
+}
+
+.clubs-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.club-option {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.club-option:hover {
+  border-color: #667eea;
+  background: #f8f9fa;
+}
+
+.club-option.selected {
+  border-color: #667eea;
+  background: #ede7f6;
+}
+
+.club-option input[type="radio"] {
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.club-info {
+  flex: 1;
+}
+
+.club-info h4 {
+  margin: 0 0 6px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.club-location {
+  color: #667eea;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 4px 0;
+}
+
+.club-description {
+  color: #666;
+  font-size: 13px;
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.club-address {
+  color: #888;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.no-clubs-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.no-clubs-message p {
+  margin: 0;
+  font-size: 14px;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;

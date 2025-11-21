@@ -16,16 +16,25 @@ function ClubManagement() {
   // Form states
   const [showCreateClubForm, setShowCreateClubForm] = useState(false);
   const [showTokenForm, setShowTokenForm] = useState(false);
+  const [editingClub, setEditingClub] = useState(null);
   const [clubForm, setClubForm] = useState({
     name: '',
     description: '',
     address: '',
+    city: '',
+    suburb: '',
     contactEmail: '',
     contactPhone: ''
   });
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [playerHistory, setPlayerHistory] = useState([]);
+  const [reviewAction, setReviewAction] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  
   const [tokenForm, setTokenForm] = useState({
     clubId: '',
-    role: 'CLUB_ADMIN',
+    role: '',
     validityDays: 30
   });
 
@@ -37,21 +46,37 @@ function ClubManagement() {
       return;
     }
 
-    if (currentUser.role !== 'SYSTEM_ADMIN' && currentUser.role !== 'CLUB_ADMIN') {
+    if (currentUser.role !== 'SUPER_USER' && currentUser.role !== 'SYSTEM_ADMIN' && currentUser.role !== 'CLUB_ADMIN') {
       navigate('/admin-dashboard');
       return;
     }
 
     setUser(currentUser);
+    
+    // Initialize token form role based on user's role
+    if (currentUser.role === 'SUPER_USER') {
+      setTokenForm(prev => ({ ...prev, role: 'SYSTEM_ADMIN' }));
+    } else if (currentUser.role === 'SYSTEM_ADMIN') {
+      setTokenForm(prev => ({ ...prev, role: 'CLUB_ADMIN' }));
+    }
+    
     loadData();
   }, [navigate]);
 
   const loadData = async () => {
     try {
+      const clubsDataPromise = clubService.getAllClubs();
+      const requestsDataPromise = clubService.getPendingJoinRequests();
+      
+      // SYSTEM_ADMIN sees only their own tokens, SUPER_USER sees all
+      const tokensDataPromise = user && user.role === 'SYSTEM_ADMIN' 
+        ? clubService.getMyTokens(user.userId)
+        : clubService.getUnusedTokens();
+      
       const [clubsData, tokensData, requestsData] = await Promise.all([
-        clubService.getAllClubs(),
-        clubService.getUnusedTokens(),
-        clubService.getPendingJoinRequests()
+        clubsDataPromise,
+        tokensDataPromise,
+        requestsDataPromise
       ]);
       
       setClubs(clubsData);
@@ -70,11 +95,43 @@ function ClubManagement() {
       await clubService.createClub(clubForm, user.userId);
       alert('Club created successfully!');
       setShowCreateClubForm(false);
-      setClubForm({ name: '', description: '', address: '', contactEmail: '', contactPhone: '' });
+      setClubForm({ name: '', description: '', address: '', city: '', suburb: '', contactEmail: '', contactPhone: '' });
       loadData();
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert('Error: ' + (typeof error === 'string' ? error : error.message || 'Failed to create club'));
     }
+  };
+
+  const handleEditClub = (club) => {
+    setEditingClub(club);
+    setClubForm({
+      name: club.name || '',
+      description: club.description || '',
+      address: club.address || '',
+      city: club.city || '',
+      suburb: club.suburb || '',
+      contactEmail: club.contactEmail || '',
+      contactPhone: club.contactPhone || ''
+    });
+    setShowCreateClubForm(false);
+  };
+
+  const handleUpdateClub = async (e) => {
+    e.preventDefault();
+    try {
+      await clubService.updateClub(editingClub.clubId, clubForm, user.userId);
+      alert('Club updated successfully!');
+      setEditingClub(null);
+      setClubForm({ name: '', description: '', address: '', city: '', suburb: '', contactEmail: '', contactPhone: '' });
+      loadData();
+    } catch (error) {
+      alert('Error: ' + (typeof error === 'string' ? error : error.message || 'Failed to update club'));
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingClub(null);
+    setClubForm({ name: '', description: '', address: '', city: '', suburb: '', contactEmail: '', contactPhone: '' });
   };
 
   const handleGenerateToken = async (e) => {
@@ -83,20 +140,53 @@ function ClubManagement() {
       const token = await clubService.generateToken(tokenForm, user.userId);
       alert(`Token generated successfully!\n\nToken: ${token.token}\n\nShare this token with the admin to register.`);
       setShowTokenForm(false);
-      setTokenForm({ clubId: '', role: 'CLUB_ADMIN', validityDays: 30 });
+      // Reset form with appropriate default role based on user
+      const defaultRole = user.role === 'SUPER_USER' ? 'SYSTEM_ADMIN' : 'CLUB_ADMIN';
+      setTokenForm({ clubId: '', role: defaultRole, validityDays: 30 });
       loadData();
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert('Error: ' + (typeof error === 'string' ? error : error.message || 'Failed to generate token'));
     }
   };
 
-  const handleReviewRequest = async (requestId, status) => {
+  const openReviewModal = async (request, action) => {
+    setSelectedRequest(request);
+    setReviewAction(action);
+    setRejectionReason('');
+    
+    // Fetch player history
     try {
-      await clubService.reviewJoinRequest(requestId, status, '', user.userId);
-      alert(`Request ${status.toLowerCase()} successfully!`);
+      const history = await clubService.getPlayerJoinRequestHistory(request.playerId);
+      setPlayerHistory(history);
+    } catch (error) {
+      console.error('Failed to load player history:', error);
+      setPlayerHistory([]);
+    }
+    
+    setShowReviewModal(true);
+  };
+
+  const handleReviewRequest = async () => {
+    // Validate rejection reason
+    if (reviewAction === 'REJECTED' && (!rejectionReason || rejectionReason.trim() === '')) {
+      alert('Rejection reason is mandatory');
+      return;
+    }
+    
+    try {
+      await clubService.reviewJoinRequest(
+        selectedRequest.requestId,
+        reviewAction,
+        rejectionReason || '',
+        user.userId
+      );
+      alert(`Request ${reviewAction.toLowerCase()} successfully!`);
+      setShowReviewModal(false);
+      setSelectedRequest(null);
+      setPlayerHistory([]);
       loadData();
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert('Error: ' + (typeof error === 'string' ? error : error.message || 'Failed to review request'));
     }
   };
 
@@ -109,7 +199,7 @@ function ClubManagement() {
       alert('Club status updated!');
       loadData();
     } catch (error) {
-      alert('Error: ' + error.message);
+      alert('Error: ' + (typeof error === 'string' ? error : error.message || 'Failed to update status'));
     }
   };
 
@@ -166,10 +256,10 @@ function ClubManagement() {
               </button>
             </div>
 
-            {showCreateClubForm && (
+            {(showCreateClubForm || editingClub) && (
               <div className="form-card">
-                <h3>Create New Club</h3>
-                <form onSubmit={handleCreateClub}>
+                <h3>{editingClub ? 'Edit Club' : 'Create New Club'}</h3>
+                <form onSubmit={editingClub ? handleUpdateClub : handleCreateClub}>
                   <div className="form-group">
                     <label>Club Name *</label>
                     <input
@@ -200,6 +290,26 @@ function ClubManagement() {
                   </div>
                   <div className="form-row">
                     <div className="form-group">
+                      <label>City</label>
+                      <input
+                        type="text"
+                        value={clubForm.city}
+                        onChange={(e) => setClubForm({...clubForm, city: e.target.value})}
+                        placeholder="e.g., Johannesburg"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Suburb</label>
+                      <input
+                        type="text"
+                        value={clubForm.suburb}
+                        onChange={(e) => setClubForm({...clubForm, suburb: e.target.value})}
+                        placeholder="e.g., Sandton"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
                       <label>Contact Email</label>
                       <input
                         type="email"
@@ -218,7 +328,16 @@ function ClubManagement() {
                       />
                     </div>
                   </div>
-                  <button type="submit" className="submit-btn">Create Club</button>
+                  <div className="form-actions">
+                    <button type="submit" className="submit-btn">
+                      {editingClub ? 'Update Club' : 'Create Club'}
+                    </button>
+                    {editingClub && (
+                      <button type="button" onClick={handleCancelEdit} className="cancel-btn">
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </form>
               </div>
             )}
@@ -235,11 +354,20 @@ function ClubManagement() {
                   <div className="club-details">
                     {club.description && <p>{club.description}</p>}
                     {club.address && <p><strong>📍</strong> {club.address}</p>}
+                    {(club.city || club.suburb) && (
+                      <p><strong>🏘️</strong> {[club.suburb, club.city].filter(Boolean).join(', ')}</p>
+                    )}
                     {club.contactEmail && <p><strong>📧</strong> {club.contactEmail}</p>}
                     {club.contactPhone && <p><strong>📞</strong> {club.contactPhone}</p>}
                     <p className="club-meta">Created by {club.createdByUsername}</p>
                   </div>
                   <div className="club-actions">
+                    <button 
+                      onClick={() => handleEditClub(club)}
+                      className="action-btn info"
+                    >
+                      Edit
+                    </button>
                     {club.status === 'ACTIVE' && (
                       <>
                         <button 
@@ -286,29 +414,29 @@ function ClubManagement() {
                 <h3>Generate Admin Token</h3>
                 <form onSubmit={handleGenerateToken}>
                   <div className="form-group">
-                    <label>Club *</label>
-                    <select
-                      value={tokenForm.clubId}
-                      onChange={(e) => setTokenForm({...tokenForm, clubId: e.target.value})}
-                      required
-                    >
-                      <option value="">Select Club</option>
-                      {clubs.filter(c => c.status === 'ACTIVE').map(club => (
-                        <option key={club.clubId} value={club.clubId}>{club.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
                     <label>Admin Role *</label>
                     <select
                       value={tokenForm.role}
-                      onChange={(e) => setTokenForm({...tokenForm, role: e.target.value})}
+                      onChange={(e) => {
+                        setTokenForm({...tokenForm, role: e.target.value});
+                      }}
                       required
                     >
-                      <option value="CLUB_ADMIN">Club Admin</option>
-                      <option value="RATING_ADMIN">Rating Admin</option>
+                      {user.role === 'SUPER_USER' && (
+                        <option value="SYSTEM_ADMIN">System Admin</option>
+                      )}
+                      {user.role === 'SYSTEM_ADMIN' && (
+                        <>
+                          <option value="CLUB_ADMIN">Club Admin</option>
+                          <option value="RATING_ADMIN">Rating Admin</option>
+                        </>
+                      )}
                     </select>
+                    <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
+                      {user.role === 'SUPER_USER' ? 'System Admins manage the platform' : 'Admins assigned to clubs during registration'}
+                    </small>
                   </div>
+                  
                   <div className="form-group">
                     <label>Valid For (Days) *</label>
                     <input
@@ -373,7 +501,7 @@ function ClubManagement() {
                 <thead>
                   <tr>
                     <th>Player</th>
-                    <th>Club</th>
+                    <th>Club Request</th>
                     <th>Message</th>
                     <th>Requested</th>
                     <th>Actions</th>
@@ -383,19 +511,40 @@ function ClubManagement() {
                   {joinRequests.map(request => (
                     <tr key={request.requestId}>
                       <td><strong>{request.playerName}</strong></td>
-                      <td>{request.clubName}</td>
+                      <td>
+                        {request.isClubChange ? (
+                          <div>
+                            <div style={{color: '#f39c12', fontWeight: 'bold', marginBottom: '4px'}}>
+                              ⚠️ CLUB CHANGE
+                            </div>
+                            <div style={{fontSize: '0.9em'}}>
+                              From: <span style={{color: '#e74c3c'}}>{request.previousClubName}</span>
+                            </div>
+                            <div style={{fontSize: '0.9em'}}>
+                              To: <span style={{color: '#27ae60'}}>{request.clubName}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div style={{color: '#27ae60', fontWeight: 'bold', marginBottom: '4px'}}>
+                              ✓ NEW MEMBER
+                            </div>
+                            <div style={{fontSize: '0.9em'}}>{request.clubName}</div>
+                          </div>
+                        )}
+                      </td>
                       <td>{request.message || '-'}</td>
                       <td>{new Date(request.requestedAt).toLocaleDateString()}</td>
                       <td>
                         <div className="action-buttons">
                           <button 
-                            onClick={() => handleReviewRequest(request.requestId, 'APPROVED')}
+                            onClick={() => openReviewModal(request, 'APPROVED')}
                             className="action-btn success"
                           >
                             Approve
                           </button>
                           <button 
-                            onClick={() => handleReviewRequest(request.requestId, 'REJECTED')}
+                            onClick={() => openReviewModal(request, 'REJECTED')}
                             className="action-btn danger"
                           >
                             Reject
@@ -417,6 +566,121 @@ function ClubManagement() {
           </div>
         )}
       </div>
+
+      {/* Review Request Modal */}
+      {showReviewModal && selectedRequest && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{maxWidth: '700px'}}>
+            <h2>{reviewAction === 'APPROVED' ? 'Approve' : 'Reject'} Join Request</h2>
+            
+            <div style={{marginBottom: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px'}}>
+              <h3 style={{marginBottom: '10px'}}>Request Details</h3>
+              <p><strong>Player:</strong> {selectedRequest.playerName}</p>
+              <p><strong>Club:</strong> {selectedRequest.clubName}</p>
+              {selectedRequest.isClubChange && (
+                <p><strong>Previous Club:</strong> {selectedRequest.previousClubName}</p>
+              )}
+              {selectedRequest.message && (
+                <p><strong>Message:</strong> {selectedRequest.message}</p>
+              )}
+            </div>
+
+            {/* Player History */}
+            {playerHistory.length > 0 && (
+              <div style={{marginBottom: '20px'}}>
+                <h3 style={{marginBottom: '10px'}}>Player Join Request History</h3>
+                <div style={{maxHeight: '200px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '8px', padding: '10px'}}>
+                  {playerHistory.map((history, index) => (
+                    <div key={index} style={{
+                      padding: '10px',
+                      marginBottom: '10px',
+                      background: history.status === 'REJECTED' ? '#ffebee' : history.status === 'APPROVED' ? '#e8f5e9' : '#fff3e0',
+                      borderRadius: '5px',
+                      borderLeft: `4px solid ${history.status === 'REJECTED' ? '#f44336' : history.status === 'APPROVED' ? '#4caf50' : '#ff9800'}`
+                    }}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
+                        <strong>{history.clubName}</strong>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.85em',
+                          background: history.status === 'REJECTED' ? '#f44336' : history.status === 'APPROVED' ? '#4caf50' : '#ff9800',
+                          color: 'white'
+                        }}>
+                          {history.status}
+                        </span>
+                      </div>
+                      <div style={{fontSize: '0.9em', color: '#666'}}>
+                        <div>Requested: {new Date(history.requestedAt).toLocaleDateString()}</div>
+                        {history.reviewedAt && (
+                          <div>Reviewed: {new Date(history.reviewedAt).toLocaleDateString()}</div>
+                        )}
+                        {history.reviewNotes && (
+                          <div style={{marginTop: '5px', color: '#333'}}>
+                            <strong>Notes:</strong> {history.reviewNotes}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Rejection Reason */}
+            {reviewAction === 'REJECTED' && (
+              <div className="form-group">
+                <label>Rejection Reason *</label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Please provide a reason for rejection (mandatory)"
+                  rows="4"
+                  required
+                  style={{width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ddd'}}
+                />
+              </div>
+            )}
+
+            {reviewAction === 'APPROVED' && (
+              <div className="form-group">
+                <label>Notes (Optional)</label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Add any notes about this approval"
+                  rows="3"
+                  style={{width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ddd'}}
+                />
+              </div>
+            )}
+
+            <div className="modal-actions">
+              <button 
+                onClick={() => {
+                  setShowReviewModal(false);
+                  setSelectedRequest(null);
+                  setPlayerHistory([]);
+                  setRejectionReason('');
+                }}
+                className="cancel-btn"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleReviewRequest}
+                className={reviewAction === 'APPROVED' ? 'submit-btn' : 'danger-btn'}
+                style={{
+                  background: reviewAction === 'APPROVED' ? '#4caf50' : '#f44336',
+                  color: 'white'
+                }}
+              >
+                {reviewAction === 'APPROVED' ? 'Approve Request' : 'Reject Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

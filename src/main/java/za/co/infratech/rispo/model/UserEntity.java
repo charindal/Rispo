@@ -34,6 +34,9 @@ public class UserEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    @Column(name = "must_change_password", nullable = false)
+    private Boolean mustChangePassword = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "club_id")
     private Club club;
@@ -52,10 +55,11 @@ public class UserEntity {
         this.updatedAt = LocalDateTime.now();
     }
     public enum Role {
-        PLAYER,
-        CLUB_ADMIN,
+        SUPER_USER,
+        SYSTEM_ADMIN,
         RATING_ADMIN,
-        SYSTEM_ADMIN
+        CLUB_ADMIN,
+        PLAYER
     }
 }
 

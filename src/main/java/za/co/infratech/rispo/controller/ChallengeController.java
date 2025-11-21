@@ -106,46 +106,6 @@ public class ChallengeController {
         }
     }
 
-    @PostMapping("/matches/{matchId}/acknowledge")
-    public ResponseEntity<Void> acknowledgeMatchResult(
-            @PathVariable Long matchId,
-            @RequestHeader("X-User-Id") Long userId,
-            @RequestBody AcknowledgeResultRequest request) {
-        try {
-            // Convert userId to playerId
-            Player player = playerRepository.findByUserId(userId)
-                    .orElseThrow(() -> new RuntimeException("Player not found"));
-            challengeService.acknowledgeMatchResult(matchId, player.getId(), request);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.error("Error acknowledging match result", e);
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @GetMapping("/matches/pending-acknowledgment")
-    public ResponseEntity<List<MatchResponse>> getMatchesPendingAcknowledgment(
-            @RequestHeader("X-User-Id") Long userId) {
-        try {
-            List<MatchResponse> matches = matchService.getMatchesPendingAcknowledgment(userId);
-            return ResponseEntity.ok(matches);
-        } catch (Exception e) {
-            log.error("Error getting matches pending acknowledgment", e);
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @GetMapping("/matches/disputed")
-    public ResponseEntity<List<MatchResponse>> getDisputedMatches() {
-        try {
-            List<MatchResponse> matches = matchService.getDisputedMatches();
-            return ResponseEntity.ok(matches);
-        } catch (Exception e) {
-            log.error("Error getting disputed matches", e);
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
     @GetMapping("/flags/player/{playerId}")
     public ResponseEntity<List<PlayerFlagResponse>> getPlayerFlags(@PathVariable Long playerId) {
         try {

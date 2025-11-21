@@ -41,6 +41,15 @@ const authService = {
 
   isAuthenticated: () => {
     return localStorage.getItem('user') !== null;
+  },
+
+  changePassword: async (userId, passwordData) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/change-password/${userId}`, passwordData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || error.message || 'Failed to change password';
+    }
   }
 };
 

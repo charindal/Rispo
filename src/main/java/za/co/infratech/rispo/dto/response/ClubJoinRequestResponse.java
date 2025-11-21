@@ -17,6 +17,9 @@ public class ClubJoinRequestResponse {
     private String playerName;
     private Long clubId;
     private String clubName;
+    private Long previousClubId;
+    private String previousClubName;
+    private Boolean isClubChange;
     private String status;
     private String message;
     private LocalDateTime requestedAt;

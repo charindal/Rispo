@@ -32,7 +32,7 @@
       "type": "text"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -90,7 +90,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -140,7 +140,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -190,7 +190,7 @@
       "type": "stat"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "color": {

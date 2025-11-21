@@ -19,4 +19,10 @@ public interface PlayerRepository extends JpaRepository<Player, Long> {
     
     @Query("SELECT p FROM Player p WHERE p.club.id = :clubId AND p.isVerified = true AND LOWER(p.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) ORDER BY p.name ASC")
     List<Player> searchByClubIdAndName(@Param("clubId") Long clubId, @Param("searchTerm") String searchTerm);
+    
+    List<Player> findByNameContainingIgnoreCaseOrderByRatingDesc(String name);
+    
+    List<Player> findAllByOrderByRatingDesc();
+    
+    List<Player> findTop10ByIsVerifiedTrueOrderByRatingDesc();
 }

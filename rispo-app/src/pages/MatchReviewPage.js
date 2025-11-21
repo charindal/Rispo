@@ -21,7 +21,7 @@ const MatchReviewPage = () => {
       return;
     }
 
-    if (currentUser.role !== 'RATING_ADMIN' && currentUser.role !== 'SYSTEM_ADMIN' && currentUser.role !== 'CLUB_ADMIN') {
+    if (currentUser.role !== 'SUPER_USER' && currentUser.role !== 'SYSTEM_ADMIN' && currentUser.role !== 'RATING_ADMIN' && currentUser.role !== 'CLUB_ADMIN') {
       navigate('/player-dashboard');
       return;
     }

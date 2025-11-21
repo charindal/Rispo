@@ -30,6 +30,12 @@ public class Club {
     @Column(length = 500)
     private String address;
 
+    @Column(length = 100)
+    private String city;
+
+    @Column(length = 100)
+    private String suburb;
+
     @Column(name = "contact_email")
     private String contactEmail;
 
@@ -42,6 +48,7 @@ public class Club {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 50)
+    @Builder.Default
     private ClubStatus status = ClubStatus.ACTIVE;
 
     @Column(name = "created_at", updatable = false)

@@ -3,6 +3,7 @@ package za.co.infratech.rispo.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import za.co.infratech.rispo.dto.request.ChangePasswordRequest;
 import za.co.infratech.rispo.dto.request.LoginRequest;
 import za.co.infratech.rispo.dto.request.RegisterRequest;
 import za.co.infratech.rispo.dto.request.UpdateProfileRequest;
@@ -111,9 +112,9 @@ public class AuthService {
             adminTokenRepository.save(adminToken);
         }
 
-        // Create player profile if role is PLAYER or if admin wants player profile
+        // Create player profile automatically for all roles except SUPER_USER
         Player player = null;
-        if (role == UserEntity.Role.PLAYER || (request.getCreatePlayerProfile() != null && request.getCreatePlayerProfile())) {
+        if (role != UserEntity.Role.SUPER_USER) {
             player = new Player();
             player.setUser(user);
             player.setName(request.getName());
@@ -139,6 +140,7 @@ public class AuthService {
         response.setRole(user.getRole().toString());
         response.setPlayerId(player != null ? player.getId() : null);
         response.setIsVerified(player != null ? player.getIsVerified() : null);
+        response.setMustChangePassword(user.getMustChangePassword());
         response.setMessage("Registration successful");
         response.setToken("mock-jwt-token-" + user.getId()); // TODO: Implement real JWT
 
@@ -171,6 +173,7 @@ public class AuthService {
         response.setRole(user.getRole().toString());
         response.setPlayerId(player != null ? player.getId() : null);
         response.setIsVerified(player != null ? player.getIsVerified() : null);
+        response.setMustChangePassword(user.getMustChangePassword());
         response.setMessage("Login successful");
         response.setToken("mock-jwt-token-" + user.getId()); // TODO: Implement real JWT
 
@@ -266,4 +269,35 @@ public class AuthService {
 
         return getUserProfile(userId);
     }
+
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Validate old password
+        if (!user.getPassword().equals(request.getOldPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        // Validate new password
+        if (request.getNewPassword() == null || request.getNewPassword().trim().isEmpty()) {
+            throw new RuntimeException("New password cannot be empty");
+        }
+
+        if (request.getNewPassword().length() < 6) {
+            throw new RuntimeException("Password must be at least 6 characters long");
+        }
+
+        if (request.getNewPassword().equals(request.getOldPassword())) {
+            throw new RuntimeException("New password must be different from current password");
+        }
+
+        // Update password
+        user.setPassword(request.getNewPassword()); // TODO: Add password encryption
+        user.setMustChangePassword(false);
+        
+        userRepository.save(user);
+    }
 }
+

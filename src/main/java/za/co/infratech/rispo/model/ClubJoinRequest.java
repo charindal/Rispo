@@ -29,6 +29,13 @@ public class ClubJoinRequest {
     @JoinColumn(name = "club_id", nullable = false)
     private Club club;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "previous_club_id")
+    private Club previousClub;
+
+    @Column(name = "is_club_change")
+    private Boolean isClubChange = false;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 50)
     private RequestStatus status = RequestStatus.PENDING;
