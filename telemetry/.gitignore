@@ -1,0 +1,16 @@
+# Ignore runtime data directories
+data/
+*.db
+*.log
+
+# Grafana runtime files
+grafana/grafana.db
+
+# Prometheus data
+prometheus/data/
+
+# Tempo data
+tempo/data/
+
+# Loki data
+loki/data/

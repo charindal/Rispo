@@ -19,6 +19,39 @@ services:
       - rispo-net
 
   # ========================
+  # Redis Cache
+  # ========================
+  redis:
+    image: redis:7-alpine
+    container_name: rispo-redis
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+
+  # ========================
+  # RabbitMQ Message Queue
+  # ========================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rispo-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: rispo_admin
+      RABBITMQ_DEFAULT_PASS: R!#po123##
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    networks:
+      - rispo-net
+    restart: unless-stopped
+
+  # ========================
   # Rispo Application
   # ========================
   app:
@@ -26,6 +59,9 @@ services:
     container_name: rispo-app
     depends_on:
       - db
+      - redis
+      - rabbitmq
+      - otel-collector
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/rispo
       SPRING_DATASOURCE_USERNAME: rispo_admin
@@ -33,17 +69,147 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_FLYWAY_ENABLED: "true"
       SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: rispo_admin
+      SPRING_RABBITMQ_PASSWORD: R!#po123##
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+      MANAGEMENT_OTLP_METRICS_EXPORT_URL: http://otel-collector:4318/v1/metrics
     ports:
       - "8080:8080"
     restart: on-failure
     networks:
       - rispo-net
 
+  # ========================
+  # Observability Stack
+  # ========================
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: rispo-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./telemetry/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "8889:8889"   # Prometheus metrics exporter
+    networks:
+      - rispo-net
+    restart: unless-stopped
+
+  # Prometheus for Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rispo-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - ./telemetry/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+
+  # Tempo for Traces
+  tempo:
+    image: grafana/tempo:latest
+    container_name: rispo-tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./telemetry/tempo.yaml:/etc/tempo.yaml
+      - tempo-data:/tmp/tempo
+    ports:
+      - "3200:3200"   # Tempo query frontend
+      - "4317"        # OTLP gRPC
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    user: root
+
+  # Loki for Logs
+  loki:
+    image: grafana/loki:latest
+    container_name: rispo-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    user: root
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rispo-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./telemetry/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+
+  # PostgreSQL Exporter (optional but recommended)
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: rispo-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://rispo_admin:R!#po123##@db:5432/rispo?sslmode=disable"
+    ports:
+      - "9187:9187"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    depends_on:
+      - db
+
+  # Redis Exporter (optional but recommended)
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: rispo-redis-exporter
+    environment:
+      REDIS_ADDR: "redis:6379"
+    ports:
+      - "9121:9121"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    depends_on:
+      - redis
+
 # ========================
 # Shared Resources
 # ========================
 volumes:
   db-data:
+  redis-data:
+  rabbitmq-data:
+  prometheus-data:
+  tempo-data:
+  loki-data:
+  grafana-data:
 
 networks:
   rispo-net:

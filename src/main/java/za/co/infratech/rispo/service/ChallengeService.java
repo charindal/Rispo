@@ -2,6 +2,8 @@ package za.co.infratech.rispo.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import za.co.infratech.rispo.dto.request.AcknowledgeResultRequest;
@@ -31,6 +33,7 @@ public class ChallengeService {
     private static final int ACKNOWLEDGMENT_DEADLINE_DAYS = 7;
 
     @Transactional
+    @CacheEvict(value = "playerChallenges", allEntries = true)
     public ChallengeResponse createChallenge(Long userId, CreateChallengeRequest request) {
         log.info("User {} creating challenge to player {}", userId, request.getChallengedPlayerId());
 
@@ -58,6 +61,7 @@ public class ChallengeService {
     }
 
     @Transactional
+    @CacheEvict(value = "playerChallenges", allEntries = true)
     public ChallengeResponse acceptChallenge(Long challengeId, Long userId) {
         log.info("User {} accepting challenge {}", userId, challengeId);
 
@@ -104,6 +108,7 @@ public class ChallengeService {
     }
 
     @Transactional
+    @CacheEvict(value = "playerChallenges", allEntries = true)
     public ChallengeResponse rejectChallenge(Long challengeId, Long userId) {
         log.info("User {} rejecting challenge {}", userId, challengeId);
 
@@ -130,6 +135,7 @@ public class ChallengeService {
     }
 
     @Transactional
+    @CacheEvict(value = "playerChallenges", allEntries = true)
     public ChallengeResponse cancelChallenge(Long challengeId, Long userId) {
         log.info("User {} cancelling challenge {}", userId, challengeId);
 
@@ -169,18 +175,25 @@ public class ChallengeService {
         Player player1 = match.getPlayer1();
         Player player2 = match.getPlayer2();
         
-        Player recordedByPlayer = match.getResultRecordedBy() != null ?
-                playerRepository.findByUserId(match.getResultRecordedBy().getId()).orElse(null) : null;
-
-        if (recordedByPlayer == null) {
+        // Get the submitter (either from resultRecordedBy or submittedBy)
+        UserEntity submitterUser = match.getResultRecordedBy() != null ? 
+                match.getResultRecordedBy() : match.getSubmittedBy();
+        
+        if (submitterUser == null) {
             throw new RuntimeException("Cannot determine who recorded the result");
         }
+        
+        Player recordedByPlayer = playerRepository.findByUserId(submitterUser.getId())
+                .orElseThrow(() -> new RuntimeException("Submitter player not found"));
 
-        Long acknowledgerPlayerId = null;
+        // Determine which player is the acknowledger (the opponent)
+        Long acknowledgerPlayerId;
         if (recordedByPlayer.getId().equals(player1.getId())) {
             acknowledgerPlayerId = player2.getId();
         } else if (recordedByPlayer.getId().equals(player2.getId())) {
             acknowledgerPlayerId = player1.getId();
+        } else {
+            throw new RuntimeException("Result recorded by player not in match");
         }
 
         if (!playerId.equals(acknowledgerPlayerId)) {
@@ -331,6 +344,7 @@ public class ChallengeService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "playerChallenges", key = "'incoming_' + #userId")
     public List<ChallengeResponse> getIncomingChallenges(Long userId) {
         Player player = playerRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Player not found"));
@@ -342,6 +356,7 @@ public class ChallengeService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "playerChallenges", key = "'outgoing_' + #userId")
     public List<ChallengeResponse> getOutgoingChallenges(Long userId) {
         Player player = playerRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Player not found"));
@@ -374,10 +389,13 @@ public class ChallengeService {
     private ChallengeResponse convertToResponse(Challenge challenge) {
         // Find associated match if challenge is accepted
         Long matchId = null;
+        Boolean matchSubmitted = false;
         if (challenge.getStatus() == Challenge.ChallengeStatus.ACCEPTED) {
-            matchId = matchRepository.findByChallenge(challenge)
-                    .map(Match::getId)
-                    .orElse(null);
+            Match match = matchRepository.findByChallenge(challenge).orElse(null);
+            if (match != null) {
+                matchId = match.getId();
+                matchSubmitted = match.getSubmittedBy() != null;
+            }
         }
 
         return ChallengeResponse.builder()
@@ -390,6 +408,7 @@ public class ChallengeService {
                 .status(challenge.getStatus().name())
                 .message(challenge.getMessage())
                 .matchId(matchId)
+                .matchSubmitted(matchSubmitted)
                 .createdAt(challenge.getCreatedAt())
                 .respondedAt(challenge.getRespondedAt())
                 .expiresAt(challenge.getExpiresAt())

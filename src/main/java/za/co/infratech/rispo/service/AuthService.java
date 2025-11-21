@@ -160,12 +160,8 @@ public class AuthService {
             throw new RuntimeException("Account is not active");
         }
 
-        // Get player info if user is a player
-        Player player = null;
-        if (user.getRole() == UserEntity.Role.PLAYER) {
-            Optional<Player> playerOpt = playerRepository.findByUserId(user.getId());
-            player = playerOpt.orElse(null);
-        }
+        // Get player info if user has a player profile (regardless of role)
+        Player player = playerRepository.findByUserId(user.getId()).orElse(null);
 
         // Build response
         AuthResponse response = new AuthResponse();

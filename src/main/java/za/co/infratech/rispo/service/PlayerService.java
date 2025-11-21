@@ -1,6 +1,8 @@
 package za.co.infratech.rispo.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import za.co.infratech.rispo.dto.response.PlayerDTO;
@@ -20,6 +22,7 @@ public class PlayerService {
     private final PlayerRepository playerRepository;
     private final UserRepository userRepository;
 
+    @Cacheable(value = "players", key = "'all'")
     public List<PlayerDTO> getAllPlayers() {
         return playerRepository.findAll().stream()
                 .map(this::convertToDTO)
@@ -33,6 +36,7 @@ public class PlayerService {
     }
 
     @Transactional
+    @CacheEvict(value = {"players", "clubPlayers"}, allEntries = true)
     public PlayerDTO verifyPlayer(Long playerId, Long adminUserId) {
         Player player = playerRepository.findById(playerId)
                 .orElseThrow(() -> new RuntimeException("Player not found"));
@@ -77,6 +81,7 @@ public class PlayerService {
     }
 
     @Transactional
+    @CacheEvict(value = {"players", "clubPlayers"}, allEntries = true)
     public PlayerDTO unverifyPlayer(Long playerId, Long adminUserId) {
         Player player = playerRepository.findById(playerId)
                 .orElseThrow(() -> new RuntimeException("Player not found"));
@@ -119,6 +124,7 @@ public class PlayerService {
         return convertToDTO(player);
     }
 
+    @Cacheable(value = "clubPlayers", key = "#clubId + '_' + (#searchTerm ?: 'all')")
     public List<PlayerDTO> searchPlayersByClub(Long clubId, String searchTerm) {
         List<Player> players;
         

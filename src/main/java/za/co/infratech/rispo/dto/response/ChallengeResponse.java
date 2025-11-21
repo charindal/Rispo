@@ -17,6 +17,7 @@ public class ChallengeResponse {
     private String status;
     private String message;
     private Long matchId;
+    private Boolean matchSubmitted;
     private LocalDateTime createdAt;
     private LocalDateTime respondedAt;
     private LocalDateTime expiresAt;

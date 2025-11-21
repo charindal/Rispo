@@ -18,9 +18,14 @@ const LoginPage = () => {
     try {
       const userData = await authService.login(username, password);
       
-      // Route based on user role
+      // Route based on user role and player profile
       if (userData.role === 'RATING_ADMIN' || userData.role === 'SYSTEM_ADMIN' || userData.role === 'CLUB_ADMIN') {
-        navigate('/admin-dashboard');
+        // If admin has a player profile, go to player dashboard, otherwise admin dashboard
+        if (userData.playerId) {
+          navigate('/player-dashboard');
+        } else {
+          navigate('/admin-dashboard');
+        }
       } else {
         navigate('/player-dashboard');
       }

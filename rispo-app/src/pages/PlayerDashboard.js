@@ -30,7 +30,7 @@ const PlayerDashboard = () => {
     }
 
     // Check if user is a player
-    if (currentUser.role !== 'PLAYER') {
+    if (currentUser.role !== 'PLAYER' && !currentUser.playerId) {
       navigate('/admin-dashboard');
       return;
     }
@@ -118,6 +118,11 @@ const PlayerDashboard = () => {
           <span className="player-badge">Player</span>
         </div>
         <div className="navbar-user">
+          {(user?.role === 'RATING_ADMIN' || user?.role === 'SYSTEM_ADMIN' || user?.role === 'CLUB_ADMIN') && (
+            <button onClick={() => navigate('/admin-dashboard')} className="admin-mode-btn">
+              ⚙️ Admin Mode
+            </button>
+          )}
           <button onClick={() => navigate('/profile')} className="profile-btn">My Profile</button>
           <span className="username">{user?.username}</span>
           <button onClick={handleSignOut} className="signout-btn">Sign Out</button>

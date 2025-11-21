@@ -65,6 +65,9 @@ const SubmitMatchPage = () => {
       if (match.challengeId) {
         setChallengeId(match.challengeId);
       }
+      
+      // Still load all players for the dropdown
+      await loadPlayers(currentUser.playerId);
     } catch (err) {
       setError('Failed to load match details');
     }

@@ -13,6 +13,8 @@ const ChallengesPage = () => {
   const [incomingChallenges, setIncomingChallenges] = useState([]);
   const [outgoingChallenges, setOutgoingChallenges] = useState([]);
   const [pendingAcknowledgments, setPendingAcknowledgments] = useState([]);
+  const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
+  const [pendingOutgoingCount, setPendingOutgoingCount] = useState(0);
   const [activeTab, setActiveTab] = useState('incoming'); // incoming, outgoing, create, acknowledge
   const [selectedOpponent, setSelectedOpponent] = useState('');
   const [challengeName, setChallengeName] = useState('');
@@ -65,6 +67,10 @@ const ChallengesPage = () => {
       setIncomingChallenges(incoming);
       setOutgoingChallenges(outgoing);
       setPendingAcknowledgments(acknowledgments);
+      
+      // Calculate pending counts (only PENDING status)
+      setPendingIncomingCount(incoming.filter(c => c.status === 'PENDING').length);
+      setPendingOutgoingCount(outgoing.filter(c => c.status === 'PENDING').length);
     } catch (err) {
       console.error('Error loading challenges:', err);
     }
@@ -168,13 +174,13 @@ const ChallengesPage = () => {
             className={`tab ${activeTab === 'incoming' ? 'active' : ''}`}
             onClick={() => setActiveTab('incoming')}
           >
-            📥 Incoming ({incomingChallenges.length})
+            📥 Incoming ({pendingIncomingCount})
           </button>
           <button 
             className={`tab ${activeTab === 'outgoing' ? 'active' : ''}`}
             onClick={() => setActiveTab('outgoing')}
           >
-            📤 Outgoing ({outgoingChallenges.length})
+            📤 Outgoing ({pendingOutgoingCount})
           </button>
           <button 
             className={`tab ${activeTab === 'acknowledge' ? 'active' : ''}`}
@@ -218,12 +224,18 @@ const ChallengesPage = () => {
                       Received: {new Date(challenge.createdAt).toLocaleString()}
                     </p>
                     {challenge.status === 'ACCEPTED' && challenge.matchId && (
-                      <button 
-                        className="match-link-btn"
-                        onClick={() => navigate(`/submit-match?matchId=${challenge.matchId}`)}
-                      >
-                        📝 Submit Match Result
-                      </button>
+                      challenge.matchSubmitted ? (
+                        <div className="match-submitted-indicator">
+                          ✅ Match result submitted - awaiting acknowledgment
+                        </div>
+                      ) : (
+                        <button 
+                          className="match-link-btn"
+                          onClick={() => navigate(`/submit-match?matchId=${challenge.matchId}`)}
+                        >
+                          📝 Submit Match Result
+                        </button>
+                      )
                     )}
                     {challenge.status === 'PENDING' && (
                       <div className="challenge-actions">
@@ -274,12 +286,18 @@ const ChallengesPage = () => {
                       Sent: {new Date(challenge.createdAt).toLocaleString()}
                     </p>
                     {challenge.status === 'ACCEPTED' && challenge.matchId && (
-                      <button 
-                        className="match-link-btn"
-                        onClick={() => navigate(`/submit-match?matchId=${challenge.matchId}`)}
-                      >
-                        📝 Submit Match Result
-                      </button>
+                      challenge.matchSubmitted ? (
+                        <div className="match-submitted-indicator">
+                          ✅ Match result submitted - awaiting acknowledgment
+                        </div>
+                      ) : (
+                        <button 
+                          className="match-link-btn"
+                          onClick={() => navigate(`/submit-match?matchId=${challenge.matchId}`)}
+                        >
+                          📝 Submit Match Result
+                        </button>
+                      )
                     )}
                     {challenge.status === 'PENDING' && (
                       <div className="challenge-actions">
@@ -306,35 +324,48 @@ const ChallengesPage = () => {
               <p className="empty-state">No matches pending acknowledgment</p>
             ) : (
               <div className="challenges-list">
-                {pendingAcknowledgments.map(match => (
-                  <div key={match.matchId} className="challenge-card acknowledge-card">
-                    <div className="match-details">
-                      <h3>Match Result</h3>
-                      <p><strong>Opponent:</strong> {match.opponentName}</p>
-                      <p><strong>Date:</strong> {new Date(match.matchDate).toLocaleString()}</p>
-                      <p className="score-display">
-                        <span className="score">Your Score: {match.yourScore}</span>
-                        <span className="vs">vs</span>
-                        <span className="score">Opponent: {match.opponentScore}</span>
-                      </p>
-                      <p><strong>Result:</strong> {match.result}</p>
+                {pendingAcknowledgments.map(match => {
+                  // Determine if current user is player1 or player2
+                  const isPlayer1 = match.player1Id === user.playerId;
+                  const opponentPlayer = isPlayer1 ? match.player2 : match.player1;
+                  const yourScore = match.games && match.games.length > 0 ? 
+                    (isPlayer1 ? match.games[0].player1Score : match.games[0].player2Score) : 0;
+                  const opponentScore = match.games && match.games.length > 0 ? 
+                    (isPlayer1 ? match.games[0].player2Score : match.games[0].player1Score) : 0;
+                  const result = yourScore > opponentScore ? 'You Won 🏆' : 
+                               yourScore < opponentScore ? 'You Lost' : 'Draw 🤝';
+                  
+                  return (
+                    <div key={match.matchId} className="challenge-card acknowledge-card">
+                      <div className="match-details">
+                        <h3>Match Result</h3>
+                        <p><strong>Opponent:</strong> {opponentPlayer.name} (Rating: {opponentPlayer.rating})</p>
+                        <p><strong>Submitted:</strong> {new Date(match.submittedAt).toLocaleString()}</p>
+                        <p className="score-display">
+                          <span className="score">Your Score: {yourScore}</span>
+                          <span className="vs">vs</span>
+                          <span className="score">Opponent: {opponentScore}</span>
+                        </p>
+                        <p><strong>Result:</strong> {result}</p>
+                        <p className="submitted-by"><small>Submitted by: {match.submittedBy}</small></p>
+                      </div>
+                      <div className="challenge-actions">
+                        <button 
+                          className="accept-btn"
+                          onClick={() => handleAcknowledgeMatch(match.matchId, true)}
+                        >
+                          ✓ Acknowledge
+                        </button>
+                        <button 
+                          className="dispute-btn"
+                          onClick={() => handleAcknowledgeMatch(match.matchId, false)}
+                        >
+                          ⚠ Dispute
+                        </button>
+                      </div>
                     </div>
-                    <div className="challenge-actions">
-                      <button 
-                        className="accept-btn"
-                        onClick={() => handleAcknowledgeMatch(match.matchId, true)}
-                      >
-                        ✓ Acknowledge
-                      </button>
-                      <button 
-                        className="dispute-btn"
-                        onClick={() => handleAcknowledgeMatch(match.matchId, false)}
-                      >
-                        ⚠ Dispute
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

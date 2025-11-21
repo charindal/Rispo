@@ -1,6 +1,7 @@
 package za.co.infratech.rispo.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import za.co.infratech.rispo.dto.request.SubmitMatchRequest;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MatchService {
 
     private final MatchRepository matchRepository;
@@ -24,6 +26,7 @@ public class MatchService {
     private final UserRepository userRepository;
     private final RatingEngine ratingEngine;
     private final ChallengeRepository challengeRepository;
+    private final MessageProducerService messageProducer;
 
     private static final int ACKNOWLEDGMENT_DEADLINE_DAYS = 7;
 
@@ -180,9 +183,20 @@ public class MatchService {
 
         match = matchRepository.save(match);
 
-        // If approved, process ratings
+        // If approved, publish rating calculation message for async processing
         if (newStatus == Match.MatchStatus.APPROVED) {
-            ratingEngine.processMatchRating(matchId);
+            // Publish to queue instead of calculating synchronously
+            Long winnerId = match.getWinner() != null ? match.getWinner().getId() : null;
+            messageProducer.sendRatingCalculationMessage(
+                za.co.infratech.rispo.dto.request.RatingCalculationMessage.builder()
+                    .matchId(matchId)
+                    .player1Id(match.getPlayer1().getId())
+                    .player2Id(match.getPlayer2().getId())
+                    .winnerId(winnerId)
+                    .calculationType("MATCH_APPROVE")
+                    .build()
+            );
+            // Refresh match to get any updates (will be updated by async worker)
             match = matchRepository.findById(matchId).orElseThrow();
         }
 
@@ -198,32 +212,55 @@ public class MatchService {
     }
 
     public List<MatchResponse> getMatchesPendingAcknowledgment(Long playerId) {
+        log.info("Getting pending acknowledgments for playerId: {}", playerId);
+        
         // Get matches where this player needs to acknowledge
         List<Match> matches = matchRepository.findByAcknowledgmentStatus(
                 Match.AcknowledgmentStatus.PENDING_ACKNOWLEDGMENT);
         
+        log.info("Found {} matches with PENDING_ACKNOWLEDGMENT status", matches.size());
+        
         return matches.stream()
                 .filter(match -> {
-                    // Only include if this player is the one who needs to acknowledge
-                    if (match.getResultRecordedBy() == null) return false;
+                    log.debug("Processing match {}: player1={}, player2={}", 
+                            match.getId(), match.getPlayer1().getId(), match.getPlayer2().getId());
                     
-                    Player recordedByPlayer = playerRepository.findByUserId(
-                            match.getResultRecordedBy().getId()).orElse(null);
+                    // Get the submitter (either from resultRecordedBy or submittedBy)
+                    UserEntity submitterUser = match.getResultRecordedBy() != null ? 
+                            match.getResultRecordedBy() : match.getSubmittedBy();
                     
-                    if (recordedByPlayer == null) return false;
+                    if (submitterUser == null) {
+                        log.warn("Match {} has no submitter information", match.getId());
+                        return false;
+                    }
+                    
+                    Player recordedByPlayer = playerRepository.findByUserId(submitterUser.getId()).orElse(null);
+                    
+                    if (recordedByPlayer == null) {
+                        log.warn("Cannot find player for submitter user {}", submitterUser.getId());
+                        return false;
+                    }
                     
                     Long recordedById = recordedByPlayer.getId();
+                    log.debug("Match {} was submitted by player {}", match.getId(), recordedById);
                     
                     // If player1 recorded, player2 acknowledges
-                    if (recordedById.equals(match.getPlayer1().getId()) && 
-                        playerId.equals(match.getPlayer2().getId())) {
-                        return true;
+                    if (recordedById.equals(match.getPlayer1().getId())) {
+                        boolean shouldAcknowledge = playerId.equals(match.getPlayer2().getId());
+                        log.debug("Player1 submitted → Player2 should acknowledge. PlayerId {} should acknowledge: {}", 
+                                playerId, shouldAcknowledge);
+                        return shouldAcknowledge;
                     }
                     // If player2 recorded, player1 acknowledges
-                    if (recordedById.equals(match.getPlayer2().getId()) && 
-                        playerId.equals(match.getPlayer1().getId())) {
-                        return true;
+                    if (recordedById.equals(match.getPlayer2().getId())) {
+                        boolean shouldAcknowledge = playerId.equals(match.getPlayer1().getId());
+                        log.debug("Player2 submitted → Player1 should acknowledge. PlayerId {} should acknowledge: {}", 
+                                playerId, shouldAcknowledge);
+                        return shouldAcknowledge;
                     }
+                    
+                    log.warn("Submitter player {} is neither player1 nor player2 in match {}", 
+                            recordedById, match.getId());
                     return false;
                 })
                 .map(match -> convertToResponse(match, gameRepository.findByMatchId(match.getId())))

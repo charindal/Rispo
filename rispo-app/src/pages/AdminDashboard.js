@@ -83,6 +83,11 @@ function AdminDashboard() {
           </span>
         </div>
         <div className="navbar-actions">
+          {user.playerId && (
+            <button onClick={() => navigate('/player-dashboard')} className="player-mode-btn">
+              🎱 Player Mode
+            </button>
+          )}
           <button onClick={() => navigate('/profile')} className="profile-btn">My Profile</button>
           <span className="admin-username">{user.username}</span>
           <button onClick={handleSignOut} className="signout-btn">
