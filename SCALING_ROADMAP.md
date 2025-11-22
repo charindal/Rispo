@@ -6,7 +6,7 @@
 **Timeline: Next 2-3 months**
 
 #### Infrastructure
-- [ ] Add Redis for caching (player profiles, leaderboards, challenge lists)
+- [ ] Add Redis for caching (player profiles , leaderboards, challenge lists)
 - [ ] Setup RabbitMQ for async processing
 - [ ] Configure database read replicas
 - [ ] Add load balancer (nginx/HAProxy) for multiple app instances
