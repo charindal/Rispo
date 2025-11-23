@@ -4,13 +4,15 @@
 FROM node:18-alpine AS frontend-build
 WORKDIR /frontend
 
-# Copy package files
-COPY rispo-app/package*.json ./
+# Copy package files first for better layer caching
+COPY rispo-app/package.json rispo-app/package-lock.json ./
 
-# Install dependencies
-RUN npm install
+# Install ALL dependencies (including devDependencies needed for build)
+# Using npm ci for reproducible builds from package-lock.json
+RUN npm ci && \
+    npm cache clean --force
 
-# Copy React app source
+# Copy React app source (excluding node_modules via .dockerignore)
 COPY rispo-app/ ./
 
 # Build React app for production
@@ -22,12 +24,20 @@ RUN npm run build
 FROM maven:3.9.6-eclipse-temurin-21 AS backend-build
 WORKDIR /app
 
-# Copy Maven project files
+# Copy Maven wrapper and pom.xml first for better layer caching
 COPY pom.xml .
+COPY mvnw .
+COPY mvnw.cmd .
+COPY .mvn .mvn
+
+# Download dependencies (this layer will be cached if pom.xml doesn't change)
+RUN mvn dependency:go-offline -B
+
+# Copy application source
 COPY src ./src
 
 # Build the application JAR (skip tests for faster builds)
-RUN mvn clean package -DskipTests
+RUN mvn clean package -DskipTests -B
 
 # =========================
 # Stage 3: Runtime
