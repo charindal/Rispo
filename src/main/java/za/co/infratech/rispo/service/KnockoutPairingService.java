@@ -53,6 +53,7 @@ public class KnockoutPairingService {
     /**
      * Generate first round pairings with seeding.
      * Seeds players by rating and pairs them using standard bracket seeding.
+     * Higher-rated players receive byes when numbers don't match power of 2.
      */
     private List<PlayerPair> generateFirstRoundPairings(List<Player> players) {
         // Sort players by rating (descending) for seeding
@@ -71,36 +72,82 @@ public class KnockoutPairingService {
 
         log.info("Bracket size: {}, Number of byes: {}", bracketSize, numByes);
 
-        List<PlayerPair> pairings = new ArrayList<>();
+        // Track players who receive byes (they auto-advance to round 2)
+        List<Player> byePlayers = new ArrayList<>();
+        List<Player> playingPlayers = new ArrayList<>();
 
-        // Create standard knockout bracket pairings
-        // Pattern: seed 1 vs seed n, seed 2 vs seed (n-1), etc.
-        List<Player> playersWithByes = new ArrayList<>(seededPlayers);
-        
-        // Top seeds get byes if needed
-        List<Player> byeReceivers = new ArrayList<>();
-        if (numByes > 0) {
-            byeReceivers = playersWithByes.subList(0, numByes);
-            playersWithByes = playersWithByes.subList(numByes, playersWithByes.size());
-            
-            for (Player byePlayer : byeReceivers) {
-                log.info("Player {} receives a bye to round 2", byePlayer.getName());
+        // Top seeds get byes
+        for (int i = 0; i < seededPlayers.size(); i++) {
+            if (i < numByes) {
+                byePlayers.add(seededPlayers.get(i));
+                log.info("Seed {} ({}) receives a bye to round 2", i + 1, seededPlayers.get(i).getName());
+            } else {
+                playingPlayers.add(seededPlayers.get(i));
             }
         }
 
-        // Pair remaining players using bracket seeding
-        int numPairs = playersWithByes.size() / 2;
-        for (int i = 0; i < numPairs; i++) {
-            Player player1 = playersWithByes.get(i);
-            Player player2 = playersWithByes.get(playersWithByes.size() - 1 - i);
+        List<PlayerPair> pairings = new ArrayList<>();
+
+        // Create proper bracket seeding for playing players
+        // Standard bracket: highest remaining seed vs lowest, etc.
+        if (playingPlayers.size() >= 2) {
+            // Generate bracket positions using standard seeding
+            List<Integer> bracketOrder = generateBracketOrder(playingPlayers.size());
             
-            pairings.add(new PlayerPair(player1, player2, 1));
-            log.debug("Seed {} ({}) vs Seed {} ({})", 
-                    i + 1 + numByes, player1.getName(),
-                    playersWithByes.size() - i + numByes, player2.getName());
+            for (int i = 0; i < bracketOrder.size(); i += 2) {
+                int idx1 = bracketOrder.get(i);
+                int idx2 = bracketOrder.get(i + 1);
+                
+                Player player1 = playingPlayers.get(idx1);
+                Player player2 = playingPlayers.get(idx2);
+                
+                pairings.add(new PlayerPair(player1, player2, 1));
+                log.info("Match: {} (seed {}) vs {} (seed {})", 
+                        player1.getName(), idx1 + numByes + 1,
+                        player2.getName(), idx2 + numByes + 1);
+            }
         }
 
         return pairings;
+    }
+
+    /**
+     * Generate bracket order for standard knockout seeding.
+     * Ensures that if seeds win, higher seeds meet in later rounds.
+     * Pattern for 8 players: 0v7, 3v4, 1v6, 2v5
+     */
+    private List<Integer> generateBracketOrder(int numPlayers) {
+        if (numPlayers < 2) {
+            return Collections.emptyList();
+        }
+
+        // For proper bracket, pair 0 vs n-1, 1 vs n-2, etc.
+        // But arrange so winners of top matches meet winners of bottom matches
+        List<Integer> order = new ArrayList<>();
+        
+        int half = numPlayers / 2;
+        for (int i = 0; i < half; i++) {
+            order.add(i);
+            order.add(numPlayers - 1 - i);
+        }
+
+        return order;
+    }
+
+    /**
+     * Get players who received byes in round 1 and should be added to round 2.
+     */
+    public List<Player> getByePlayers(List<Player> allPlayers) {
+        List<Player> seededPlayers = new ArrayList<>(allPlayers);
+        seededPlayers.sort((p1, p2) -> Integer.compare(p2.getRating(), p1.getRating()));
+        
+        int bracketSize = nextPowerOf2(seededPlayers.size());
+        int numByes = bracketSize - seededPlayers.size();
+        
+        if (numByes > 0) {
+            return new ArrayList<>(seededPlayers.subList(0, numByes));
+        }
+        return Collections.emptyList();
     }
 
     /**

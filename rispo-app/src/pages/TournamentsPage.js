@@ -439,9 +439,11 @@ const TournamentsPage = () => {
                                         <div style={{ fontSize: '14px', color: '#495057', marginBottom: '8px' }}>
                                             <strong>🎯 Format:</strong> <span style={{ 
                                                 fontWeight: 'bold',
-                                                color: tournament.format === 'KNOCKOUT' ? '#e83e8c' : '#17a2b8'
+                                                color: tournament.format === 'KNOCKOUT' ? '#e83e8c' : 
+                                                       tournament.format === 'ROUND_ROBIN' ? '#28a745' : '#17a2b8'
                                             }}>
-                                                {tournament.format === 'KNOCKOUT' ? 'Knockout' : 'Swiss System'}
+                                                {tournament.format === 'KNOCKOUT' ? 'Knockout' : 
+                                                 tournament.format === 'ROUND_ROBIN' ? 'Round Robin' : 'Swiss System'}
                                             </span>
                                         </div>
                                         
@@ -520,9 +522,11 @@ const TournamentsPage = () => {
                                         <div style={{ fontSize: '14px', color: '#495057', marginBottom: '8px' }}>
                                             <strong>🎯 Format:</strong> <span style={{ 
                                                 fontWeight: 'bold',
-                                                color: tournament.format === 'KNOCKOUT' ? '#e83e8c' : '#17a2b8'
+                                                color: tournament.format === 'KNOCKOUT' ? '#e83e8c' : 
+                                                       tournament.format === 'ROUND_ROBIN' ? '#28a745' : '#17a2b8'
                                             }}>
-                                                {tournament.format === 'KNOCKOUT' ? 'Knockout' : 'Swiss System'}
+                                                {tournament.format === 'KNOCKOUT' ? 'Knockout' : 
+                                                 tournament.format === 'ROUND_ROBIN' ? 'Round Robin' : 'Swiss System'}
                                             </span>
                                         </div>
                                         

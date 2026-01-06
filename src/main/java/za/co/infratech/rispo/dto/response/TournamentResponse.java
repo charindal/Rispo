@@ -15,18 +15,23 @@ public class TournamentResponse {
     private String name;
     private String description;
     private LocalDate startDate;
-    private LocalDate endDate;
     private String status;
-    private String format; // SWISS or KNOCKOUT
+    private String format; // SWISS, KNOCKOUT, ROUND_ROBIN, or RANDOM
     private Long createdById;
     private String createdByUsername;
     private Long clubId;
     private String clubName;
     private Integer maxParticipants;
+    private Integer minParticipants; // Minimum participants required to start
     private Integer currentParticipants;
     private Integer pendingRequests;
     private String venue;
     private String rules;
+    private Integer totalRounds; // Number of rounds for Swiss/Random tournaments
+    private Integer currentRound; // Current round number
+    private Boolean everyonePlaysEveryone; // For RANDOM format
+    private Boolean canStart; // True if minimum participants met
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime closedAt; // When the tournament was closed/completed
 }

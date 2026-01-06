@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import za.co.infratech.rispo.dto.request.TournamentCreateRequest;
 import za.co.infratech.rispo.dto.request.TournamentUpdateRequest;
+import za.co.infratech.rispo.dto.request.TournamentMatchResultRequest;
 import za.co.infratech.rispo.dto.response.TournamentPlayerResponse;
 import za.co.infratech.rispo.dto.response.TournamentResponse;
 import za.co.infratech.rispo.model.*;
@@ -25,7 +26,12 @@ public class TournamentService {
     private final PlayerRepository playerRepository;
     private final SwissPairingService swissPairingService;
     private final KnockoutPairingService knockoutPairingService;
+    private final RoundRobinPairingService roundRobinPairingService;
+    private final RandomPairingService randomPairingService;
     private final MatchRepository matchRepository;
+    private final GameRepository gameRepository;
+    private final RatingEngine ratingEngine;
+    private final MessageProducerService messageProducer;
 
     @Transactional
     public TournamentResponse createTournament(TournamentCreateRequest request, Long userId) {
@@ -41,7 +47,6 @@ public class TournamentService {
         tournament.setName(request.getName());
         tournament.setDescription(request.getDescription());
         tournament.setStartDate(request.getStartDate());
-        tournament.setEndDate(request.getEndDate());
         tournament.setCreatedBy(user);
         tournament.setMaxParticipants(request.getMaxParticipants());
         tournament.setVenue(request.getVenue());
@@ -53,10 +58,25 @@ public class TournamentService {
             try {
                 tournament.setFormat(Tournament.TournamentFormat.valueOf(request.getFormat().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid tournament format. Must be SWISS or KNOCKOUT");
+                throw new RuntimeException("Invalid tournament format. Must be SWISS, KNOCKOUT, ROUND_ROBIN, or RANDOM");
             }
         } else {
             tournament.setFormat(Tournament.TournamentFormat.SWISS); // Default to Swiss
+        }
+
+        // Set total rounds for Swiss/Random tournaments
+        if (request.getTotalRounds() != null && request.getTotalRounds() > 0) {
+            tournament.setTotalRounds(request.getTotalRounds());
+        }
+
+        // Set minimum participants
+        if (request.getMinParticipants() != null && request.getMinParticipants() > 0) {
+            tournament.setMinParticipants(request.getMinParticipants());
+        }
+
+        // Set everyonePlaysEveryone for RANDOM format
+        if (request.getEveryonePlaysEveryone() != null) {
+            tournament.setEveryonePlaysEveryone(request.getEveryonePlaysEveryone());
         }
 
         if (request.getClubId() != null) {
@@ -85,7 +105,6 @@ public class TournamentService {
         if (request.getName() != null) tournament.setName(request.getName());
         if (request.getDescription() != null) tournament.setDescription(request.getDescription());
         if (request.getStartDate() != null) tournament.setStartDate(request.getStartDate());
-        if (request.getEndDate() != null) tournament.setEndDate(request.getEndDate());
         if (request.getMaxParticipants() != null) tournament.setMaxParticipants(request.getMaxParticipants());
         if (request.getVenue() != null) tournament.setVenue(request.getVenue());
         if (request.getRules() != null) tournament.setRules(request.getRules());
@@ -128,6 +147,36 @@ public class TournamentService {
         }
 
         tournamentRepository.delete(tournament);
+    }
+
+    @Transactional
+    public TournamentResponse closeTournament(Long tournamentId, Long userId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check permission: must be super user OR tournament creator
+        boolean isSuperUser = user.getRole() == UserEntity.Role.SUPER_USER;
+        boolean isTournamentCreator = tournament.getCreatedBy().getId().equals(userId);
+        
+        if (!isSuperUser && !isTournamentCreator) {
+            throw new RuntimeException("Only the tournament creator or super users can close a tournament");
+        }
+
+        if ("COMPLETED".equals(tournament.getStatus()) || "CANCELLED".equals(tournament.getStatus())) {
+            throw new RuntimeException("Tournament is already closed");
+        }
+
+        if ("DRAFT".equals(tournament.getStatus())) {
+            throw new RuntimeException("Cannot close a draft tournament. Publish it first or delete it.");
+        }
+
+        tournament.setStatus("COMPLETED");
+        tournament.setClosedAt(LocalDateTime.now());
+        Tournament updated = tournamentRepository.save(tournament);
+        return toResponse(updated);
     }
 
     public List<TournamentResponse> getAllTournaments() {
@@ -282,17 +331,21 @@ public class TournamentService {
 
     @Transactional
     public List<Match> generateTournamentMatches(Long tournamentId, Integer roundNumber, Long adminUserId) {
-        // Verify admin permissions
-        UserEntity admin = userRepository.findById(adminUserId)
+        // Get user
+        UserEntity user = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!isAdmin(admin.getRole())) {
-            throw new RuntimeException("Only administrators can generate tournament matches");
-        }
 
         // Get tournament
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        // Check permission: must be super user OR tournament creator
+        boolean isSuperUser = user.getRole() == UserEntity.Role.SUPER_USER;
+        boolean isTournamentCreator = tournament.getCreatedBy().getId().equals(adminUserId);
+        
+        if (!isSuperUser && !isTournamentCreator) {
+            throw new RuntimeException("Only the tournament creator or super users can generate tournament matches");
+        }
 
         // Tournament must be ONGOING or PUBLISHED
         if (!"ONGOING".equals(tournament.getStatus()) && !"PUBLISHED".equals(tournament.getStatus())) {
@@ -309,6 +362,13 @@ public class TournamentService {
 
         if (tournamentPlayers.size() < 2) {
             throw new RuntimeException("Need at least 2 players to generate matches");
+        }
+
+        // Check minimum participants requirement
+        if (tournament.getMinParticipants() != null && tournamentPlayers.size() < tournament.getMinParticipants()) {
+            throw new RuntimeException("Minimum " + tournament.getMinParticipants() + 
+                    " participants required to start the tournament. Currently only " + 
+                    tournamentPlayers.size() + " approved players.");
         }
 
         List<Player> players = tournamentPlayers.stream()
@@ -334,18 +394,33 @@ public class TournamentService {
         List<Match> matches;
         
         if (tournament.getFormat() == Tournament.TournamentFormat.KNOCKOUT) {
-            // For knockout, after round 1, only use winners
+            // For knockout, after round 1, only use winners plus bye players
             List<Player> activePlayers = players;
             if (round > 1) {
-                activePlayers = previousMatches.stream()
+                // Get winners from previous round
+                List<Player> winners = previousMatches.stream()
                         .filter(m -> m.getRound() == round - 1)
                         .filter(m -> m.getStatus() == Match.MatchStatus.APPROVED)
                         .filter(m -> m.getWinner() != null)
                         .map(Match::getWinner)
                         .collect(Collectors.toList());
                 
+                // Add bye players from round 1 to round 2
+                if (round == 2) {
+                    List<Player> byePlayers = knockoutPairingService.getByePlayers(players);
+                    winners.addAll(byePlayers);
+                    // Sort by rating to maintain seeding
+                    winners.sort((p1, p2) -> Integer.compare(p2.getRating(), p1.getRating()));
+                }
+                
+                activePlayers = winners;
+                
                 if (activePlayers.isEmpty()) {
                     throw new RuntimeException("Cannot generate round " + round + ": No winners from previous round");
+                }
+                
+                if (activePlayers.size() == 1) {
+                    throw new RuntimeException("Tournament is complete! Champion: " + activePlayers.get(0).getName());
                 }
             }
             
@@ -373,12 +448,17 @@ public class TournamentService {
                         return matchRepository.save(match);
                     })
                     .collect(Collectors.toList());
-        } else {
-            // Swiss format
-            List<SwissPairingService.PlayerPair> swissPairings = 
-                    swissPairingService.generateSwissPairings(players, previousMatches, round);
-
-            matches = swissPairings.stream()
+                    
+        } else if (tournament.getFormat() == Tournament.TournamentFormat.ROUND_ROBIN) {
+            // Round Robin format - every player plays every other player
+            List<RoundRobinPairingService.PlayerPair> roundRobinPairings = 
+                    roundRobinPairingService.generateRoundRobinPairings(players, previousMatches, round);
+            
+            if (roundRobinPairings.isEmpty()) {
+                throw new RuntimeException("All Round-Robin matches have been generated. Tournament is complete!");
+            }
+            
+            matches = roundRobinPairings.stream()
                     .map(pair -> {
                         Match match = Match.builder()
                                 .tournament(tournament)
@@ -395,6 +475,96 @@ public class TournamentService {
                         return matchRepository.save(match);
                     })
                     .collect(Collectors.toList());
+                    
+        } else if (tournament.getFormat() == Tournament.TournamentFormat.RANDOM) {
+            // Random format - random pairing with no rating seeding
+            boolean everyonePlaysEveryone = Boolean.TRUE.equals(tournament.getEveryonePlaysEveryone());
+            
+            // Validate fixed rounds if not everyone-plays-everyone
+            if (!everyonePlaysEveryone && tournament.getTotalRounds() != null) {
+                if (round > tournament.getTotalRounds()) {
+                    throw new RuntimeException("All " + tournament.getTotalRounds() + " rounds have been completed. Tournament is complete!");
+                }
+                if (tournament.getTotalRounds() >= players.size()) {
+                    throw new RuntimeException("Total rounds (" + tournament.getTotalRounds() + 
+                            ") must be less than number of players (" + players.size() + ")");
+                }
+            }
+            
+            List<RandomPairingService.PlayerPair> randomPairings = 
+                    randomPairingService.generateRandomPairings(players, previousMatches, round, everyonePlaysEveryone);
+            
+            if (randomPairings.isEmpty()) {
+                throw new RuntimeException("All random matches have been generated. Tournament is complete!");
+            }
+            
+            matches = randomPairings.stream()
+                    .map(pair -> {
+                        Match match = Match.builder()
+                                .tournament(tournament)
+                                .round(round)
+                                .player1(pair.getPlayer1())
+                                .player2(pair.getPlayer2())
+                                .adminCreated(true)
+                                .status(Match.MatchStatus.PENDING_REVIEW)
+                                .isRated(true)
+                                .player1RatingBefore(pair.getPlayer1().getRating())
+                                .player2RatingBefore(pair.getPlayer2().getRating())
+                                .createdAt(LocalDateTime.now())
+                                .build();
+                        return matchRepository.save(match);
+                    })
+                    .collect(Collectors.toList());
+                    
+        } else {
+            // Swiss format (default)
+            SwissPairingService.SwissPairingResult swissResult = 
+                    swissPairingService.generateSwissPairingsWithBye(players, previousMatches, round);
+
+            matches = swissResult.getPairings().stream()
+                    .map(pair -> {
+                        Match match = Match.builder()
+                                .tournament(tournament)
+                                .round(round)
+                                .player1(pair.getPlayer1())
+                                .player2(pair.getPlayer2())
+                                .adminCreated(true)
+                                .status(Match.MatchStatus.PENDING_REVIEW)
+                                .isRated(true)
+                                .isBye(false)
+                                .player1RatingBefore(pair.getPlayer1().getRating())
+                                .player2RatingBefore(pair.getPlayer2().getRating())
+                                .createdAt(LocalDateTime.now())
+                                .build();
+                        return matchRepository.save(match);
+                    })
+                    .collect(Collectors.toList());
+            
+            // Create bye match if there's a bye player
+            if (swissResult.hasBye()) {
+                Player byePlayer = swissResult.getByePlayer();
+                // For bye, player plays against themselves (placeholder) - auto-approved, no rating change
+                Match byeMatch = Match.builder()
+                        .tournament(tournament)
+                        .round(round)
+                        .player1(byePlayer)
+                        .player2(byePlayer)  // Self-match indicates bye
+                        .winner(byePlayer)   // Bye player wins automatically
+                        .adminCreated(true)
+                        .status(Match.MatchStatus.APPROVED)  // Auto-approved
+                        .isRated(false)  // Byes don't affect rating
+                        .isBye(true)
+                        .player1RatingBefore(byePlayer.getRating())
+                        .player2RatingBefore(byePlayer.getRating())
+                        .player1RatingAfter(byePlayer.getRating())
+                        .player2RatingAfter(byePlayer.getRating())
+                        .player1RatingChange(0)
+                        .player2RatingChange(0)
+                        .createdAt(LocalDateTime.now())
+                        .reviewedAt(LocalDateTime.now())
+                        .build();
+                matches.add(matchRepository.save(byeMatch));
+            }
         }
 
         // Set tournament to ONGOING if it was PUBLISHED
@@ -453,11 +623,11 @@ public class TournamentService {
         response.setName(tournament.getName());
         response.setDescription(tournament.getDescription());
         response.setStartDate(tournament.getStartDate());
-        response.setEndDate(tournament.getEndDate());
         response.setStatus(tournament.getStatus());
         response.setFormat(tournament.getFormat() != null ? tournament.getFormat().name() : "SWISS");
         response.setCreatedById(tournament.getCreatedBy().getId());
         response.setCreatedByUsername(tournament.getCreatedBy().getUsername());
+        response.setClosedAt(tournament.getClosedAt());
         
         if (tournament.getClub() != null) {
             response.setClubId(tournament.getClub().getClubId());
@@ -465,8 +635,11 @@ public class TournamentService {
         }
         
         response.setMaxParticipants(tournament.getMaxParticipants());
+        response.setMinParticipants(tournament.getMinParticipants());
         response.setVenue(tournament.getVenue());
         response.setRules(tournament.getRules());
+        response.setTotalRounds(tournament.getTotalRounds());
+        response.setEveryonePlaysEveryone(tournament.getEveryonePlaysEveryone());
         response.setCreatedAt(tournament.getCreatedAt());
         response.setUpdatedAt(tournament.getUpdatedAt());
 
@@ -475,6 +648,20 @@ public class TournamentService {
         long pendingCount = tournamentPlayerRepository.countByTournamentIdAndStatus(tournament.getId(), "PENDING");
         response.setCurrentParticipants((int) approvedCount);
         response.setPendingRequests((int) pendingCount);
+
+        // Check if minimum participants met
+        Integer minParticipants = tournament.getMinParticipants();
+        boolean canStart = minParticipants == null || approvedCount >= minParticipants;
+        response.setCanStart(canStart);
+
+        // Get current round from matches
+        List<Match> matches = matchRepository.findByTournamentIdOrderByRoundAsc(tournament.getId());
+        if (!matches.isEmpty()) {
+            int maxRound = matches.stream().mapToInt(Match::getRound).max().orElse(0);
+            response.setCurrentRound(maxRound);
+        } else {
+            response.setCurrentRound(0);
+        }
 
         return response;
     }
@@ -675,5 +862,121 @@ public class TournamentService {
         response.put("crossTable", crossTableRows);
 
         return response;
+    }
+
+    /**
+     * Update tournament match result and optionally approve it.
+     * Only the tournament creator or super users can manage tournament matches.
+     */
+    @Transactional
+    public Match updateTournamentMatchResult(Long matchId, TournamentMatchResultRequest request, Long adminUserId) {
+        // Get the user
+        UserEntity user = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Get the match
+        Match match = matchRepository.findById(matchId)
+                .orElseThrow(() -> new RuntimeException("Match not found"));
+
+        if (match.getTournament() == null) {
+            throw new RuntimeException("This is not a tournament match");
+        }
+
+        // Check permission: must be super user OR tournament creator
+        boolean isSuperUser = user.getRole() == UserEntity.Role.SUPER_USER;
+        boolean isTournamentCreator = match.getTournament().getCreatedBy().getId().equals(adminUserId);
+        
+        if (!isSuperUser && !isTournamentCreator) {
+            throw new RuntimeException("Only the tournament creator or super users can manage tournament matches");
+        }
+
+        if (match.getStatus() == Match.MatchStatus.APPROVED) {
+            throw new RuntimeException("Cannot update an already approved match");
+        }
+
+        // Set winner if provided
+        if (request.getWinnerId() != null) {
+            Player winner = playerRepository.findById(request.getWinnerId())
+                    .orElseThrow(() -> new RuntimeException("Winner player not found"));
+            
+            // Verify winner is one of the players
+            if (!winner.getId().equals(match.getPlayer1().getId()) && 
+                !winner.getId().equals(match.getPlayer2().getId())) {
+                throw new RuntimeException("Winner must be one of the match players");
+            }
+            match.setWinner(winner);
+        } else {
+            match.setWinner(null); // Draw
+        }
+
+        // Update games if provided
+        if (request.getGames() != null && !request.getGames().isEmpty()) {
+            // Delete existing games
+            List<Game> existingGames = gameRepository.findByMatchId(matchId);
+            gameRepository.deleteAll(existingGames);
+
+            // Create new games
+            int gameNumber = 1;
+            for (TournamentMatchResultRequest.GameResultRequest gameReq : request.getGames()) {
+                Game game = new Game();
+                game.setMatch(match);
+                game.setPlayer1(match.getPlayer1());
+                game.setPlayer2(match.getPlayer2());
+                game.setGameNumber(gameNumber++);
+                game.setPlayer1Score(gameReq.getPlayer1Score());
+                game.setPlayer2Score(gameReq.getPlayer2Score());
+                
+                // Set result type
+                try {
+                    game.setResultType(Game.GameResultType.valueOf(
+                            gameReq.getResultType() != null ? gameReq.getResultType() : "COMPLETED"));
+                } catch (Exception e) {
+                    game.setResultType(Game.GameResultType.COMPLETED);
+                }
+
+                // Set winner for the game
+                if (gameReq.getWinnerId() != null) {
+                    Player gameWinner = playerRepository.findById(gameReq.getWinnerId())
+                            .orElseThrow(() -> new RuntimeException("Game winner player not found"));
+                    game.setWinner(gameWinner);
+                    
+                    // Set game result enum
+                    if (gameWinner.getId().equals(match.getPlayer1().getId())) {
+                        game.setResult(za.co.infratech.rispo.dto.enums.GameResult.PLAYER1_WIN);
+                    } else {
+                        game.setResult(za.co.infratech.rispo.dto.enums.GameResult.PLAYER2_WIN);
+                    }
+                } else {
+                    game.setWinner(null);
+                    game.setResult(za.co.infratech.rispo.dto.enums.GameResult.DRAW);
+                }
+
+                gameRepository.save(game);
+            }
+        }
+
+        match.setSubmittedBy(user);
+        match.setSubmittedAt(LocalDateTime.now());
+
+        // If approve flag is true, approve the match and trigger rating calculation
+        if (Boolean.TRUE.equals(request.getApprove())) {
+            match.setStatus(Match.MatchStatus.APPROVED);
+            match.setReviewedBy(user);
+            match.setReviewedAt(LocalDateTime.now());
+            
+            // Publish rating calculation message for async processing
+            Long winnerId = match.getWinner() != null ? match.getWinner().getId() : null;
+            messageProducer.sendRatingCalculationMessage(
+                za.co.infratech.rispo.dto.request.RatingCalculationMessage.builder()
+                    .matchId(matchId)
+                    .player1Id(match.getPlayer1().getId())
+                    .player2Id(match.getPlayer2().getId())
+                    .winnerId(winnerId)
+                    .calculationType("MATCH_APPROVE")
+                    .build()
+            );
+        }
+
+        return matchRepository.save(match);
     }
 }

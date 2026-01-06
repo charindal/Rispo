@@ -154,7 +154,7 @@ CREATE TABLE tournament (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     start_date DATE,
-    end_date DATE,
+    closed_at TIMESTAMP,
     status VARCHAR(50) DEFAULT 'DRAFT' NOT NULL,
     created_by BIGINT NOT NULL,
     club_id BIGINT,

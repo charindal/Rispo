@@ -25,7 +25,6 @@ public class Tournament {
     private String description;
 
     private LocalDate startDate;
-    private LocalDate endDate;
 
     @Column(nullable = false)
     private String status = "DRAFT"; // DRAFT, PUBLISHED, ONGOING, COMPLETED, CANCELLED
@@ -43,13 +42,18 @@ public class Tournament {
     private Club club;
 
     private Integer maxParticipants;
+    private Integer minParticipants; // Minimum participants required to start
     private String venue;
     private String rules;
+    private Integer totalRounds; // Number of rounds for Swiss/Random tournaments
+    private Boolean everyonePlaysEveryone; // For RANDOM format: true = everyone plays everyone, false = fixed rounds
 
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime updatedAt = LocalDateTime.now();
+    
+    private LocalDateTime closedAt; // When the tournament was closed/completed
 
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<TournamentPlayer> tournamentPlayers = new HashSet<>();
@@ -60,8 +64,10 @@ public class Tournament {
     }
 
     public enum TournamentFormat {
-        SWISS,      // Swiss-system: Players paired by score/rating, no elimination
-        KNOCKOUT    // Single-elimination: Players compete in brackets until one winner remains
+        SWISS,       // Swiss-system: Players paired by score/rating, no elimination
+        KNOCKOUT,    // Single-elimination: Players compete in brackets until one winner remains
+        ROUND_ROBIN, // Round-robin: Every player plays against every other player
+        RANDOM       // Random pairing: Players are randomly paired, no rating seeding
     }
 }
 

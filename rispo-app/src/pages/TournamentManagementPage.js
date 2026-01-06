@@ -15,12 +15,14 @@ const TournamentManagementPage = () => {
         name: '',
         description: '',
         startDate: '',
-        endDate: '',
         clubId: '',
         maxParticipants: '',
+        minParticipants: '',
         venue: '',
         rules: '',
-        format: 'SWISS'
+        format: 'SWISS',
+        totalRounds: '',
+        everyonePlaysEveryone: true
     });
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
@@ -77,7 +79,10 @@ const TournamentManagementPage = () => {
         const data = {
             ...formData,
             clubId: formData.clubId ? parseInt(formData.clubId) : null,
-            maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null
+            maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null,
+            minParticipants: formData.minParticipants ? parseInt(formData.minParticipants) : null,
+            totalRounds: formData.totalRounds ? parseInt(formData.totalRounds) : null,
+            everyonePlaysEveryone: formData.format === 'RANDOM' ? formData.everyonePlaysEveryone : null
         };
 
         try {
@@ -101,12 +106,14 @@ const TournamentManagementPage = () => {
             name: '',
             description: '',
             startDate: '',
-            endDate: '',
             clubId: '',
             maxParticipants: '',
+            minParticipants: '',
             venue: '',
             rules: '',
-            format: 'SWISS'
+            format: 'SWISS',
+            totalRounds: '',
+            everyonePlaysEveryone: true
         });
         setShowCreateForm(false);
         setEditingTournament(null);
@@ -118,12 +125,14 @@ const TournamentManagementPage = () => {
             name: tournament.name,
             description: tournament.description || '',
             startDate: tournament.startDate || '',
-            endDate: tournament.endDate || '',
             clubId: tournament.club?.clubId || '',
             maxParticipants: tournament.maxParticipants || '',
+            minParticipants: tournament.minParticipants || '',
             venue: tournament.venue || '',
             rules: tournament.rules || '',
-            format: tournament.format || 'SWISS'
+            format: tournament.format || 'SWISS',
+            totalRounds: tournament.totalRounds || '',
+            everyonePlaysEveryone: tournament.everyonePlaysEveryone !== false
         });
         setShowCreateForm(true);
     };
@@ -147,6 +156,18 @@ const TournamentManagementPage = () => {
             loadTournaments();
         } catch (err) {
             setError(err.response?.data || 'Failed to delete tournament');
+        }
+    };
+
+    const handleCloseTournament = async (tournamentId) => {
+        if (!window.confirm('Are you sure you want to close this tournament? This will mark it as completed.')) return;
+        
+        try {
+            await tournamentService.closeTournament(tournamentId, userId);
+            setMessage('Tournament closed successfully');
+            loadTournaments();
+        } catch (err) {
+            setError(err.response?.data || 'Failed to close tournament');
         }
     };
 
@@ -309,29 +330,16 @@ const TournamentManagementPage = () => {
                             />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                            <div>
-                                <label>Start Date *</label>
-                                <input
-                                    type="date"
-                                    name="startDate"
-                                    value={formData.startDate}
-                                    onChange={handleInputChange}
-                                    required
-                                    style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-                                />
-                            </div>
-                            <div>
-                                <label>End Date *</label>
-                                <input
-                                    type="date"
-                                    name="endDate"
-                                    value={formData.endDate}
-                                    onChange={handleInputChange}
-                                    required
-                                    style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-                                />
-                            </div>
+                        <div style={{ marginBottom: '15px' }}>
+                            <label>Start Date *</label>
+                            <input
+                                type="date"
+                                name="startDate"
+                                value={formData.startDate}
+                                onChange={handleInputChange}
+                                required
+                                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+                            />
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
@@ -362,11 +370,25 @@ const TournamentManagementPage = () => {
                                 >
                                     <option value="SWISS">Swiss System</option>
                                     <option value="KNOCKOUT">Knockout (Elimination)</option>
+                                    <option value="ROUND_ROBIN">Round Robin (Everyone vs Everyone)</option>
+                                    <option value="RANDOM">Random Pairing (No Rating Seeding)</option>
                                 </select>
                             </div>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                            <div>
+                                <label>Min Participants (to start)</label>
+                                <input
+                                    type="number"
+                                    name="minParticipants"
+                                    value={formData.minParticipants}
+                                    onChange={handleInputChange}
+                                    min="2"
+                                    placeholder="Minimum players needed"
+                                    style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+                                />
+                            </div>
                             <div>
                                 <label>Max Participants</label>
                                 <input
@@ -377,6 +399,9 @@ const TournamentManagementPage = () => {
                                     style={{ width: '100%', padding: '8px', marginTop: '5px' }}
                                 />
                             </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
                             <div>
                                 <label>Venue</label>
                                 <input
@@ -388,6 +413,72 @@ const TournamentManagementPage = () => {
                                 />
                             </div>
                         </div>
+
+                        {formData.format === 'SWISS' && (
+                            <div style={{ marginBottom: '15px' }}>
+                                <label>Number of Rounds (Swiss) *</label>
+                                <input
+                                    type="number"
+                                    name="totalRounds"
+                                    value={formData.totalRounds}
+                                    onChange={handleInputChange}
+                                    min="1"
+                                    max="15"
+                                    placeholder="e.g., 5 rounds for a typical Swiss event"
+                                    style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+                                />
+                                <small style={{ color: '#666' }}>
+                                    Recommended: √(players) rounded up. For 16 players, use 4-5 rounds.
+                                </small>
+                            </div>
+                        )}
+
+                        {formData.format === 'RANDOM' && (
+                            <div style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                                <label style={{ fontWeight: 'bold', marginBottom: '10px', display: 'block' }}>Random Pairing Mode</label>
+                                <div style={{ marginBottom: '10px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                        <input
+                                            type="radio"
+                                            name="everyonePlaysEveryone"
+                                            checked={formData.everyonePlaysEveryone === true}
+                                            onChange={() => setFormData(prev => ({ ...prev, everyonePlaysEveryone: true, totalRounds: '' }))}
+                                            style={{ marginRight: '8px' }}
+                                        />
+                                        Everyone Plays Everyone (like Round Robin but random order)
+                                    </label>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                        <input
+                                            type="radio"
+                                            name="everyonePlaysEveryone"
+                                            checked={formData.everyonePlaysEveryone === false}
+                                            onChange={() => setFormData(prev => ({ ...prev, everyonePlaysEveryone: false }))}
+                                            style={{ marginRight: '8px' }}
+                                        />
+                                        Fixed Number of Rounds
+                                    </label>
+                                </div>
+                                {formData.everyonePlaysEveryone === false && (
+                                    <div style={{ marginTop: '10px' }}>
+                                        <label>Number of Rounds *</label>
+                                        <input
+                                            type="number"
+                                            name="totalRounds"
+                                            value={formData.totalRounds}
+                                            onChange={handleInputChange}
+                                            min="1"
+                                            placeholder="Must be less than total players"
+                                            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+                                        />
+                                        <small style={{ color: '#dc3545' }}>
+                                            ⚠️ Number of rounds must be less than the total number of players.
+                                        </small>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div style={{ marginBottom: '15px' }}>
                             <label>Rules</label>
@@ -442,7 +533,7 @@ const TournamentManagementPage = () => {
                         <thead>
                             <tr style={{ backgroundColor: '#f8f9fa' }}>
                                 <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Name</th>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Dates</th>
+                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Start Date</th>
                                 <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Format</th>
                                 <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Status</th>
                                 <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Participants</th>
@@ -458,22 +549,43 @@ const TournamentManagementPage = () => {
                                         {tournament.club && <div style={{ fontSize: '12px', color: '#6c757d' }}>{tournament.club.clubName}</div>}
                                     </td>
                                     <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>
-                                        {tournament.startDate} to {tournament.endDate}
+                                        {tournament.startDate}
+                                        {tournament.closedAt && (
+                                            <div style={{ fontSize: '11px', color: '#6c757d' }}>
+                                                Closed: {new Date(tournament.closedAt).toLocaleDateString()}
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>
                                         <span style={{ 
                                             fontSize: '12px', 
                                             fontWeight: 'bold',
-                                            color: tournament.format === 'KNOCKOUT' ? '#e83e8c' : '#17a2b8'
+                                            color: tournament.format === 'KNOCKOUT' ? '#e83e8c' : 
+                                                   tournament.format === 'ROUND_ROBIN' ? '#28a745' : 
+                                                   tournament.format === 'RANDOM' ? '#fd7e14' : '#17a2b8'
                                         }}>
-                                            {tournament.format === 'KNOCKOUT' ? '🏆 Knockout' : '♟️ Swiss'}
+                                            {tournament.format === 'KNOCKOUT' ? '🏆 Knockout' : 
+                                             tournament.format === 'ROUND_ROBIN' ? '🔄 Round Robin' : 
+                                             tournament.format === 'RANDOM' ? '🎲 Random' : '♟️ Swiss'}
                                         </span>
                                     </td>
                                     <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>
                                         {getStatusBadge(tournament.status)}
                                     </td>
                                     <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>
-                                        {tournament.currentParticipants}{tournament.maxParticipants ? `/${tournament.maxParticipants}` : ''}
+                                        <span style={{ 
+                                            color: tournament.minParticipants && tournament.currentParticipants < tournament.minParticipants 
+                                                ? '#dc3545' : 'inherit'
+                                        }}>
+                                            {tournament.currentParticipants}
+                                            {tournament.minParticipants ? ` (min: ${tournament.minParticipants})` : ''}
+                                            {tournament.maxParticipants ? ` / max: ${tournament.maxParticipants}` : ''}
+                                        </span>
+                                        {tournament.minParticipants && tournament.currentParticipants < tournament.minParticipants && (
+                                            <div style={{ fontSize: '10px', color: '#dc3545' }}>
+                                                ⚠️ Need {tournament.minParticipants - tournament.currentParticipants} more
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>
                                         {tournament.pendingRequests}
@@ -497,14 +609,19 @@ const TournamentManagementPage = () => {
                                             {(tournament.status === 'PUBLISHED' || tournament.status === 'ONGOING') && (
                                                 <button
                                                     onClick={() => handleGenerateMatches(tournament.tournamentId)}
+                                                    disabled={tournament.canStart === false}
+                                                    title={tournament.canStart === false ? 
+                                                        `Need ${tournament.minParticipants - tournament.currentParticipants} more participants` : 
+                                                        'Generate matches for the next round'}
                                                     style={{
                                                         padding: '5px 10px',
-                                                        backgroundColor: '#6f42c1',
+                                                        backgroundColor: tournament.canStart === false ? '#6c757d' : '#6f42c1',
                                                         color: 'white',
                                                         border: 'none',
                                                         borderRadius: '4px',
-                                                        cursor: 'pointer',
-                                                        fontSize: '12px'
+                                                        cursor: tournament.canStart === false ? 'not-allowed' : 'pointer',
+                                                        fontSize: '12px',
+                                                        opacity: tournament.canStart === false ? 0.6 : 1
                                                     }}
                                                 >
                                                     Generate Matches
@@ -573,6 +690,22 @@ const TournamentManagementPage = () => {
                                                         Publish
                                                     </button>
                                                 </>
+                                            )}
+                                            {(tournament.status === 'PUBLISHED' || tournament.status === 'ONGOING') && (
+                                                <button
+                                                    onClick={() => handleCloseTournament(tournament.tournamentId)}
+                                                    style={{
+                                                        padding: '5px 10px',
+                                                        backgroundColor: '#6f42c1',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '12px'
+                                                    }}
+                                                >
+                                                    Close
+                                                </button>
                                             )}
                                             <button
                                                 onClick={() => handleDelete(tournament.tournamentId)}

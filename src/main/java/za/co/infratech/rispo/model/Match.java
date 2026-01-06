@@ -72,6 +72,10 @@ public class Match {
     @Builder.Default
     private Boolean isRated = false;
 
+    @Column(name = "is_bye", nullable = false)
+    @Builder.Default
+    private Boolean isBye = false;
+
     @Column(name = "player1_rating_before")
     private Integer player1RatingBefore;
 

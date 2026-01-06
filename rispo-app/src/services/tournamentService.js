@@ -92,6 +92,22 @@ const tournamentService = {
 
     getTournamentCrossTable: (tournamentId) => {
         return axios.get(`${API_URL}/tournaments/${tournamentId}/crosstable`);
+    },
+
+    updateMatchResult: (tournamentId, matchId, resultData, userId) => {
+        return axios.put(
+            `${API_URL}/tournaments/${tournamentId}/matches/${matchId}/result`,
+            resultData,
+            { headers: { 'X-User-Id': userId } }
+        );
+    },
+
+    closeTournament: (tournamentId, userId) => {
+        return axios.post(
+            `${API_URL}/tournaments/${tournamentId}/close`,
+            {},
+            { headers: { 'X-User-Id': userId } }
+        );
     }
 };
 

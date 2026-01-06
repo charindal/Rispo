@@ -25,14 +25,14 @@ public class SwissPairingService {
      * 1. Players are sorted by score (wins), then by rating
      * 2. Top half plays bottom half within similar score groups
      * 3. Players should not play each other twice
-     * 4. If odd number of players, highest-rated unpaired player gets a bye
+     * 4. If odd number of players, lowest-rated unpaired player gets a bye
      * 
      * @param players List of players to pair
      * @param previousMatches Previous matches in the tournament to avoid rematches
      * @param currentRound Current round number
-     * @return List of pairings (pairs of players)
+     * @return SwissPairingResult containing pairings and optional bye player
      */
-    public List<PlayerPair> generateSwissPairings(
+    public SwissPairingResult generateSwissPairingsWithBye(
             List<Player> players, 
             List<Match> previousMatches, 
             int currentRound) {
@@ -68,23 +68,26 @@ public class SwissPairingService {
         List<PlayerPair> pairings = new ArrayList<>();
         Set<Long> paired = new HashSet<>();
 
-        // Handle odd number of players - give bye to lowest-rated unpaired player
+        // Handle odd number of players - give bye to lowest-rated unpaired player who hasn't had one
         Player byePlayer = null;
         if (sortedPlayers.size() % 2 != 0) {
             // Find the lowest-rated player who hasn't had a bye yet
             for (int i = sortedPlayers.size() - 1; i >= 0; i--) {
                 Player candidate = sortedPlayers.get(i);
-                // Check if player already had a bye (matched against null)
+                // Check if player already had a bye
                 if (!hadBye(candidate.getId(), previousMatches)) {
                     byePlayer = candidate;
                     sortedPlayers.remove(i);
-                    log.info("Player {} receives a bye for round {}", byePlayer.getName(), currentRound);
+                    log.info("Player {} (rating: {}) receives a bye for round {}", 
+                            byePlayer.getName(), byePlayer.getRating(), currentRound);
                     break;
                 }
             }
-            // If everyone had a bye, just give it to the last player
+            // If everyone had a bye, just give it to the lowest scoring/rated player
             if (byePlayer == null && !sortedPlayers.isEmpty()) {
                 byePlayer = sortedPlayers.remove(sortedPlayers.size() - 1);
+                log.info("All players had byes, giving repeat bye to {} for round {}", 
+                        byePlayer.getName(), currentRound);
             }
         }
 
@@ -143,14 +146,26 @@ public class SwissPairingService {
         }
 
         // If there's still one unpaired (shouldn't happen), give them a bye
-        if (!unpaired.isEmpty()) {
+        if (!unpaired.isEmpty() && byePlayer == null) {
             byePlayer = unpaired.get(0);
             log.warn("Emergency bye for player: {}", byePlayer.getName());
         }
 
-        log.info("Generated {} pairings for round {}", pairings.size(), currentRound);
+        log.info("Generated {} pairings for round {}, bye player: {}", 
+                pairings.size(), currentRound, byePlayer != null ? byePlayer.getName() : "none");
         
-        return pairings;
+        return new SwissPairingResult(pairings, byePlayer);
+    }
+
+    /**
+     * Generate Swiss pairings (legacy method for backward compatibility).
+     * @deprecated Use generateSwissPairingsWithBye instead for proper bye handling
+     */
+    public List<PlayerPair> generateSwissPairings(
+            List<Player> players, 
+            List<Match> previousMatches, 
+            int currentRound) {
+        return generateSwissPairingsWithBye(players, previousMatches, currentRound).getPairings();
     }
 
     /**
@@ -201,6 +216,13 @@ public class SwissPairingService {
                 continue; // Only count approved matches
             }
 
+            // Handle bye matches - player gets 1 point
+            if (Boolean.TRUE.equals(match.getIsBye())) {
+                Long byePlayerId = match.getPlayer1().getId();
+                scores.merge(byePlayerId, 1.0, Double::sum);
+                continue;
+            }
+
             Long p1Id = match.getPlayer1().getId();
             Long p2Id = match.getPlayer2().getId();
 
@@ -243,10 +265,35 @@ public class SwissPairingService {
      * Check if a player has already received a bye.
      */
     private boolean hadBye(Long playerId, List<Match> previousMatches) {
-        // In our implementation, byes would be stored as matches with one player null
-        // For now, we'll return false as we don't have bye tracking yet
-        // This can be enhanced later by adding a bye tracking mechanism
-        return false;
+        // Check for bye matches where isBye is true and the player is player1
+        return previousMatches.stream()
+                .anyMatch(m -> Boolean.TRUE.equals(m.getIsBye()) && 
+                         m.getPlayer1().getId().equals(playerId));
+    }
+
+    /**
+     * Result class containing both pairings and optional bye player.
+     */
+    public static class SwissPairingResult {
+        private final List<PlayerPair> pairings;
+        private final Player byePlayer;
+
+        public SwissPairingResult(List<PlayerPair> pairings, Player byePlayer) {
+            this.pairings = pairings;
+            this.byePlayer = byePlayer;
+        }
+
+        public List<PlayerPair> getPairings() {
+            return pairings;
+        }
+
+        public Player getByePlayer() {
+            return byePlayer;
+        }
+
+        public boolean hasBye() {
+            return byePlayer != null;
+        }
     }
 
     /**

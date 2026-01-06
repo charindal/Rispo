@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import za.co.infratech.rispo.dto.request.TournamentCreateRequest;
 import za.co.infratech.rispo.dto.request.TournamentUpdateRequest;
+import za.co.infratech.rispo.dto.request.TournamentMatchResultRequest;
 import za.co.infratech.rispo.dto.response.TournamentPlayerResponse;
 import za.co.infratech.rispo.dto.response.TournamentResponse;
 import za.co.infratech.rispo.dto.response.MatchResponse;
@@ -191,6 +192,40 @@ public class TournamentController {
         try {
             var crossTable = tournamentService.getTournamentCrossTable(tournamentId);
             return ResponseEntity.ok(crossTable);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{tournamentId}/close")
+    public ResponseEntity<?> closeTournament(
+            @PathVariable Long tournamentId,
+            @RequestHeader("X-User-Id") Long userId) {
+        try {
+            TournamentResponse tournament = tournamentService.closeTournament(tournamentId, userId);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Tournament closed successfully",
+                    "tournament", tournament
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{tournamentId}/matches/{matchId}/result")
+    public ResponseEntity<?> updateTournamentMatchResult(
+            @PathVariable Long tournamentId,
+            @PathVariable Long matchId,
+            @RequestBody TournamentMatchResultRequest request,
+            @RequestHeader("X-User-Id") Long adminUserId) {
+        try {
+            var match = tournamentService.updateTournamentMatchResult(matchId, request, adminUserId);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Match result updated successfully",
+                    "matchId", match.getId(),
+                    "status", match.getStatus().toString(),
+                    "winnerId", match.getWinner() != null ? match.getWinner().getId() : null
+            ));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

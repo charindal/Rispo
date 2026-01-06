@@ -196,7 +196,9 @@ public class MatchService {
 
     public List<MatchResponse> getPendingMatches() {
         List<Match> matches = matchRepository.findByStatus(Match.MatchStatus.PENDING_REVIEW);
+        // Filter out tournament matches - they should be managed through the tournament screen
         return matches.stream()
+                .filter(match -> match.getTournament() == null)
                 .map(match -> convertToResponse(match, gameRepository.findByMatchId(match.getId())))
                 .collect(Collectors.toList());
     }
@@ -225,6 +227,8 @@ public class MatchService {
         response.setStatus(match.getStatus().toString());
         response.setIsRated(match.getIsRated());
         response.setChallengeId(match.getChallenge() != null ? match.getChallenge().getChallengeId() : null);
+        response.setTournamentId(match.getTournament() != null ? match.getTournament().getId() : null);
+        response.setRound(match.getRound());
         response.setSubmittedAt(match.getSubmittedAt());
         response.setReviewedAt(match.getReviewedAt());
         response.setReviewNotes(match.getReviewNotes());

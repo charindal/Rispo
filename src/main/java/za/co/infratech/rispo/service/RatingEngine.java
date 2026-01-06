@@ -1,6 +1,7 @@
 package za.co.infratech.rispo.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import za.co.infratech.rispo.model.*;
@@ -11,6 +12,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RatingEngine {
 
     private final RatingSettingsRepository ratingSettingsRepository;
@@ -112,6 +114,14 @@ public class RatingEngine {
             throw new Exception("Only approved matches can be rated");
         }
 
+        // Skip bye matches - they don't affect rating
+        if (Boolean.TRUE.equals(match.getIsBye())) {
+            log.info("Skipping rating calculation for bye match {}", matchId);
+            match.setIsRated(true);
+            matchRepository.save(match);
+            return;
+        }
+
         // Get all completed games for this match
         List<Game> games = gameRepository.findByMatchId(matchId);
         
@@ -120,34 +130,46 @@ public class RatingEngine {
                 .filter(g -> g.getResultType() == Game.GameResultType.COMPLETED)
                 .toList();
 
-        if (completedGames.isEmpty()) {
-            throw new Exception("No completed games found for this match");
-        }
-
-        // Count wins for each player
-        long player1Wins = completedGames.stream()
-                .filter(g -> g.getWinner() != null && g.getWinner().getId().equals(match.getPlayer1().getId()))
-                .count();
-        
-        long player2Wins = completedGames.stream()
-                .filter(g -> g.getWinner() != null && g.getWinner().getId().equals(match.getPlayer2().getId()))
-                .count();
-        
-        long draws = completedGames.stream()
-                .filter(g -> g.getWinner() == null)
-                .count();
-
-        // Calculate match score (1 = player1 won, 0 = player2 won, 0.5 = draw)
+        // Determine player1Score
         double player1Score;
-        if (player1Wins > player2Wins) {
-            player1Score = 1.0;
-            match.setWinner(match.getPlayer1());
-        } else if (player2Wins > player1Wins) {
-            player1Score = 0.0;
-            match.setWinner(match.getPlayer2());
+        
+        // For tournament matches with no games, use the match winner directly
+        if (completedGames.isEmpty()) {
+            if (match.getTournament() != null) {
+                // Tournament match without games - use winner directly
+                if (match.getWinner() == null) {
+                    player1Score = 0.5; // Draw
+                } else if (match.getWinner().getId().equals(match.getPlayer1().getId())) {
+                    player1Score = 1.0;
+                } else {
+                    player1Score = 0.0;
+                }
+                log.info("Tournament match {} rated using winner (no games): player1Score={}", 
+                        matchId, player1Score);
+            } else {
+                throw new Exception("No completed games found for this match");
+            }
         } else {
-            player1Score = 0.5; // Draw
-            match.setWinner(null);
+            // Calculate winner from games
+            long player1Wins = completedGames.stream()
+                    .filter(g -> g.getWinner() != null && g.getWinner().getId().equals(match.getPlayer1().getId()))
+                    .count();
+            
+            long player2Wins = completedGames.stream()
+                    .filter(g -> g.getWinner() != null && g.getWinner().getId().equals(match.getPlayer2().getId()))
+                    .count();
+
+            // Calculate match score (1 = player1 won, 0 = player2 won, 0.5 = draw)
+            if (player1Wins > player2Wins) {
+                player1Score = 1.0;
+                match.setWinner(match.getPlayer1());
+            } else if (player2Wins > player1Wins) {
+                player1Score = 0.0;
+                match.setWinner(match.getPlayer2());
+            } else {
+                player1Score = 0.5; // Draw
+                match.setWinner(null);
+            }
         }
 
         Player player1 = match.getPlayer1();
