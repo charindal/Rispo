@@ -157,7 +157,7 @@ function AdminDashboard() {
               <p>Review and verify player accounts</p>
             </button>
 
-            {(user.role === 'SUPER_USER' || user.role === 'SYSTEM_ADMIN' || user.role === 'CLUB_ADMIN') && (
+            {(user.role === 'SUPER_USER' || user.role === 'SYSTEM_ADMIN' || user.role === 'CLUB_ADMIN' || user.role === 'RATING_ADMIN') && (
               <button className="action-card" onClick={() => navigate('/club-management')}>
                 <div className="action-icon">🏢</div>
                 <h3>Club Management</h3>
@@ -165,7 +165,7 @@ function AdminDashboard() {
               </button>
             )}
 
-            {(user.role === 'SUPER_USER' || user.role === 'SYSTEM_ADMIN') && (
+            {(user.role === 'SUPER_USER' || user.role === 'SYSTEM_ADMIN' || user.role === 'CLUB_ADMIN' || user.role === 'RATING_ADMIN') && (
               <button className="action-card" onClick={() => navigate('/rating-settings')}>
                 <div className="action-icon">⚙️</div>
                 <h3>Rating Settings</h3>
@@ -173,7 +173,7 @@ function AdminDashboard() {
               </button>
             )}
 
-            <button className="action-card" onClick={() => alert('Coming soon')}>
+            <button className="action-card" onClick={() => navigate('/tournaments/manage')}>
               <div className="action-icon">🏆</div>
               <h3>Manage Tournaments</h3>
               <p>Create and manage tournaments</p>

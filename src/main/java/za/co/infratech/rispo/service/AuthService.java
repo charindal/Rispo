@@ -82,9 +82,31 @@ public class AuthService {
             tokenClub = adminToken.getClub();
         }
 
-        // Get club if specified
+        // For CLUB_ADMIN, club creation is mandatory
         Club club = null;
-        if (request.getClubId() != null) {
+        if (role == UserEntity.Role.CLUB_ADMIN) {
+            if (request.getClubName() == null || request.getClubName().trim().isEmpty()) {
+                throw new RuntimeException("Club name is required for Club Admin registration");
+            }
+            
+            // Check if club name already exists
+            if (clubRepository.findByName(request.getClubName()).isPresent()) {
+                throw new RuntimeException("A club with this name already exists. Please choose a different name.");
+            }
+            
+            // Create the club (user will be set after user creation)
+            club = new Club();
+            club.setName(request.getClubName());
+            club.setDescription(request.getClubDescription());
+            club.setAddress(request.getClubAddress());
+            club.setCity(request.getClubCity());
+            club.setSuburb(request.getClubSuburb());
+            club.setContactEmail(request.getClubContactEmail() != null ? request.getClubContactEmail() : request.getEmail());
+            club.setContactPhone(request.getClubContactPhone() != null ? request.getClubContactPhone() : request.getPhone());
+            club.setStatus(Club.ClubStatus.ACTIVE);
+            // Note: createdBy will be set after user creation
+        } else if (request.getClubId() != null) {
+            // Get club if specified for other roles
             club = clubRepository.findById(request.getClubId())
                     .orElseThrow(() -> new RuntimeException("Club not found"));
         } else if (tokenClub != null) {
@@ -100,9 +122,21 @@ public class AuthService {
         user.setNationalId(request.getNationalId());
         user.setIsActive(true);
         user.setRole(role);
-        user.setClub(club);
+        user.setClub(null); // Will be set after club is saved
         
         user = userRepository.save(user);
+        
+        // If CLUB_ADMIN, save the club with the user as creator, then update user's club
+        if (role == UserEntity.Role.CLUB_ADMIN && club != null) {
+            club.setCreatedBy(user);
+            club = clubRepository.save(club);
+            user.setClub(club);
+            user = userRepository.save(user);
+        } else if (club != null) {
+            // For other roles, just set the club
+            user.setClub(club);
+            user = userRepository.save(user);
+        }
 
         // Mark token as used
         if (adminToken != null) {

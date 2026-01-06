@@ -16,7 +16,15 @@ const RegisterPage = () => {
     role: 'PLAYER',
     clubId: '',
     adminToken: '',
-    createPlayerProfile: false
+    createPlayerProfile: false,
+    // Club creation fields
+    clubName: '',
+    clubDescription: '',
+    clubAddress: '',
+    clubCity: '',
+    clubSuburb: '',
+    clubContactEmail: '',
+    clubContactPhone: ''
   });
   const [clubs, setClubs] = useState([]);
   const [filteredClubs, setFilteredClubs] = useState([]);
@@ -76,6 +84,14 @@ const RegisterPage = () => {
       return;
     }
 
+    // Validate club creation for CLUB_ADMIN
+    if (formData.role === 'CLUB_ADMIN') {
+      if (!formData.clubName || formData.clubName.trim() === '') {
+        setError('Club name is required for Club Admin registration');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -92,6 +108,17 @@ const RegisterPage = () => {
         adminToken: formData.adminToken || null,
         createPlayerProfile: formData.createPlayerProfile
       };
+
+      // Add club creation data for CLUB_ADMIN
+      if (formData.role === 'CLUB_ADMIN') {
+        registrationData.clubName = formData.clubName;
+        registrationData.clubDescription = formData.clubDescription;
+        registrationData.clubAddress = formData.clubAddress;
+        registrationData.clubCity = formData.clubCity;
+        registrationData.clubSuburb = formData.clubSuburb;
+        registrationData.clubContactEmail = formData.clubContactEmail;
+        registrationData.clubContactPhone = formData.clubContactPhone;
+      }
 
       await authService.register(registrationData);
       alert('Registration successful! Please login.');
@@ -287,41 +314,165 @@ const RegisterPage = () => {
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="clubId">Club Affiliation (Optional)</label>
-            <div className="club-selection">
-              <input
-                type="text"
-                value={clubs.find(c => c.clubId === formData.clubId)?.name || ''}
-                placeholder="Click 'Search Clubs' to find a club"
-                readOnly
-                disabled={loading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowClubSearch(true)}
-                className="search-club-btn"
-                disabled={loading}
-              >
-                Search Clubs
-              </button>
-              {formData.clubId && (
+          {/* Club Creation Section for CLUB_ADMIN */}
+          {formData.role === 'CLUB_ADMIN' && (
+            <div className="club-creation-section" style={{
+              border: '2px solid #007bff',
+              borderRadius: '8px',
+              padding: '20px',
+              marginTop: '20px',
+              backgroundColor: '#f8f9fa'
+            }}>
+              <h3 style={{marginTop: 0, color: '#007bff'}}>
+                🏛️ Create Your Club
+              </h3>
+              <p style={{color: '#666', fontSize: '14px', marginBottom: '20px'}}>
+                As a Club Admin, you must create your club during registration. This club will be your primary affiliation.
+              </p>
+
+              <div className="form-group">
+                <label htmlFor="clubName">Club Name *</label>
+                <input
+                  type="text"
+                  id="clubName"
+                  name="clubName"
+                  value={formData.clubName}
+                  onChange={handleChange}
+                  placeholder="Enter club name"
+                  required
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="clubDescription">Club Description</label>
+                <textarea
+                  id="clubDescription"
+                  name="clubDescription"
+                  value={formData.clubDescription}
+                  onChange={handleChange}
+                  placeholder="Describe your club (optional)"
+                  rows="3"
+                  disabled={loading}
+                  style={{width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd'}}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="clubAddress">Address</label>
+                <input
+                  type="text"
+                  id="clubAddress"
+                  name="clubAddress"
+                  value={formData.clubAddress}
+                  onChange={handleChange}
+                  placeholder="Street address (optional)"
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="clubCity">City</label>
+                  <input
+                    type="text"
+                    id="clubCity"
+                    name="clubCity"
+                    value={formData.clubCity}
+                    onChange={handleChange}
+                    placeholder="City (optional)"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="clubSuburb">Suburb</label>
+                  <input
+                    type="text"
+                    id="clubSuburb"
+                    name="clubSuburb"
+                    value={formData.clubSuburb}
+                    onChange={handleChange}
+                    placeholder="Suburb (optional)"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="clubContactEmail">Club Contact Email</label>
+                  <input
+                    type="email"
+                    id="clubContactEmail"
+                    name="clubContactEmail"
+                    value={formData.clubContactEmail}
+                    onChange={handleChange}
+                    placeholder="Leave blank to use your email"
+                    disabled={loading}
+                  />
+                  <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
+                    {!formData.clubContactEmail ? `Will use: ${formData.email || 'your email'}` : ''}
+                  </small>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="clubContactPhone">Club Contact Phone</label>
+                  <input
+                    type="tel"
+                    id="clubContactPhone"
+                    name="clubContactPhone"
+                    value={formData.clubContactPhone}
+                    onChange={handleChange}
+                    placeholder="Leave blank to use your phone"
+                    disabled={loading}
+                  />
+                  <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
+                    {!formData.clubContactPhone ? `Will use: ${formData.phone || 'your phone'}` : ''}
+                  </small>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Club Selection for other roles */}
+          {formData.role !== 'CLUB_ADMIN' && (
+            <div className="form-group">
+              <label htmlFor="clubId">Club Affiliation (Optional)</label>
+              <div className="club-selection">
+                <input
+                  type="text"
+                  value={clubs.find(c => c.clubId === formData.clubId)?.name || ''}
+                  placeholder="Click 'Search Clubs' to find a club"
+                  readOnly
+                  disabled={loading}
+                />
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, clubId: '' })}
-                  className="clear-club-btn"
+                  onClick={() => setShowClubSearch(true)}
+                  className="search-club-btn"
                   disabled={loading}
                 >
-                  Clear
+                  Search Clubs
                 </button>
-              )}
+                {formData.clubId && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, clubId: '' })}
+                    className="clear-club-btn"
+                    disabled={loading}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
+                {formData.role === 'PLAYER' ? 'You can join a club during registration or later' : 
+                 formData.role === 'SYSTEM_ADMIN' ? 'System admins are not affiliated with clubs' :
+                 'Select your affiliated club'}
+              </small>
             </div>
-            <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
-              {formData.role === 'PLAYER' ? 'You can join a club during registration or later' : 
-               formData.role === 'SYSTEM_ADMIN' ? 'System admins are not affiliated with clubs' :
-               'Select your affiliated club'}
-            </small>
-          </div>
+          )}
 
           {isAdminRole && (
             <div className="form-group">

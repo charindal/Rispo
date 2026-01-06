@@ -29,6 +29,12 @@ public class PlayerService {
                 .collect(Collectors.toList());
     }
 
+    public PlayerDTO getPlayerById(Long playerId) {
+        Player player = playerRepository.findById(playerId)
+                .orElseThrow(() -> new RuntimeException("Player not found"));
+        return convertToDTO(player);
+    }
+
     public List<PlayerDTO> getUnverifiedPlayers() {
         return playerRepository.findByIsVerified(false).stream()
                 .map(this::convertToDTO)

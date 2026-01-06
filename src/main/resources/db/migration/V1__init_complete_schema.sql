@@ -152,9 +152,29 @@ COMMENT ON COLUMN club_join_request.status IS 'Status: PENDING, APPROVED, REJECT
 CREATE TABLE tournament (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
+    description TEXT,
     start_date DATE,
-    end_date DATE
+    end_date DATE,
+    status VARCHAR(50) DEFAULT 'DRAFT' NOT NULL,
+    created_by BIGINT NOT NULL,
+    club_id BIGINT,
+    max_participants INTEGER,
+    venue VARCHAR(255),
+    rules TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_tournament_created_by FOREIGN KEY (created_by) REFERENCES users(id),
+    CONSTRAINT fk_tournament_club FOREIGN KEY (club_id) REFERENCES club(club_id),
+    CONSTRAINT chk_tournament_status CHECK (status IN ('DRAFT', 'PUBLISHED', 'ONGOING', 'COMPLETED', 'CANCELLED'))
 );
+
+-- Tournament indexes
+CREATE INDEX idx_tournament_status ON tournament(status);
+CREATE INDEX idx_tournament_created_by ON tournament(created_by);
+CREATE INDEX idx_tournament_club ON tournament(club_id);
+
+COMMENT ON TABLE tournament IS 'Tournaments organized by administrators';
+COMMENT ON COLUMN tournament.status IS 'Status: DRAFT, PUBLISHED, ONGOING, COMPLETED, CANCELLED';
 
 -- ============================================
 -- 8. TOURNAMENT PLAYER JOIN TABLE
@@ -162,8 +182,20 @@ CREATE TABLE tournament (
 CREATE TABLE tournament_player (
     tournament_id BIGINT REFERENCES tournament(id) ON DELETE CASCADE,
     player_id BIGINT REFERENCES player(id) ON DELETE CASCADE,
-    PRIMARY KEY (tournament_id, player_id)
+    status VARCHAR(50) DEFAULT 'PENDING' NOT NULL,
+    requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    responded_at TIMESTAMP,
+    responded_by BIGINT,
+    PRIMARY KEY (tournament_id, player_id),
+    CONSTRAINT fk_tournament_player_responded_by FOREIGN KEY (responded_by) REFERENCES users(id),
+    CONSTRAINT chk_tournament_player_status CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED'))
 );
+
+-- Tournament player indexes
+CREATE INDEX idx_tournament_player_status ON tournament_player(status);
+
+COMMENT ON TABLE tournament_player IS 'Tournament join requests and approved participants';
+COMMENT ON COLUMN tournament_player.status IS 'Status: PENDING, APPROVED, REJECTED';
 
 -- ============================================
 -- 9. CHALLENGE TABLE

@@ -1,0 +1,405 @@
+.tournament-standings-page {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.nav-left h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.3rem;
+}
+
+.nav-right {
+    display: flex;
+    gap: 10px;
+}
+
+.nav-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.nav-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.logout-btn {
+    background: #e74c3c;
+}
+
+.logout-btn:hover {
+    background: #c0392b;
+}
+
+.error-message {
+    background: #ffebee;
+    color: #c62828;
+    padding: 12px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    border-left: 4px solid #c62828;
+}
+
+.tab-navigation {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 20px;
+    background: #f5f5f5;
+    padding: 5px;
+    border-radius: 10px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #666;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.tab-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.tab-btn.active {
+    background: white;
+    color: #1a1a2e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Standings Table */
+.standings-container {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.standings-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.standings-table th {
+    background: #1a1a2e;
+    color: white;
+    padding: 15px 10px;
+    text-align: center;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.standings-table th:first-child,
+.standings-table th:nth-child(2) {
+    text-align: left;
+    padding-left: 20px;
+}
+
+.standings-table td {
+    padding: 12px 10px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+}
+
+.standings-table td:first-child,
+.standings-table td:nth-child(2) {
+    text-align: left;
+    padding-left: 20px;
+}
+
+.standings-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.standings-table .rank {
+    font-weight: bold;
+    color: #1a1a2e;
+}
+
+.standings-table .medal {
+    margin-right: 5px;
+}
+
+.standings-table .player-name {
+    font-weight: 500;
+}
+
+.standings-table .wins {
+    color: #27ae60;
+}
+
+.standings-table .draws {
+    color: #f39c12;
+}
+
+.standings-table .losses {
+    color: #e74c3c;
+}
+
+.standings-table .score {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #1a1a2e;
+}
+
+.standings-table .rating {
+    font-weight: 500;
+}
+
+.standings-table .rating-change {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.standings-table .rating-change.positive {
+    background: #e8f5e9;
+    color: #27ae60;
+}
+
+.standings-table .rating-change.negative {
+    background: #ffebee;
+    color: #e74c3c;
+}
+
+.standings-table .top-1 {
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.1) 0%, transparent 100%);
+}
+
+.standings-table .top-2 {
+    background: linear-gradient(90deg, rgba(192, 192, 192, 0.1) 0%, transparent 100%);
+}
+
+.standings-table .top-3 {
+    background: linear-gradient(90deg, rgba(205, 127, 50, 0.1) 0%, transparent 100%);
+}
+
+.no-data {
+    text-align: center !important;
+    padding: 40px !important;
+    color: #7f8c8d;
+}
+
+/* Cross Table */
+.crosstable-container {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+.crosstable-scroll {
+    overflow-x: auto;
+}
+
+.crosstable {
+    border-collapse: collapse;
+    min-width: 100%;
+}
+
+.crosstable th,
+.crosstable td {
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+.crosstable th {
+    background: #1a1a2e;
+    color: white;
+    font-weight: 500;
+}
+
+.crosstable .player-header {
+    text-align: left;
+    min-width: 180px;
+}
+
+.crosstable .opponent-header {
+    min-width: 50px;
+}
+
+.crosstable .opponent-num {
+    font-size: 0.9rem;
+}
+
+.crosstable .score-header {
+    min-width: 60px;
+}
+
+.crosstable .player-cell {
+    text-align: left;
+    background: #f8f9fa;
+    font-weight: 500;
+}
+
+.crosstable .player-num {
+    display: inline-block;
+    width: 25px;
+    color: #7f8c8d;
+}
+
+.crosstable .player-name {
+    color: #2c3e50;
+}
+
+.crosstable .result-cell {
+    font-weight: bold;
+    font-size: 1rem;
+    position: relative;
+}
+
+.crosstable .result-cell.win {
+    background: #e8f5e9;
+    color: #27ae60;
+}
+
+.crosstable .result-cell.loss {
+    background: #ffebee;
+    color: #e74c3c;
+}
+
+.crosstable .result-cell.draw {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.crosstable .result-cell.self {
+    background: #eceff1;
+    color: #90a4ae;
+}
+
+.crosstable .result-cell.not-played {
+    background: #fafafa;
+    color: #bdbdbd;
+}
+
+.crosstable .mini-change {
+    display: block;
+    font-size: 0.65rem;
+    margin-top: 2px;
+}
+
+.crosstable .mini-change.positive {
+    color: #27ae60;
+}
+
+.crosstable .mini-change.negative {
+    color: #e74c3c;
+}
+
+.crosstable .score-cell {
+    background: #f8f9fa;
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #1a1a2e;
+}
+
+/* Legend */
+.legend {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.legend h4 {
+    margin: 0 0 10px 0;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.result-sample {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.result-sample.win {
+    background: #e8f5e9;
+    color: #27ae60;
+}
+
+.result-sample.loss {
+    background: #ffebee;
+    color: #e74c3c;
+}
+
+.result-sample.draw {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.result-sample.self {
+    background: #eceff1;
+    color: #90a4ae;
+}
+
+.result-sample.not-played {
+    background: #fafafa;
+    color: #bdbdbd;
+    border: 1px solid #eee;
+}
+
+@media (max-width: 768px) {
+    .nav-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .nav-right {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .standings-table th,
+    .standings-table td {
+        padding: 8px 5px;
+        font-size: 0.85rem;
+    }
+    
+    .standings-table th:first-child,
+    .standings-table th:nth-child(2),
+    .standings-table td:first-child,
+    .standings-table td:nth-child(2) {
+        padding-left: 10px;
+    }
+}

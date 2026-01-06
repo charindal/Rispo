@@ -39,10 +39,12 @@ public class RatingSettingsService {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new Exception("User not found"));
 
-        // Only system admins can update rating settings
+        // Allow all admin roles except players to update rating settings
         if (user.getRole() != UserEntity.Role.SUPER_USER &&
-            user.getRole() != UserEntity.Role.SYSTEM_ADMIN) {
-            throw new Exception("Only SuperUser or System administrators can update rating settings");
+            user.getRole() != UserEntity.Role.SYSTEM_ADMIN &&
+            user.getRole() != UserEntity.Role.RATING_ADMIN &&
+            user.getRole() != UserEntity.Role.CLUB_ADMIN) {
+            throw new Exception("Only administrators can update rating settings");
         }
 
         // Get current settings or create new

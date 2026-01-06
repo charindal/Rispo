@@ -176,7 +176,8 @@ services:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: rispo-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: "postgresql://rispo_admin:R!#po123##@db:5432/rispo?sslmode=disable"
+      # URL-encoded password: # = %23, ! = %21
+      DATA_SOURCE_NAME: "postgresql://rispo_admin:R%21%23po123%23%23@db:5432/rispo?sslmode=disable"
     ports:
       - "9187:9187"
     networks:

@@ -46,7 +46,7 @@ function ClubManagement() {
       return;
     }
 
-    if (currentUser.role !== 'SUPER_USER' && currentUser.role !== 'SYSTEM_ADMIN' && currentUser.role !== 'CLUB_ADMIN') {
+    if (currentUser.role !== 'SUPER_USER' && currentUser.role !== 'SYSTEM_ADMIN' && currentUser.role !== 'CLUB_ADMIN' && currentUser.role !== 'RATING_ADMIN') {
       navigate('/admin-dashboard');
       return;
     }
@@ -212,7 +212,7 @@ function ClubManagement() {
       <nav className="management-navbar">
         <div className="navbar-brand">
           <h2>🏢 Club Management</h2>
-          <span className="admin-badge">System Admin</span>
+          <span className="admin-badge">{user.role === 'SUPER_USER' ? 'Super User' : user.role === 'SYSTEM_ADMIN' ? 'System Admin' : user.role === 'CLUB_ADMIN' ? 'Club Admin' : 'Rating Admin'}</span>
         </div>
         <div className="navbar-actions">
           <button onClick={() => navigate('/admin-dashboard')} className="back-btn">
@@ -404,12 +404,14 @@ function ClubManagement() {
           <div className="tab-content">
             <div className="content-header">
               <h2>Admin Registration Tokens</h2>
-              <button onClick={() => setShowTokenForm(!showTokenForm)} className="primary-btn">
-                {showTokenForm ? 'Cancel' : '+ Generate Token'}
-              </button>
+              {(user.role === 'SUPER_USER' || user.role === 'SYSTEM_ADMIN') && (
+                <button onClick={() => setShowTokenForm(!showTokenForm)} className="primary-btn">
+                  {showTokenForm ? 'Cancel' : '+ Generate Token'}
+                </button>
+              )}
             </div>
 
-            {showTokenForm && (
+            {showTokenForm && (user.role === 'SUPER_USER' || user.role === 'SYSTEM_ADMIN') && (
               <div className="form-card">
                 <h3>Generate Admin Token</h3>
                 <form onSubmit={handleGenerateToken}>

@@ -22,6 +22,17 @@ public class PlayerController {
         return ResponseEntity.ok(playerService.getAllPlayers());
     }
 
+    @GetMapping("/{playerId}")
+    public ResponseEntity<?> getPlayerById(@PathVariable Long playerId) {
+        try {
+            PlayerDTO player = playerService.getPlayerById(playerId);
+            return ResponseEntity.ok(player);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
     @GetMapping("/unverified")
     public ResponseEntity<List<PlayerDTO>> getUnverifiedPlayers() {
         return ResponseEntity.ok(playerService.getUnverifiedPlayers());

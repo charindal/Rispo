@@ -283,6 +283,9 @@ const PlayerDashboard = () => {
         <div className="contact-info">
           <h2>Actions</h2>
           <div className="actions-section">
+            <button onClick={() => navigate('/tournaments')} className="action-button primary">
+              🏆 View Tournaments
+            </button>
             <button onClick={() => navigate('/challenges')} className="action-button primary">
               ⚔️ Challenge Players
             </button>

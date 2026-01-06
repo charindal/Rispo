@@ -34,10 +34,11 @@ public class ClubService {
         UserEntity systemAdmin = userRepository.findById(systemAdminId)
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
 
-        // Only SUPER_USER and CLUB_ADMIN can create clubs (System Admin cannot)
+        // Allow SUPER_USER, CLUB_ADMIN, and RATING_ADMIN to create clubs
         if (systemAdmin.getRole() != UserEntity.Role.SUPER_USER &&
-            systemAdmin.getRole() != UserEntity.Role.CLUB_ADMIN) {
-            throw new RuntimeException("Only SuperUser and Club Admins can create clubs");
+            systemAdmin.getRole() != UserEntity.Role.CLUB_ADMIN &&
+            systemAdmin.getRole() != UserEntity.Role.RATING_ADMIN) {
+            throw new RuntimeException("Only SuperUser, Club Admins, or Rating Admins can create clubs");
         }
 
         if (clubRepository.findByName(request.getName()).isPresent()) {
@@ -161,10 +162,11 @@ public class ClubService {
         UserEntity systemAdmin = userRepository.findById(systemAdminId)
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
 
-        // Only SUPER_USER and CLUB_ADMIN can update clubs (System Admin cannot)
+        // Allow SUPER_USER, CLUB_ADMIN, and RATING_ADMIN to update clubs
         if (systemAdmin.getRole() != UserEntity.Role.SUPER_USER &&
-            systemAdmin.getRole() != UserEntity.Role.CLUB_ADMIN) {
-            throw new RuntimeException("Only SuperUser and Club Admins can update clubs");
+            systemAdmin.getRole() != UserEntity.Role.CLUB_ADMIN &&
+            systemAdmin.getRole() != UserEntity.Role.RATING_ADMIN) {
+            throw new RuntimeException("Only SuperUser, Club Admins, or Rating Admins can update clubs");
         }
 
         Club club = clubRepository.findById(clubId)
@@ -209,11 +211,12 @@ public class ClubService {
         UserEntity systemAdmin = userRepository.findById(systemAdminId)
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
 
-        // SUPER_USER, SYSTEM_ADMIN, and RATING_ADMIN can suspend/enable clubs
+        // SUPER_USER, SYSTEM_ADMIN, RATING_ADMIN, and CLUB_ADMIN can suspend/enable clubs
         if (systemAdmin.getRole() != UserEntity.Role.SUPER_USER &&
             systemAdmin.getRole() != UserEntity.Role.SYSTEM_ADMIN &&
-            systemAdmin.getRole() != UserEntity.Role.RATING_ADMIN) {
-            throw new RuntimeException("Only SuperUser, System Admins, and Rating Admins can update club status");
+            systemAdmin.getRole() != UserEntity.Role.RATING_ADMIN &&
+            systemAdmin.getRole() != UserEntity.Role.CLUB_ADMIN) {
+            throw new RuntimeException("Only SuperUser, System Admins, Rating Admins, and Club Admins can update club status");
         }
 
         Club club = clubRepository.findById(clubId)

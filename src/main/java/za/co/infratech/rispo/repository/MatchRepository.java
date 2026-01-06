@@ -25,6 +25,9 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     List<Match> findAllByTournamentId(Long tournamentId);
 
+    // Find matches by tournament, ordered by round
+    List<Match> findByTournamentIdOrderByRoundAsc(Long tournamentId);
+
     // Find matches by status
     List<Match> findByStatus(Match.MatchStatus status);
 

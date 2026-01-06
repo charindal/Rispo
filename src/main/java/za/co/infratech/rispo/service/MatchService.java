@@ -140,11 +140,12 @@ public class MatchService {
         UserEntity reviewer = userRepository.findById(reviewerUserId)
                 .orElseThrow(() -> new Exception("Reviewer not found"));
 
-        // Check if reviewer is an admin (SYSTEM_ADMIN cannot process match results)
+        // Check if reviewer is an admin
         if (reviewer.getRole() != UserEntity.Role.RATING_ADMIN && 
             reviewer.getRole() != UserEntity.Role.SUPER_USER &&
+            reviewer.getRole() != UserEntity.Role.SYSTEM_ADMIN &&
             reviewer.getRole() != UserEntity.Role.CLUB_ADMIN) {
-            throw new Exception("Only SuperUser, Rating Admins, and Club Admins can review matches");
+            throw new Exception("Only SuperUser, System Admins, Rating Admins, and Club Admins can review matches");
         }
 
         // For club admins, verify they can only review matches from their club
@@ -288,5 +289,24 @@ public class MatchService {
         response.setGames(gameSummaries);
 
         return response;
+    }
+
+    public List<MatchResponse> getTournamentMatches(Long tournamentId, Integer round) {
+        List<Match> matches;
+        if (round != null) {
+            matches = matchRepository.findByTournamentIdOrderByRoundAsc(tournamentId)
+                    .stream()
+                    .filter(m -> m.getRound() == round)
+                    .collect(Collectors.toList());
+        } else {
+            matches = matchRepository.findByTournamentIdOrderByRoundAsc(tournamentId);
+        }
+        
+        return matches.stream()
+                .map(match -> {
+                    List<Game> games = gameRepository.findByMatchId(match.getId());
+                    return convertToResponse(match, games);
+                })
+                .collect(Collectors.toList());
     }
 }

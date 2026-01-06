@@ -11,6 +11,11 @@ import RatingSettingsPage from './pages/RatingSettingsPage';
 import SubmitMatchPage from './pages/SubmitMatchPage';
 import MatchReviewPage from './pages/MatchReviewPage';
 import ChallengesPage from './pages/ChallengesPage';
+import TournamentsPage from './pages/TournamentsPage';
+import TournamentManagementPage from './pages/TournamentManagementPage';
+import TournamentRequestsPage from './pages/TournamentRequestsPage';
+import TournamentMatchesPage from './pages/TournamentMatchesPage';
+import TournamentStandingsPage from './pages/TournamentStandingsPage';
 
 function App() {
   return (
@@ -28,6 +33,11 @@ function App() {
         <Route path="/submit-match" element={<SubmitMatchPage />} />
         <Route path="/review-matches" element={<MatchReviewPage />} />
         <Route path="/challenges" element={<ChallengesPage />} />
+        <Route path="/tournaments" element={<TournamentsPage />} />
+        <Route path="/tournaments/manage" element={<TournamentManagementPage />} />
+        <Route path="/tournament-requests/:tournamentId" element={<TournamentRequestsPage />} />
+        <Route path="/tournament-matches/:tournamentId" element={<TournamentMatchesPage />} />
+        <Route path="/tournament-standings/:tournamentId" element={<TournamentStandingsPage />} />
       </Routes>
     </Router>
   );

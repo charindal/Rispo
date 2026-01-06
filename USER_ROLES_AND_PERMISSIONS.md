@@ -9,25 +9,22 @@
 
 2. **SYSTEM_ADMIN**
    - Generate tokens for SYSTEM_ADMIN, RATING_ADMIN, and CLUB_ADMIN roles
-   - Suspend/enable clubs and players
+   - Manage clubs and players
    - Manage rating engine settings
-   - **CANNOT** create or manage clubs directly
    - **CANNOT** process match results
 
 3. **RATING_ADMIN**
    - Process match results (approve/reject)
-   - Suspend/enable players and clubs
-   - **CANNOT** create clubs
+   - Manage clubs and players
+   - Manage rating engine settings
    - **CANNOT** generate admin tokens
-   - **CANNOT** manage rating engine settings
 
 4. **CLUB_ADMIN**
-   - Create and manage their own club only
-   - Each club admin belongs to a single club
-   - Accept/reject club join requests for their club
-   - **CANNOT** create other clubs
-   - **CANNOT** process match results
-   - **CANNOT** suspend/enable players or clubs
+   - Create and manage clubs
+   - Accept/reject club join requests
+   - Process match results
+   - Suspend/enable players and clubs
+   - Manage rating engine settings
    - **CANNOT** generate admin tokens
 
 5. **PLAYER**
@@ -39,27 +36,23 @@
 ## Key Permission Rules
 
 ### Club Management
-- ✅ CLUB_ADMIN: Can create ONE club (theirs)
-- ✅ CLUB_ADMIN: Can manage only their own club
-- ✅ CLUB_ADMIN: Accept/reject join requests for their club
+- ✅ CLUB_ADMIN: Can create and manage clubs
+- ✅ CLUB_ADMIN: Accept/reject join requests
 - ✅ SYSTEM_ADMIN: Can suspend/enable any club
 - ✅ RATING_ADMIN: Can suspend/enable any club
-- ❌ SYSTEM_ADMIN: Cannot create clubs
-- ❌ RATING_ADMIN: Cannot create clubs
+- ✅ RATING_ADMIN: Can create and manage clubs
 
 ### Match Result Processing
 - ✅ RATING_ADMIN: Review and approve/reject match results
+- ✅ CLUB_ADMIN: Review and approve/reject match results (with club scope where applicable)
 - ✅ SUPER_USER: Can review matches
 - ❌ SYSTEM_ADMIN: Cannot process match results
-- ❌ CLUB_ADMIN: Cannot process match results
 - ✅ PLAYER: Can submit match results
 
 ### Player Management
 - ✅ SYSTEM_ADMIN: Can suspend/enable players
 - ✅ RATING_ADMIN: Can suspend/enable players
-- ✅ CLUB_ADMIN: Can verify players in their club
-- ✅ RATING_ADMIN: Can verify players
-- ❌ CLUB_ADMIN: Cannot suspend/enable players
+- ✅ CLUB_ADMIN: Can verify and suspend/enable players (with club scope)
 
 ### Token Generation
 - ✅ SYSTEM_ADMIN: Generate tokens for SYSTEM_ADMIN, RATING_ADMIN, CLUB_ADMIN
@@ -69,8 +62,8 @@
 ### Rating Engine Settings
 - ✅ SYSTEM_ADMIN: Can modify rating settings
 - ✅ SUPER_USER: Can modify rating settings
-- ❌ RATING_ADMIN: Cannot modify rating settings
-- ❌ CLUB_ADMIN: Cannot modify rating settings
+- ✅ RATING_ADMIN: Can modify rating settings
+- ✅ CLUB_ADMIN: Can modify rating settings
 
 ## Club Join/Change Workflow
 
