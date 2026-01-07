@@ -1,6 +1,7 @@
 package za.co.infratech.rispo.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import za.co.infratech.rispo.dto.request.ChangePasswordRequest;
@@ -29,6 +30,7 @@ public class AuthService {
     private final PlayerRepository playerRepository;
     private final ClubRepository clubRepository;
     private final AdminTokenRepository adminTokenRepository;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -117,7 +119,7 @@ public class AuthService {
         // Create user entity
         UserEntity user = new UserEntity();
         user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword()); // TODO: Add password encryption
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
         user.setNationalId(request.getNationalId());
         user.setIsActive(true);
@@ -186,8 +188,8 @@ public class AuthService {
         UserEntity user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("Invalid username or password"));
 
-        // Validate password (TODO: Add proper password hashing)
-        if (!user.getPassword().equals(request.getPassword())) {
+        // Validate password using BCrypt
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid username or password");
         }
 
@@ -309,8 +311,8 @@ public class AuthService {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Validate old password
-        if (!user.getPassword().equals(request.getOldPassword())) {
+        // Validate old password using BCrypt
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new RuntimeException("Current password is incorrect");
         }
 
@@ -327,8 +329,8 @@ public class AuthService {
             throw new RuntimeException("New password must be different from current password");
         }
 
-        // Update password
-        user.setPassword(request.getNewPassword()); // TODO: Add password encryption
+        // Update password with BCrypt hash
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setMustChangePassword(false);
         
         userRepository.save(user);

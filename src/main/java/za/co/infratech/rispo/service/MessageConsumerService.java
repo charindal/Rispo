@@ -27,6 +27,16 @@ public class MessageConsumerService {
             
             log.info("Successfully processed rating calculation for match {}", message.getMatchId());
         } catch (Exception e) {
+            String errorMsg = e.getMessage();
+            
+            // Handle idempotent cases - these are not real errors, just duplicate processing
+            if (errorMsg != null && (errorMsg.contains("Match has already been rated") 
+                    || errorMsg.contains("Match not found"))) {
+                log.warn("Skipping rating calculation for match {}: {} (not retrying)",
+                        message.getMatchId(), errorMsg);
+                return; // Acknowledge message without retrying
+            }
+            
             log.error("Failed to process rating calculation for match {}: {}",
                     message.getMatchId(), e.getMessage(), e);
             // Message will be retried or moved to DLQ based on RabbitMQ configuration

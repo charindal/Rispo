@@ -50,15 +50,17 @@ public class PlayerService {
         UserEntity admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new RuntimeException("Admin user not found"));
 
-        // Check if admin has permission (SUPER_USER, RATING_ADMIN, CLUB_ADMIN can verify)
+        // Check if admin has permission (all admin roles can verify)
         if (admin.getRole() != UserEntity.Role.SUPER_USER &&
+            admin.getRole() != UserEntity.Role.SYSTEM_ADMIN &&
             admin.getRole() != UserEntity.Role.RATING_ADMIN &&
             admin.getRole() != UserEntity.Role.CLUB_ADMIN) {
-            throw new RuntimeException("Only SuperUser, Rating Admins, and Club Admins can verify players");
+            throw new RuntimeException("Only administrators can verify players");
         }
 
-        // SuperUser can verify any player, skip club checks
-        if (admin.getRole() == UserEntity.Role.SUPER_USER) {
+        // SuperUser and SystemAdmin can verify any player, skip club checks
+        if (admin.getRole() == UserEntity.Role.SUPER_USER || 
+            admin.getRole() == UserEntity.Role.SYSTEM_ADMIN) {
             // No restrictions
         }
         // Club admins can only verify players from their club
@@ -99,12 +101,12 @@ public class PlayerService {
         UserEntity admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new RuntimeException("Admin user not found"));
 
-        // Check if admin has permission (SUPER_USER, SYSTEM_ADMIN, RATING_ADMIN can suspend/enable)
+        // Check if admin has permission (all admin roles can unverify)
         if (admin.getRole() != UserEntity.Role.SUPER_USER &&
             admin.getRole() != UserEntity.Role.SYSTEM_ADMIN &&
             admin.getRole() != UserEntity.Role.RATING_ADMIN &&
             admin.getRole() != UserEntity.Role.CLUB_ADMIN) {
-            throw new RuntimeException("Only SuperUser, System Admins, Rating Admins, and Club Admins can suspend/enable players");
+            throw new RuntimeException("Only administrators can unverify players");
         }
 
         // SuperUser, SystemAdmin, and RatingAdmin can unverify any player

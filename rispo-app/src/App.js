@@ -16,6 +16,7 @@ import TournamentManagementPage from './pages/TournamentManagementPage';
 import TournamentRequestsPage from './pages/TournamentRequestsPage';
 import TournamentMatchesPage from './pages/TournamentMatchesPage';
 import TournamentStandingsPage from './pages/TournamentStandingsPage';
+import TournamentBracketPage from './pages/TournamentBracketPage';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
         <Route path="/tournament-requests/:tournamentId" element={<TournamentRequestsPage />} />
         <Route path="/tournament-matches/:tournamentId" element={<TournamentMatchesPage />} />
         <Route path="/tournament-standings/:tournamentId" element={<TournamentStandingsPage />} />
+        <Route path="/tournament-bracket/:tournamentId" element={<TournamentBracketPage />} />
       </Routes>
     </Router>
   );

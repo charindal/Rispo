@@ -94,6 +94,10 @@ const tournamentService = {
         return axios.get(`${API_URL}/tournaments/${tournamentId}/crosstable`);
     },
 
+    getKnockoutBracket: (tournamentId) => {
+        return axios.get(`${API_URL}/tournaments/${tournamentId}/bracket`);
+    },
+
     updateMatchResult: (tournamentId, matchId, resultData, userId) => {
         return axios.put(
             `${API_URL}/tournaments/${tournamentId}/matches/${matchId}/result`,

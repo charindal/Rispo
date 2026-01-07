@@ -130,21 +130,21 @@ const MatchReviewPage = () => {
                       onChange={(e) => setReviewNotes(e.target.value)}
                       placeholder="Add any notes about this match (optional)"
                       rows="3"
-                      disabled={processing}
+                      disabled={processing || selectedMatch.isRated}
                     />
 
                     <div className="review-actions">
                       <button
                         onClick={() => handleReview(selectedMatch.matchId, 'APPROVED')}
                         className="approve-btn"
-                        disabled={processing}
+                        disabled={processing || selectedMatch.isRated}
                       >
-                        {processing ? 'Processing...' : 'Approve & Rate'}
+                        {processing ? 'Processing...' : selectedMatch.isRated ? 'Already Rated' : 'Approve & Rate'}
                       </button>
                       <button
                         onClick={() => handleReview(selectedMatch.matchId, 'REJECTED')}
                         className="reject-btn"
-                        disabled={processing}
+                        disabled={processing || selectedMatch.isRated}
                       >
                         Reject
                       </button>

@@ -25,8 +25,8 @@ const TournamentsPage = () => {
             if (playerId) {
                 try {
                     const response = await playerService.getPlayer(playerId);
-                    if (response && response.club) {
-                        setPlayerClubId(response.club.clubId);
+                    if (response && response.clubId) {
+                        setPlayerClubId(response.clubId);
                     }
                 } catch (err) {
                     console.error('Failed to fetch player club:', err);
@@ -550,7 +550,7 @@ const TournamentsPage = () => {
                                             <strong>⏰ Requested:</strong> {new Date(tournament.requestedAt).toLocaleDateString()}
                                         </div>
                                         
-                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                             <button 
                                                 onClick={() => handleViewDetails(tournament)}
                                                 style={{
@@ -562,11 +562,52 @@ const TournamentsPage = () => {
                                                     borderRadius: '4px',
                                                     cursor: 'pointer',
                                                     fontSize: '14px',
-                                                    fontWeight: 'bold'
+                                                    fontWeight: 'bold',
+                                                    minWidth: '100px'
                                                 }}
                                             >
                                                 View Details
                                             </button>
+                                            
+                                            {tournament.participationStatus === 'APPROVED' && (tournament.status === 'ONGOING' || tournament.status === 'COMPLETED' || tournament.status === 'CLOSED') && (
+                                                <button 
+                                                    onClick={() => navigate(`/tournament-matches/${tournament.tournamentId}`)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '10px',
+                                                        backgroundColor: '#17a2b8',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '14px',
+                                                        fontWeight: 'bold',
+                                                        minWidth: '80px'
+                                                    }}
+                                                >
+                                                    Matches
+                                                </button>
+                                            )}
+                                            
+                                            {tournament.participationStatus === 'APPROVED' && tournament.format === 'KNOCKOUT' && (tournament.status === 'ONGOING' || tournament.status === 'COMPLETED' || tournament.status === 'CLOSED') && (
+                                                <button 
+                                                    onClick={() => navigate(`/tournament-bracket/${tournament.tournamentId}`)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '10px',
+                                                        backgroundColor: '#e83e8c',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '14px',
+                                                        fontWeight: 'bold',
+                                                        minWidth: '80px'
+                                                    }}
+                                                >
+                                                    🏆 Bracket
+                                                </button>
+                                            )}
                                             
                                             {tournament.participationStatus === 'APPROVED' && tournament.status === 'PUBLISHED' && (
                                                 <button 
@@ -580,7 +621,8 @@ const TournamentsPage = () => {
                                                         borderRadius: '4px',
                                                         cursor: 'pointer',
                                                         fontSize: '14px',
-                                                        fontWeight: 'bold'
+                                                        fontWeight: 'bold',
+                                                        minWidth: '80px'
                                                     }}
                                                 >
                                                     Withdraw

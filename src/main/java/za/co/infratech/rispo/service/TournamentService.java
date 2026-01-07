@@ -865,6 +865,124 @@ public class TournamentService {
     }
 
     /**
+     * Get knockout bracket structure for a tournament.
+     * Returns the bracket organized by rounds with match results.
+     */
+    public Map<String, Object> getKnockoutBracket(Long tournamentId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        if (tournament.getFormat() != Tournament.TournamentFormat.KNOCKOUT) {
+            throw new RuntimeException("Bracket view is only available for knockout tournaments");
+        }
+
+        // Get all matches ordered by round
+        List<Match> matches = matchRepository.findByTournamentIdOrderByRoundAsc(tournamentId);
+
+        // Group matches by round
+        Map<Integer, List<Map<String, Object>>> rounds = new java.util.LinkedHashMap<>();
+        int maxRound = 0;
+
+        for (Match match : matches) {
+            int round = match.getRound();
+            if (round > maxRound) maxRound = round;
+
+            rounds.computeIfAbsent(round, k -> new java.util.ArrayList<>());
+
+            Map<String, Object> matchData = new java.util.HashMap<>();
+            matchData.put("matchId", match.getId());
+            matchData.put("round", round);
+            matchData.put("status", match.getStatus().toString());
+            matchData.put("isBye", Boolean.TRUE.equals(match.getIsBye()));
+
+            // Player 1 info
+            Map<String, Object> player1 = new java.util.HashMap<>();
+            player1.put("playerId", match.getPlayer1().getId());
+            player1.put("name", match.getPlayer1().getName());
+            player1.put("rating", match.getPlayer1().getRating());
+            player1.put("ratingBefore", match.getPlayer1RatingBefore());
+            player1.put("ratingChange", match.getPlayer1RatingChange());
+            matchData.put("player1", player1);
+
+            // Player 2 info (may be null for bye)
+            if (match.getPlayer2() != null) {
+                Map<String, Object> player2 = new java.util.HashMap<>();
+                player2.put("playerId", match.getPlayer2().getId());
+                player2.put("name", match.getPlayer2().getName());
+                player2.put("rating", match.getPlayer2().getRating());
+                player2.put("ratingBefore", match.getPlayer2RatingBefore());
+                player2.put("ratingChange", match.getPlayer2RatingChange());
+                matchData.put("player2", player2);
+            } else {
+                matchData.put("player2", null);
+            }
+
+            // Winner info
+            if (match.getWinner() != null) {
+                Map<String, Object> winner = new java.util.HashMap<>();
+                winner.put("playerId", match.getWinner().getId());
+                winner.put("name", match.getWinner().getName());
+                matchData.put("winner", winner);
+            } else {
+                matchData.put("winner", null);
+            }
+
+            // Game scores summary
+            List<Game> games = gameRepository.findByMatchId(match.getId());
+            int player1Games = 0;
+            int player2Games = 0;
+            for (Game game : games) {
+                if (game.getWinner() != null) {
+                    if (game.getWinner().getId().equals(match.getPlayer1().getId())) {
+                        player1Games++;
+                    } else if (match.getPlayer2() != null && game.getWinner().getId().equals(match.getPlayer2().getId())) {
+                        player2Games++;
+                    }
+                }
+            }
+            matchData.put("player1Games", player1Games);
+            matchData.put("player2Games", player2Games);
+
+            rounds.get(round).add(matchData);
+        }
+
+        // Calculate round names (Final, Semi-Final, Quarter-Final, etc.)
+        Map<Integer, String> roundNames = new java.util.HashMap<>();
+        if (maxRound > 0) {
+            roundNames.put(maxRound, "Final");
+            if (maxRound > 1) roundNames.put(maxRound - 1, "Semi-Finals");
+            if (maxRound > 2) roundNames.put(maxRound - 2, "Quarter-Finals");
+            for (int r = 1; r <= maxRound - 3; r++) {
+                roundNames.put(r, "Round " + r);
+            }
+        }
+
+        // Get tournament champion if tournament is closed
+        Map<String, Object> champion = null;
+        if ("CLOSED".equals(tournament.getStatus()) || "COMPLETED".equals(tournament.getStatus())) {
+            // Find winner of final match
+            List<Map<String, Object>> finalRound = rounds.get(maxRound);
+            if (finalRound != null && !finalRound.isEmpty()) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> finalMatch = finalRound.get(0);
+                champion = (Map<String, Object>) finalMatch.get("winner");
+            }
+        }
+
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("tournamentId", tournamentId);
+        response.put("tournamentName", tournament.getName());
+        response.put("format", tournament.getFormat().toString());
+        response.put("status", tournament.getStatus());
+        response.put("totalRounds", maxRound);
+        response.put("rounds", rounds);
+        response.put("roundNames", roundNames);
+        response.put("champion", champion);
+
+        return response;
+    }
+
+    /**
      * Update tournament match result and optionally approve it.
      * Only the tournament creator or super users can manage tournament matches.
      */

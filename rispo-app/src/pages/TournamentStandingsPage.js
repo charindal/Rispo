@@ -78,6 +78,9 @@ const TournamentStandingsPage = () => {
                     <button onClick={() => navigate('/admin')} className="nav-btn">Dashboard</button>
                     <button onClick={() => navigate('/profile')} className="nav-btn">Profile</button>
                     <button onClick={() => navigate(`/tournament-matches/${tournamentId}`)} className="nav-btn">Matches</button>
+                    {tournament?.format === 'KNOCKOUT' && (
+                        <button onClick={() => navigate(`/tournament-bracket/${tournamentId}`)} className="nav-btn bracket-btn">🏆 Bracket</button>
+                    )}
                     <button onClick={handleLogout} className="nav-btn logout-btn">Sign Out</button>
                 </div>
             </div>
@@ -91,12 +94,22 @@ const TournamentStandingsPage = () => {
                 >
                     Standings
                 </button>
-                <button 
-                    className={`tab-btn ${activeTab === 'crosstable' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('crosstable')}
-                >
-                    Cross Table
-                </button>
+                {tournament?.format !== 'KNOCKOUT' && (
+                    <button 
+                        className={`tab-btn ${activeTab === 'crosstable' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('crosstable')}
+                    >
+                        Cross Table
+                    </button>
+                )}
+                {tournament?.format === 'KNOCKOUT' && (
+                    <button 
+                        className={`tab-btn ${activeTab === 'bracket' ? 'active' : ''}`}
+                        onClick={() => navigate(`/tournament-bracket/${tournamentId}`)}
+                    >
+                        Bracket View
+                    </button>
+                )}
             </div>
 
             {activeTab === 'standings' && (

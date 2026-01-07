@@ -171,8 +171,16 @@ const TournamentManagementPage = () => {
         }
     };
 
-    const handleGenerateMatches = async (tournamentId) => {
-        if (!window.confirm('Generate matches for the next round? This will use Swiss pairing based on player ratings.')) {
+    const handleGenerateMatches = async (tournamentId, format) => {
+        const formatMessages = {
+            'KNOCKOUT': 'Generate matches for the next round? This will create knockout bracket pairings.',
+            'ROUND_ROBIN': 'Generate matches? Each player will play against every other player.',
+            'RANDOM': 'Generate random match pairings for the next round?',
+            'SWISS': 'Generate matches for the next round? This will use Swiss pairing based on player ratings.'
+        };
+        const confirmMessage = formatMessages[format] || formatMessages['SWISS'];
+        
+        if (!window.confirm(confirmMessage)) {
             return;
         }
 
@@ -608,7 +616,7 @@ const TournamentManagementPage = () => {
                                             </button>
                                             {(tournament.status === 'PUBLISHED' || tournament.status === 'ONGOING') && (
                                                 <button
-                                                    onClick={() => handleGenerateMatches(tournament.tournamentId)}
+                                                    onClick={() => handleGenerateMatches(tournament.tournamentId, tournament.format)}
                                                     disabled={tournament.canStart === false}
                                                     title={tournament.canStart === false ? 
                                                         `Need ${tournament.minParticipants - tournament.currentParticipants} more participants` : 

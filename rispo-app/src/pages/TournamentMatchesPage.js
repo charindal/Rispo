@@ -200,7 +200,7 @@ const TournamentMatchesPage = () => {
     const handleApproveMatch = async (matchId) => {
         try {
             setError('');
-            await matchService.reviewMatch(matchId, { approved: true }, userId);
+            await matchService.reviewMatch(matchId, { status: 'APPROVED' }, userId);
             setSuccessMessage('Match approved and ratings updated');
             await loadMatches();
         } catch (err) {
@@ -211,7 +211,7 @@ const TournamentMatchesPage = () => {
     const handleRejectMatch = async (matchId) => {
         try {
             setError('');
-            await matchService.reviewMatch(matchId, { approved: false }, userId);
+            await matchService.reviewMatch(matchId, { status: 'REJECTED' }, userId);
             setSuccessMessage('Match rejected');
             await loadMatches();
         } catch (err) {
@@ -279,6 +279,9 @@ const TournamentMatchesPage = () => {
                     <button onClick={() => navigate('/admin')} className="nav-btn">Dashboard</button>
                     <button onClick={() => navigate('/profile')} className="nav-btn">Profile</button>
                     <button onClick={() => navigate(`/tournament-standings/${tournamentId}`)} className="nav-btn">Standings</button>
+                    {tournament?.format === 'KNOCKOUT' && (
+                        <button onClick={() => navigate(`/tournament-bracket/${tournamentId}`)} className="nav-btn" style={{ backgroundColor: '#e83e8c' }}>🏆 Bracket</button>
+                    )}
                     <button onClick={handleLogout} className="nav-btn logout-btn">Sign Out</button>
                 </div>
             </div>

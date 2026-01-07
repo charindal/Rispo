@@ -3,6 +3,7 @@ package za.co.infratech.rispo.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import za.co.infratech.rispo.model.UserEntity;
@@ -14,6 +15,7 @@ import za.co.infratech.rispo.repository.UserRepository;
 public class DatabaseInitService implements CommandLineRunner {
 
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
     @Transactional
@@ -28,7 +30,7 @@ public class DatabaseInitService implements CommandLineRunner {
             
             UserEntity superUser = new UserEntity();
             superUser.setUsername("admin");
-            superUser.setPassword("admin"); // TODO: Add password encryption
+            superUser.setPassword(passwordEncoder.encode("admin"));
             superUser.setEmail("admin@rispo.system");
             superUser.setNationalId("SUPERUSER-001");
             superUser.setRole(UserEntity.Role.SUPER_USER);

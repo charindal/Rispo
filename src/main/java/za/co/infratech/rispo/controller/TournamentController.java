@@ -197,6 +197,16 @@ public class TournamentController {
         }
     }
 
+    @GetMapping("/{tournamentId}/bracket")
+    public ResponseEntity<?> getKnockoutBracket(@PathVariable Long tournamentId) {
+        try {
+            var bracket = tournamentService.getKnockoutBracket(tournamentId);
+            return ResponseEntity.ok(bracket);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/{tournamentId}/close")
     public ResponseEntity<?> closeTournament(
             @PathVariable Long tournamentId,
