@@ -398,15 +398,56 @@
     }
 }
 
-/* Bracket connectors for visual flow */
+/* Bracket connectors for visual flow - enhanced version */
+.bracket-wrapper {
+    position: relative;
+}
+
+.bracket-round {
+    position: relative;
+}
+
+.round-matches {
+    position: relative;
+}
+
+/* Horizontal connector lines from each match to the next round */
 .bracket-round:not(:last-child) .bracket-match::after {
     content: '';
     position: absolute;
-    right: -15px;
+    right: -30px;
     top: 50%;
-    width: 15px;
+    width: 30px;
     height: 2px;
-    background: #ccc;
+    background: #4a90e2;
+    z-index: 1;
+}
+
+/* Vertical connecting lines between matches feeding into next round */
+.bracket-round:not(:last-child) .round-matches {
+    position: relative;
+}
+
+.bracket-round:not(:last-child) .bracket-match:nth-child(odd)::before {
+    content: '';
+    position: absolute;
+    right: -30px;
+    top: 50%;
+    width: 1px;
+    height: calc(100% + 20px);
+    background: #4a90e2;
+    z-index: 0;
+}
+
+.bracket-round:not(:last-child) .bracket-match:nth-child(even)::before {
+    content: '';
+    position: absolute;
+    right: -30px;
+    bottom: 50%;
+    width: 1px;
+    height: calc(100% + 20px);
+    background: #4a90e2;
+    z-index: 0;
 }
 
 /* Alternating colors for rounds */

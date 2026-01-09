@@ -31,7 +31,13 @@
   margin: 0;
 }
 
-.back-button {
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.back-button,
+.rankings-button {
   padding: 0.5rem 1rem;
   background: #f0f0f0;
   color: #333;
@@ -42,8 +48,17 @@
   transition: background 0.3s ease;
 }
 
+.rankings-button {
+  background: #4a90e2;
+  color: white;
+}
+
 .back-button:hover {
   background: #e0e0e0;
+}
+
+.rankings-button:hover {
+  background: #357abd;
 }
 
 .profile-section {

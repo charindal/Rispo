@@ -25,4 +25,8 @@ public interface PlayerRepository extends JpaRepository<Player, Long> {
     List<Player> findAllByOrderByRatingDesc();
     
     List<Player> findTop10ByIsVerifiedTrueOrderByRatingDesc();
+    
+    Long countByIsVerifiedTrueAndRatingGreaterThan(Integer rating);
+    
+    List<Player> findByIsVerifiedTrueAndNameContainingIgnoreCaseOrderByRatingDesc(String name);
 }

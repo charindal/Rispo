@@ -171,12 +171,20 @@ const ProfilePage = () => {
       <div className="profile-card">
         <div className="profile-header">
           <h1>My Profile</h1>
-          <button 
-            className="back-button"
-            onClick={() => navigate(-1)}
-          >
-            ← Back
-          </button>
+          <div className="header-actions">
+            <button 
+              className="rankings-button"
+              onClick={() => navigate('/rankings')}
+            >
+              📊 Rankings
+            </button>
+            <button 
+              className="back-button"
+              onClick={() => navigate(-1)}
+            >
+              ← Back
+            </button>
+          </div>
         </div>
 
         {success && <div className="success-message">{success}</div>}

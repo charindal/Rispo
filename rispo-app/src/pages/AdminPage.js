@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import authService from '../services/authService';
@@ -14,11 +14,7 @@ const AdminPage = () => {
 
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
-  useEffect(() => {
-    fetchPlayers();
-  }, [filter]);
-
-  const fetchPlayers = async () => {
+  const fetchPlayers = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -32,7 +28,11 @@ const AdminPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, API_BASE_URL]);
+
+  useEffect(() => {
+    fetchPlayers();
+  }, [fetchPlayers]);
 
   const handleVerify = async (playerId) => {
     if (!currentUser || !currentUser.userId) {

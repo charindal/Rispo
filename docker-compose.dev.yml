@@ -1,0 +1,72 @@
+version: "3.9"
+
+# ========================
+# Minimal Development Setup
+# Only runs DB, Redis, and RabbitMQ in Docker
+# Your Spring Boot app and React dev server run natively
+# ========================
+
+services:
+  # ========================
+  # Database
+  # ========================
+  db:
+    image: postgres:17
+    container_name: rispo-db-dev
+    environment:
+      POSTGRES_DB: rispo
+      POSTGRES_USER: rispo_admin
+      POSTGRES_PASSWORD: R!#po123##
+    volumes:
+      - db-data-dev:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - rispo-dev-net
+    restart: unless-stopped
+
+  # ========================
+  # Redis Cache
+  # ========================
+  redis:
+    image: redis:7-alpine
+    container_name: rispo-redis-dev
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis-data-dev:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - rispo-dev-net
+    restart: unless-stopped
+
+  # ========================
+  # RabbitMQ Message Queue
+  # ========================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rispo-rabbitmq-dev
+    environment:
+      RABBITMQ_DEFAULT_USER: rispo_admin
+      RABBITMQ_DEFAULT_PASS: R!#po123##
+    volumes:
+      - rabbitmq-data-dev:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI (http://localhost:15672)
+    networks:
+      - rispo-dev-net
+    restart: unless-stopped
+
+# ========================
+# Shared Resources
+# ========================
+volumes:
+  db-data-dev:
+  redis-data-dev:
+  rabbitmq-data-dev:
+
+networks:
+  rispo-dev-net:
+    name: rispo-dev-net
+    driver: bridge

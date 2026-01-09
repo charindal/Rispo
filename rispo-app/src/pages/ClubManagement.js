@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import clubService from '../services/clubService';
@@ -63,7 +63,7 @@ function ClubManagement() {
     loadData();
   }, [navigate]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const clubsDataPromise = clubService.getAllClubs();
       const requestsDataPromise = clubService.getPendingJoinRequests();
@@ -87,7 +87,7 @@ function ClubManagement() {
       console.error('Error loading data:', error);
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const handleCreateClub = async (e) => {
     e.preventDefault();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import authService from '../services/authService';
@@ -25,6 +25,37 @@ const PlayerDashboard = () => {
 
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
+  const loadChallenges = useCallback(async (currentUser) => {
+    try {
+      const incoming = await challengeService.getIncomingChallenges(currentUser.userId);
+      setIncomingChallenges(incoming.filter(c => c.status === 'PENDING'));
+    } catch (error) {
+      console.error('Error loading challenges:', error);
+    }
+  }, []);
+
+  const loadClubs = useCallback(async () => {
+    try {
+      const clubsData = await clubService.getActiveClubs();
+      setClubs(clubsData);
+      setFilteredClubs(clubsData);
+    } catch (error) {
+      console.error('Error loading clubs:', error);
+    }
+  }, []);
+
+  const fetchPlayerData = useCallback(async (playerId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/players`);
+      const player = response.data.find(p => p.id === playerId);
+      setPlayerData(player);
+    } catch (error) {
+      console.error('Error fetching player data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [API_BASE_URL]);
+
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
     
@@ -43,38 +74,7 @@ const PlayerDashboard = () => {
     fetchPlayerData(currentUser.playerId);
     loadClubs();
     loadChallenges(currentUser);
-  }, [navigate]);
-
-  const loadChallenges = async (currentUser) => {
-    try {
-      const incoming = await challengeService.getIncomingChallenges(currentUser.userId);
-      setIncomingChallenges(incoming.filter(c => c.status === 'PENDING'));
-    } catch (error) {
-      console.error('Error loading challenges:', error);
-    }
-  };
-
-  const loadClubs = async () => {
-    try {
-      const clubsData = await clubService.getActiveClubs();
-      setClubs(clubsData);
-      setFilteredClubs(clubsData);
-    } catch (error) {
-      console.error('Error loading clubs:', error);
-    }
-  };
-
-  const fetchPlayerData = async (playerId) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/players`);
-      const player = response.data.find(p => p.id === playerId);
-      setPlayerData(player);
-    } catch (error) {
-      console.error('Error fetching player data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [navigate, fetchPlayerData, loadClubs, loadChallenges]);
 
   const handleSignOut = () => {
     authService.logout();
@@ -155,6 +155,7 @@ const PlayerDashboard = () => {
               ⚙️ Admin Mode
             </button>
           )}
+          <button onClick={() => navigate('/rankings')} className="profile-btn">Rankings</button>
           <button onClick={() => navigate('/profile')} className="profile-btn">My Profile</button>
           <span className="username">{user?.username}</span>
           <button onClick={handleSignOut} className="signout-btn">Sign Out</button>
@@ -283,6 +284,9 @@ const PlayerDashboard = () => {
         <div className="contact-info">
           <h2>Actions</h2>
           <div className="actions-section">
+            <button onClick={() => navigate('/rankings')} className="action-button primary">
+              📊 View Rankings
+            </button>
             <button onClick={() => navigate('/tournaments')} className="action-button primary">
               🏆 View Tournaments
             </button>

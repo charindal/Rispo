@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import challengeService from '../services/challengeService';
@@ -24,17 +24,24 @@ const ChallengesPage = () => {
 
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
-  useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    if (!currentUser || !currentUser.playerId) {
-      navigate('/login');
-      return;
+  const loadChallenges = useCallback(async (currentUser) => {
+    try {
+      const [incoming, outgoing] = await Promise.all([
+        challengeService.getIncomingChallenges(currentUser.userId),
+        challengeService.getOutgoingChallenges(currentUser.userId)
+      ]);
+      setIncomingChallenges(incoming);
+      setOutgoingChallenges(outgoing);
+      
+      // Calculate pending counts (only PENDING status)
+      setPendingIncomingCount(incoming.filter(c => c.status === 'PENDING').length);
+      setPendingOutgoingCount(outgoing.filter(c => c.status === 'PENDING').length);
+    } catch (err) {
+      console.error('Error loading challenges:', err);
     }
-    setUser(currentUser);
-    loadData(currentUser);
-  }, [navigate]);
+  }, []);
 
-  const loadData = async (currentUser) => {
+  const loadData = useCallback(async (currentUser) => {
     setLoading(true);
     try {
       // Load players from current user's club for fast search
@@ -54,24 +61,17 @@ const ChallengesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_BASE_URL, loadChallenges]);
 
-  const loadChallenges = async (currentUser) => {
-    try {
-      const [incoming, outgoing] = await Promise.all([
-        challengeService.getIncomingChallenges(currentUser.userId),
-        challengeService.getOutgoingChallenges(currentUser.userId)
-      ]);
-      setIncomingChallenges(incoming);
-      setOutgoingChallenges(outgoing);
-      
-      // Calculate pending counts (only PENDING status)
-      setPendingIncomingCount(incoming.filter(c => c.status === 'PENDING').length);
-      setPendingOutgoingCount(outgoing.filter(c => c.status === 'PENDING').length);
-    } catch (err) {
-      console.error('Error loading challenges:', err);
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    if (!currentUser || !currentUser.playerId) {
+      navigate('/login');
+      return;
     }
-  };
+    setUser(currentUser);
+    loadData(currentUser);
+  }, [navigate, loadData]);
 
   const handleCreateChallenge = async (e) => {
     e.preventDefault();

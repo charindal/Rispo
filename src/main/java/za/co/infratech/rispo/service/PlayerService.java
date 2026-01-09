@@ -6,12 +6,14 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import za.co.infratech.rispo.dto.response.PlayerDTO;
+import za.co.infratech.rispo.dto.response.PlayerRankingDTO;
 import za.co.infratech.rispo.model.Player;
 import za.co.infratech.rispo.model.UserEntity;
 import za.co.infratech.rispo.repository.PlayerRepository;
 import za.co.infratech.rispo.repository.UserRepository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -176,6 +178,73 @@ public class PlayerService {
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    public List<PlayerRankingDTO> getTop10Rankings() {
+        List<Player> topPlayers = playerRepository.findTop10ByIsVerifiedTrueOrderByRatingDesc();
+        List<PlayerRankingDTO> rankings = new ArrayList<>();
+        
+        for (int i = 0; i < topPlayers.size(); i++) {
+            Player player = topPlayers.get(i);
+            PlayerRankingDTO dto = convertToRankingDTO(player);
+            dto.setRank(i + 1);
+            dto.setIsCurrentUser(false);
+            rankings.add(dto);
+        }
+        
+        return rankings;
+    }
+
+    public PlayerRankingDTO getPlayerRanking(Long playerId) {
+        Player player = playerRepository.findById(playerId)
+                .orElseThrow(() -> new RuntimeException("Player not found"));
+        
+        if (!player.getIsVerified()) {
+            throw new RuntimeException("Player is not verified");
+        }
+        
+        // Get the rank by counting how many verified players have a higher rating
+        Long rank = playerRepository.countByIsVerifiedTrueAndRatingGreaterThan(player.getRating()) + 1;
+        
+        PlayerRankingDTO dto = convertToRankingDTO(player);
+        dto.setRank(rank.intValue());
+        dto.setIsCurrentUser(false);
+        
+        return dto;
+    }
+
+    public List<PlayerRankingDTO> searchPlayerRankings(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Player> players = playerRepository.findByIsVerifiedTrueAndNameContainingIgnoreCaseOrderByRatingDesc(searchTerm.trim());
+        List<PlayerRankingDTO> rankings = new ArrayList<>();
+        
+        for (Player player : players) {
+            Long rank = playerRepository.countByIsVerifiedTrueAndRatingGreaterThan(player.getRating()) + 1;
+            PlayerRankingDTO dto = convertToRankingDTO(player);
+            dto.setRank(rank.intValue());
+            dto.setIsCurrentUser(false);
+            rankings.add(dto);
+        }
+        
+        return rankings;
+    }
+
+    private PlayerRankingDTO convertToRankingDTO(Player player) {
+        PlayerRankingDTO dto = new PlayerRankingDTO();
+        dto.setId(player.getId());
+        dto.setUserId(player.getUser().getId());
+        dto.setName(player.getName());
+        dto.setRating(player.getRating());
+        dto.setMatchesPlayed(player.getMatchesPlayed());
+        dto.setWins(player.getWins());
+        dto.setLosses(player.getLosses());
+        dto.setDraws(player.getDraws());
+        dto.setClubId(player.getClub() != null ? player.getClub().getClubId() : null);
+        dto.setClubName(player.getClub() != null ? player.getClub().getName() : null);
+        return dto;
     }
 
     private PlayerDTO convertToDTO(Player player) {
