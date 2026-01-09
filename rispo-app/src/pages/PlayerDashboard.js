@@ -4,6 +4,7 @@ import axios from 'axios';
 import authService from '../services/authService';
 import clubService from '../services/clubService';
 import challengeService from '../services/challengeService';
+import AdPanel from '../components/AdPanel';
 import '../styles/PlayerDashboard.css';
 
 const PlayerDashboard = () => {
@@ -168,6 +169,9 @@ const PlayerDashboard = () => {
           <p>Your personal rating dashboard</p>
         </div>
 
+        {/* Top Banner Advertisement */}
+        <AdPanel placement="banner" size="medium" />
+
         {!playerData?.isVerified && (
           <div className="verification-alert">
             <div className="alert-icon">⚠️</div>
@@ -330,6 +334,11 @@ const PlayerDashboard = () => {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Sidebar Advertisement */}
+        <div className="ad-sidebar-section">
+          <AdPanel placement="sidebar" size="medium" />
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import playerService from '../services/playerService';
 import authService from '../services/authService';
+import AdPanel from '../components/AdPanel';
 import '../styles/RankingsPage.css';
 
 const RankingsPage = () => {
@@ -254,6 +255,11 @@ const RankingsPage = () => {
                         <span className="legend-badge current-user-badge">You</span> Your Ranking
                     </span>
                 </div>
+            </div>
+
+            {/* Advertisement Sidebar */}
+            <div className="ad-sidebar-section">
+                <AdPanel placement="sidebar" size="medium" />
             </div>
         </div>
     );

@@ -10,6 +10,7 @@ public class TournamentUpdateRequest {
     private LocalDate startDate;
     private LocalDate endDate;
     private Integer maxParticipants;
+    private Integer minParticipants;
     private String venue;
     private String rules;
 }

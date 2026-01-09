@@ -98,6 +98,21 @@
   font-weight: 700;
 }
 
+/* Advertisement Sidebar Section */
+.ad-sidebar-section {
+  margin-top: 40px;
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+@media (max-width: 768px) {
+  .ad-sidebar-section {
+    margin-top: 30px;
+    padding: 16px 0;
+  }
+}
+
 .welcome-section p {
   font-size: 18px;
   opacity: 0.9;

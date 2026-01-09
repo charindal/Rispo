@@ -189,6 +189,18 @@ const TournamentsPage = () => {
         return tournament.maxParticipants && tournament.currentParticipants >= tournament.maxParticipants;
     };
 
+    const hasPlayerJoined = (tournament) => {
+        if (!playerId || !tournament.players) return false;
+        // Check if current player is in the tournament (any status: PENDING, APPROVED, REJECTED)
+        return tournament.players.some(p => p.playerId === parseInt(playerId));
+    };
+
+    const getPlayerStatus = (tournament) => {
+        if (!playerId || !tournament.players) return null;
+        const player = tournament.players.find(p => p.playerId === parseInt(playerId));
+        return player ? player.status : null;
+    };
+
     if (loading) {
         return <div style={{ padding: '20px', textAlign: 'center' }}>Loading tournaments...</div>;
     }
@@ -352,21 +364,42 @@ const TournamentsPage = () => {
                         </div>
 
                         {selectedTournament.status === 'PUBLISHED' && (
-                            <button 
-                                onClick={() => handleJoinTournament(selectedTournament.tournamentId)}
-                                disabled={isTournamentFull(selectedTournament)}
-                                style={{
-                                    padding: '10px 20px',
-                                    backgroundColor: isTournamentFull(selectedTournament) ? '#6c757d' : '#28a745',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: isTournamentFull(selectedTournament) ? 'not-allowed' : 'pointer',
-                                    marginBottom: '30px'
-                                }}
-                            >
-                                {isTournamentFull(selectedTournament) ? 'Tournament Full' : 'Join Tournament'}
-                            </button>
+                            <div style={{ marginBottom: '30px' }}>
+                                <button 
+                                    onClick={() => handleJoinTournament(selectedTournament.tournamentId)}
+                                    disabled={isTournamentFull(selectedTournament) || hasPlayerJoined(selectedTournament)}
+                                    style={{
+                                        padding: '10px 20px',
+                                        backgroundColor: 
+                                            isTournamentFull(selectedTournament) ? '#6c757d' :
+                                            hasPlayerJoined(selectedTournament) ? '#6c757d' : '#28a745',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: (isTournamentFull(selectedTournament) || hasPlayerJoined(selectedTournament)) ? 'not-allowed' : 'pointer',
+                                        opacity: (isTournamentFull(selectedTournament) || hasPlayerJoined(selectedTournament)) ? 0.6 : 1
+                                    }}
+                                >
+                                    {isTournamentFull(selectedTournament) ? 'Tournament Full' : 
+                                     hasPlayerJoined(selectedTournament) ? 
+                                     (getPlayerStatus(selectedTournament) === 'PENDING' ? 'Join Request Pending' :
+                                      getPlayerStatus(selectedTournament) === 'APPROVED' ? 'Already Joined' :
+                                      getPlayerStatus(selectedTournament) === 'REJECTED' ? 'Request Rejected' : 'Already Joined') : 
+                                     'Join Tournament'}
+                                </button>
+                                {hasPlayerJoined(selectedTournament) && (
+                                    <p style={{ 
+                                        marginTop: '10px', 
+                                        fontSize: '14px', 
+                                        color: getPlayerStatus(selectedTournament) === 'APPROVED' ? '#28a745' :
+                                               getPlayerStatus(selectedTournament) === 'PENDING' ? '#ffc107' : '#dc3545'
+                                    }}>
+                                        {getPlayerStatus(selectedTournament) === 'PENDING' && '⏳ Your join request is awaiting admin approval.'}
+                                        {getPlayerStatus(selectedTournament) === 'APPROVED' && '✅ You are registered for this tournament.'}
+                                        {getPlayerStatus(selectedTournament) === 'REJECTED' && '❌ Your join request was rejected.'}
+                                    </p>
+                                )}
+                            </div>
                         )}
 
                         <h3>Approved Participants ({selectedTournament.players.filter(p => p.status === 'APPROVED').length})</h3>

@@ -74,6 +74,13 @@ public class TournamentService {
             tournament.setMinParticipants(request.getMinParticipants());
         }
 
+        // Validate max >= min participants
+        if (tournament.getMaxParticipants() != null && tournament.getMinParticipants() != null) {
+            if (tournament.getMaxParticipants() < tournament.getMinParticipants()) {
+                throw new RuntimeException("Maximum participants must be equal to or greater than minimum participants");
+            }
+        }
+
         // Set everyonePlaysEveryone for RANDOM format
         if (request.getEveryonePlaysEveryone() != null) {
             tournament.setEveryonePlaysEveryone(request.getEveryonePlaysEveryone());
@@ -106,8 +113,16 @@ public class TournamentService {
         if (request.getDescription() != null) tournament.setDescription(request.getDescription());
         if (request.getStartDate() != null) tournament.setStartDate(request.getStartDate());
         if (request.getMaxParticipants() != null) tournament.setMaxParticipants(request.getMaxParticipants());
+        if (request.getMinParticipants() != null) tournament.setMinParticipants(request.getMinParticipants());
         if (request.getVenue() != null) tournament.setVenue(request.getVenue());
         if (request.getRules() != null) tournament.setRules(request.getRules());
+
+        // Validate max >= min participants
+        if (tournament.getMaxParticipants() != null && tournament.getMinParticipants() != null) {
+            if (tournament.getMaxParticipants() < tournament.getMinParticipants()) {
+                throw new RuntimeException("Maximum participants must be equal to or greater than minimum participants");
+            }
+        }
 
         Tournament updated = tournamentRepository.save(tournament);
         return toResponse(updated);
@@ -440,7 +455,7 @@ public class TournamentService {
                                 .player2(pair.getPlayer2())
                                 .adminCreated(true)
                                 .status(Match.MatchStatus.PENDING_REVIEW)
-                                .isRated(true)
+                                .isRated(false)  // Will be set to true after rating calculation
                                 .player1RatingBefore(pair.getPlayer1().getRating())
                                 .player2RatingBefore(pair.getPlayer2().getRating())
                                 .createdAt(LocalDateTime.now())
@@ -467,7 +482,7 @@ public class TournamentService {
                                 .player2(pair.getPlayer2())
                                 .adminCreated(true)
                                 .status(Match.MatchStatus.PENDING_REVIEW)
-                                .isRated(true)
+                                .isRated(false)  // Will be set to true after rating calculation
                                 .player1RatingBefore(pair.getPlayer1().getRating())
                                 .player2RatingBefore(pair.getPlayer2().getRating())
                                 .createdAt(LocalDateTime.now())
@@ -507,7 +522,7 @@ public class TournamentService {
                                 .player2(pair.getPlayer2())
                                 .adminCreated(true)
                                 .status(Match.MatchStatus.PENDING_REVIEW)
-                                .isRated(true)
+                                .isRated(false)  // Will be set to true after rating calculation
                                 .player1RatingBefore(pair.getPlayer1().getRating())
                                 .player2RatingBefore(pair.getPlayer2().getRating())
                                 .createdAt(LocalDateTime.now())
@@ -530,7 +545,7 @@ public class TournamentService {
                                 .player2(pair.getPlayer2())
                                 .adminCreated(true)
                                 .status(Match.MatchStatus.PENDING_REVIEW)
-                                .isRated(true)
+                                .isRated(false)  // Will be set to true after rating calculation
                                 .isBye(false)
                                 .player1RatingBefore(pair.getPlayer1().getRating())
                                 .player2RatingBefore(pair.getPlayer2().getRating())
@@ -1081,8 +1096,14 @@ public class TournamentService {
             match.setStatus(Match.MatchStatus.APPROVED);
             match.setReviewedBy(user);
             match.setReviewedAt(LocalDateTime.now());
-            
-            // Publish rating calculation message for async processing
+        }
+
+        // Save the match BEFORE sending the message to ensure transaction commits
+        match = matchRepository.save(match);
+
+        // If approved, publish rating calculation message for async processing
+        if (Boolean.TRUE.equals(request.getApprove())) {
+            // Publish to queue AFTER saving to database
             Long winnerId = match.getWinner() != null ? match.getWinner().getId() : null;
             messageProducer.sendRatingCalculationMessage(
                 za.co.infratech.rispo.dto.request.RatingCalculationMessage.builder()
@@ -1095,6 +1116,6 @@ public class TournamentService {
             );
         }
 
-        return matchRepository.save(match);
+        return match;
     }
 }
