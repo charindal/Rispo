@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import challengeService from '../services/challengeService';
 import playerService from '../services/playerService';
+import Pagination from '../components/Pagination';
 import axios from 'axios';
 import '../styles/ChallengesPage.css';
 
@@ -20,6 +21,9 @@ const ChallengesPage = () => {
   const [challengeMessage, setChallengeMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [incomingPage, setIncomingPage] = useState(1);
+  const [outgoingPage, setOutgoingPage] = useState(1);
+  const itemsPerPage = 20;
   const navigate = useNavigate();
 
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
@@ -148,6 +152,16 @@ const ChallengesPage = () => {
     }
   };
 
+  // Pagination logic
+  const getPaginatedItems = (items, page) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return items.slice(startIndex, endIndex);
+  };
+
+  const paginatedIncoming = getPaginatedItems(incomingChallenges, incomingPage);
+  const paginatedOutgoing = getPaginatedItems(outgoingChallenges, outgoingPage);
+
   return (
     <div className="challenges-page">
       <nav className="challenges-navbar">
@@ -182,55 +196,63 @@ const ChallengesPage = () => {
         {/* Incoming Challenges Tab */}
         {activeTab === 'incoming' && (
           <div className="tab-content">
-            <h2>Incoming Challenges</h2>
+            <h2>Incoming Challenges ({incomingChallenges.length})</h2>
             {incomingChallenges.length === 0 ? (
               <p className="empty-state">No incoming challenges</p>
             ) : (
-              <div className="challenges-list">
-                {incomingChallenges.map(challenge => (
-                  <div key={challenge.challengeId} className="challenge-card">
-                    <div className="challenge-header">
-                      <h3>{challenge.challengerName}</h3>
-                      <span className={`status-badge ${getStatusColor(challenge.status)}`}>
-                        {challenge.status}
-                      </span>
-                    </div>
-                    {challenge.challengeName && (
-                      <p className="challenge-name">📌 {challenge.challengeName}</p>
-                    )}
-                    {challenge.message && (
-                      <p className="challenge-message">"{challenge.message}"</p>
-                    )}
-                    <p className="challenge-date">
-                      Received: {new Date(challenge.createdAt).toLocaleString()}
-                    </p>
-                    {challenge.status === 'ACCEPTED' && challenge.matchId && (
-                      <button 
-                        className="match-link-btn"
-                        onClick={() => navigate(`/submit-match?matchId=${challenge.matchId}`)}
-                      >
-                        📝 Submit Match Result
-                      </button>
-                    )}
-                    {challenge.status === 'PENDING' && (
-                      <div className="challenge-actions">
-                        <button 
-                          className="accept-btn"
-                          onClick={() => handleRespondToChallenge(challenge.challengeId, 'ACCEPTED')}
-                        >
-                          ✓ Accept
-                        </button>
-                        <button 
-                          className="decline-btn"
-                          onClick={() => handleRespondToChallenge(challenge.challengeId, 'DECLINED')}
-                        >
-                          ✗ Decline
-                        </button>
+              <>
+                <div className="challenges-list">
+                  {paginatedIncoming.map(challenge => (
+                    <div key={challenge.challengeId} className="challenge-card">
+                      <div className="challenge-header">
+                        <h3>{challenge.challengerName}</h3>
+                        <span className={`status-badge ${getStatusColor(challenge.status)}`}>
+                          {challenge.status}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {challenge.challengeName && (
+                        <p className="challenge-name">📌 {challenge.challengeName}</p>
+                      )}
+                      {challenge.message && (
+                        <p className="challenge-message">"{challenge.message}"</p>
+                      )}
+                      <p className="challenge-date">
+                        Received: {new Date(challenge.createdAt).toLocaleString()}
+                      </p>
+                      {challenge.status === 'ACCEPTED' && challenge.matchId && (
+                        <button 
+                          className="match-link-btn"
+                          onClick={() => navigate(`/submit-match?matchId=${challenge.matchId}`)}
+                        >
+                          📝 Submit Match Result
+                        </button>
+                      )}
+                      {challenge.status === 'PENDING' && (
+                        <div className="challenge-actions">
+                          <button 
+                            className="accept-btn"
+                            onClick={() => handleRespondToChallenge(challenge.challengeId, 'ACCEPTED')}
+                          >
+                            ✓ Accept
+                          </button>
+                          <button 
+                            className="decline-btn"
+                            onClick={() => handleRespondToChallenge(challenge.challengeId, 'DECLINED')}
+                          >
+                            ✗ Decline
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Pagination
+                  currentPage={incomingPage}
+                  totalItems={incomingChallenges.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setIncomingPage}
+                />
+              </>
             )}
           </div>
         )}
@@ -238,49 +260,57 @@ const ChallengesPage = () => {
         {/* Outgoing Challenges Tab */}
         {activeTab === 'outgoing' && (
           <div className="tab-content">
-            <h2>Outgoing Challenges</h2>
+            <h2>Outgoing Challenges ({outgoingChallenges.length})</h2>
             {outgoingChallenges.length === 0 ? (
               <p className="empty-state">No outgoing challenges</p>
             ) : (
-              <div className="challenges-list">
-                {outgoingChallenges.map(challenge => (
-                  <div key={challenge.challengeId} className="challenge-card">
-                    <div className="challenge-header">
-                      <h3>To: {challenge.challengedName}</h3>
-                      <span className={`status-badge ${getStatusColor(challenge.status)}`}>
-                        {challenge.status}
-                      </span>
-                    </div>
-                    {challenge.challengeName && (
-                      <p className="challenge-name">📌 {challenge.challengeName}</p>
-                    )}
-                    {challenge.message && (
-                      <p className="challenge-message">"{challenge.message}"</p>
-                    )}
-                    <p className="challenge-date">
-                      Sent: {new Date(challenge.createdAt).toLocaleString()}
-                    </p>
-                    {challenge.status === 'ACCEPTED' && challenge.matchId && (
-                      <button 
-                        className="match-link-btn"
-                        onClick={() => navigate(`/submit-match?matchId=${challenge.matchId}`)}
-                      >
-                        📝 Submit Match Result
-                      </button>
-                    )}
-                    {challenge.status === 'PENDING' && (
-                      <div className="challenge-actions">
-                        <button 
-                          className="cancel-btn"
-                          onClick={() => handleCancelChallenge(challenge.challengeId)}
-                        >
-                          Cancel Challenge
-                        </button>
+              <>
+                <div className="challenges-list">
+                  {paginatedOutgoing.map(challenge => (
+                    <div key={challenge.challengeId} className="challenge-card">
+                      <div className="challenge-header">
+                        <h3>To: {challenge.challengedName}</h3>
+                        <span className={`status-badge ${getStatusColor(challenge.status)}`}>
+                          {challenge.status}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {challenge.challengeName && (
+                        <p className="challenge-name">📌 {challenge.challengeName}</p>
+                      )}
+                      {challenge.message && (
+                        <p className="challenge-message">"{challenge.message}"</p>
+                      )}
+                      <p className="challenge-date">
+                        Sent: {new Date(challenge.createdAt).toLocaleString()}
+                      </p>
+                      {challenge.status === 'ACCEPTED' && challenge.matchId && (
+                        <button 
+                          className="match-link-btn"
+                          onClick={() => navigate(`/submit-match?matchId=${challenge.matchId}`)}
+                        >
+                          📝 Submit Match Result
+                        </button>
+                      )}
+                      {challenge.status === 'PENDING' && (
+                        <div className="challenge-actions">
+                          <button 
+                            className="cancel-btn"
+                            onClick={() => handleCancelChallenge(challenge.challengeId)}
+                          >
+                            Cancel Challenge
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Pagination
+                  currentPage={outgoingPage}
+                  totalItems={outgoingChallenges.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setOutgoingPage}
+                />
+              </>
             )}
           </div>
         )}

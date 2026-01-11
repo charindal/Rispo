@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import matchService from '../services/matchService';
+import Pagination from '../components/Pagination';
 import '../styles/MatchReviewPage.css';
 
 const MatchReviewPage = () => {
@@ -12,6 +13,8 @@ const MatchReviewPage = () => {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,6 +63,11 @@ const MatchReviewPage = () => {
 
   if (loading) return <div className="loading-screen">Loading matches...</div>;
 
+  // Pagination logic
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedMatches = matches.slice(startIndex, endIndex);
+
   return (
     <div className="match-review-page">
       <nav className="review-navbar">
@@ -76,21 +84,29 @@ const MatchReviewPage = () => {
             {matches.length === 0 ? (
               <p className="no-matches">No pending matches</p>
             ) : (
-              matches.map(match => (
-                <div
-                  key={match.matchId}
-                  className={`match-item ${selectedMatch?.matchId === match.matchId ? 'selected' : ''}`}
-                  onClick={() => setSelectedMatch(match)}
-                >
-                  <div className="match-players">
-                    <strong>{match.player1.name}</strong> vs <strong>{match.player2.name}</strong>
+              <>
+                {paginatedMatches.map(match => (
+                  <div
+                    key={match.matchId}
+                    className={`match-item ${selectedMatch?.matchId === match.matchId ? 'selected' : ''}`}
+                    onClick={() => setSelectedMatch(match)}
+                  >
+                    <div className="match-players">
+                      <strong>{match.player1.name}</strong> vs <strong>{match.player2.name}</strong>
+                    </div>
+                    <div className="match-info">
+                      <span>{match.games.length} games</span>
+                      <span>{new Date(match.submittedAt).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                  <div className="match-info">
-                    <span>{match.games.length} games</span>
-                    <span>{new Date(match.submittedAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              ))
+                ))}
+                <Pagination
+                  currentPage={currentPage}
+                  totalItems={matches.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </>
             )}
           </div>
 

@@ -9,8 +9,8 @@ COPY rispo-app/package.json rispo-app/package-lock.json ./
 
 # Install ALL dependencies (including devDependencies needed for build)
 # Using npm ci for reproducible builds from package-lock.json
-RUN npm ci && \
-    npm cache clean --force
+# Using cache mount to persist npm cache across builds
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 # Copy React app source (excluding node_modules via .dockerignore)
 COPY rispo-app/ ./
@@ -31,13 +31,15 @@ COPY mvnw.cmd .
 COPY .mvn .mvn
 
 # Download dependencies (this layer will be cached if pom.xml doesn't change)
-RUN mvn dependency:go-offline -B
+# Using cache mount to persist Maven dependencies across builds
+RUN --mount=type=cache,target=/root/.m2 mvn dependency:go-offline -B
 
 # Copy application source
 COPY src ./src
 
 # Build the application JAR (skip tests for faster builds)
-RUN mvn clean package -DskipTests -B
+# Using cache mount to reuse downloaded dependencies
+RUN --mount=type=cache,target=/root/.m2 mvn clean package -DskipTests -B
 
 # =========================
 # Stage 3: Runtime

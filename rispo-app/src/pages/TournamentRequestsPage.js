@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import tournamentService from '../services/tournamentService';
 import authService from '../services/authService';
+import Pagination from '../components/Pagination';
 
 const TournamentRequestsPage = () => {
     const { tournamentId } = useParams();
@@ -12,6 +13,9 @@ const TournamentRequestsPage = () => {
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
+    const [requestsPage, setRequestsPage] = useState(1);
+    const [playersPage, setPlayersPage] = useState(1);
+    const itemsPerPage = 20;
 
     const currentUser = authService.getCurrentUser();
     const userId = currentUser?.userId;
@@ -99,6 +103,16 @@ const TournamentRequestsPage = () => {
     if (loading) {
         return <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>;
     }
+
+    // Pagination helper
+    const getPaginatedItems = (items, page) => {
+        const startIndex = (page - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return items.slice(startIndex, endIndex);
+    };
+
+    const paginatedRequests = getPaginatedItems(pendingRequests, requestsPage);
+    const paginatedPlayers = getPaginatedItems(allPlayers, playersPage);
 
     return (
         <div style={{ padding: '0', maxWidth: '100%', margin: '0' }}>
@@ -192,17 +206,18 @@ const TournamentRequestsPage = () => {
                 {pendingRequests.length === 0 ? (
                     <p style={{ color: '#6c757d' }}>No pending requests.</p>
                 ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
-                        <thead>
-                            <tr style={{ backgroundColor: '#f8f9fa' }}>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Player</th>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Rating</th>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Requested At</th>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {pendingRequests.map(request => (
+                    <>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+                            <thead>
+                                <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Player</th>
+                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Rating</th>
+                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Requested At</th>
+                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginatedRequests.map(request => (
                                 <tr key={request.playerId}>
                                     <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>
                                         <div><strong>{request.playerName}</strong></div>
@@ -248,6 +263,13 @@ const TournamentRequestsPage = () => {
                             ))}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={requestsPage}
+                        totalItems={pendingRequests.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setRequestsPage}
+                    />
+                    </>
                 )}
             </div>
 
@@ -256,19 +278,20 @@ const TournamentRequestsPage = () => {
                 {allPlayers.length === 0 ? (
                     <p style={{ color: '#6c757d' }}>No participants yet.</p>
                 ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
-                        <thead>
-                            <tr style={{ backgroundColor: '#f8f9fa' }}>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Player</th>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Rating</th>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Status</th>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Requested At</th>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Responded At</th>
-                                <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Responded By</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {allPlayers.map(player => (
+                    <>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+                            <thead>
+                                <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Player</th>
+                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Rating</th>
+                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Status</th>
+                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Requested At</th>
+                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Responded At</th>
+                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'left' }}>Responded By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginatedPlayers.map(player => (
                                 <tr key={player.playerId}>
                                     <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>
                                         <div><strong>{player.playerName}</strong></div>
@@ -293,6 +316,13 @@ const TournamentRequestsPage = () => {
                             ))}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={playersPage}
+                        totalItems={allPlayers.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setPlayersPage}
+                    />
+                    </>
                 )}
             </div>
             </div>

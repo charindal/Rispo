@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import playerService from '../services/playerService';
 import authService from '../services/authService';
 import AdPanel from '../components/AdPanel';
+import Pagination from '../components/Pagination';
 import '../styles/RankingsPage.css';
 
 const RankingsPage = () => {
@@ -14,6 +15,9 @@ const RankingsPage = () => {
     const [loading, setLoading] = useState(true);
     const [searching, setSearching] = useState(false);
     const [error, setError] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [searchPage, setSearchPage] = useState(1);
+    const itemsPerPage = 20;
     
     const [currentUser] = useState(() => authService.getCurrentUser());
 
@@ -22,18 +26,18 @@ const RankingsPage = () => {
             setLoading(true);
             setError('');
             
-            // Load top 10 rankings
+            // Load top 100 rankings for pagination
             const rankings = await playerService.getTop10Rankings();
             setTopRankings(rankings);
             
-            // Load current user's ranking if not in top 10
+            // Load current user's ranking if not in top rankings
             if (currentUser?.playerId) {
                 try {
                     const userRanking = await playerService.getPlayerRanking(currentUser.playerId);
                     
-                    // Only show current user separately if not in top 10
-                    const isInTop10 = rankings.some(r => r.id === currentUser.playerId);
-                    if (!isInTop10) {
+                    // Only show current user separately if not in displayed rankings
+                    const isInRankings = rankings.some(r => r.id === currentUser.playerId);
+                    if (!isInRankings) {
                         setCurrentUserRanking(userRanking);
                     }
                 } catch (err) {
@@ -63,6 +67,7 @@ const RankingsPage = () => {
         
         if (!searchTerm.trim()) {
             setSearchResults([]);
+            setSearchPage(1);
             return;
         }
         
@@ -70,6 +75,7 @@ const RankingsPage = () => {
             setSearching(true);
             const results = await playerService.searchPlayerRankings(searchTerm);
             setSearchResults(results);
+            setSearchPage(1);
         } catch (err) {
             console.error('Search error:', err);
             setSearchResults([]);
@@ -81,6 +87,7 @@ const RankingsPage = () => {
     const clearSearch = () => {
         setSearchTerm('');
         setSearchResults([]);
+        setSearchPage(1);
     };
 
     const handleLogout = () => {
@@ -126,6 +133,16 @@ const RankingsPage = () => {
         return <div className="rankings-page"><p>Loading rankings...</p></div>;
     }
 
+    // Pagination logic
+    const getPaginatedItems = (items, page) => {
+        const startIndex = (page - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return items.slice(startIndex, endIndex);
+    };
+
+    const paginatedTopRankings = getPaginatedItems(topRankings, currentPage);
+    const paginatedSearchResults = getPaginatedItems(searchResults, searchPage);
+
     return (
         <div className="rankings-page">
             <div className="nav-header">
@@ -165,7 +182,7 @@ const RankingsPage = () => {
             {/* Search Results */}
             {searchResults.length > 0 && (
                 <div className="rankings-container search-results">
-                    <h3>Search Results</h3>
+                    <h3>Search Results ({searchResults.length})</h3>
                     <div className="table-wrapper">
                         <table className="rankings-table">
                             <thead>
@@ -181,16 +198,22 @@ const RankingsPage = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {searchResults.map(ranking => renderRankingRow(ranking, ranking.id === currentUser?.playerId))}
+                                {paginatedSearchResults.map(ranking => renderRankingRow(ranking, ranking.id === currentUser?.playerId))}
                             </tbody>
                         </table>
                     </div>
+                    <Pagination
+                        currentPage={searchPage}
+                        totalItems={searchResults.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setSearchPage}
+                    />
                 </div>
             )}
 
-            {/* Top 10 Rankings */}
+            {/* Top Rankings */}
             <div className="rankings-container">
-                <h3>🏆 Top 10 Players</h3>
+                <h3>🏆 Top Players</h3>
                 <div className="table-wrapper">
                     <table className="rankings-table">
                         <thead>
@@ -206,10 +229,16 @@ const RankingsPage = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {topRankings.map(ranking => renderRankingRow(ranking, ranking.id === currentUser?.playerId))}
+                            {paginatedTopRankings.map(ranking => renderRankingRow(ranking, ranking.id === currentUser?.playerId))}
                         </tbody>
                     </table>
                 </div>
+                <Pagination
+                    currentPage={currentPage}
+                    totalItems={topRankings.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                />
             </div>
 
             {/* Current User Ranking (if not in top 10) */}

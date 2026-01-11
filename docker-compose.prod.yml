@@ -1,0 +1,335 @@
+version: "3.9"
+
+services:
+  # ========================
+  # Traefik Reverse Proxy
+  # ========================
+  traefik:
+    image: traefik:v2.11
+    container_name: rispo-traefik
+    command:
+      # API and Dashboard
+      - "--api.dashboard=true"
+      - "--api.insecure=false"
+      
+      # Providers
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=rispo-net"
+      
+      # Entry Points
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      
+      # HTTP to HTTPS redirect
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      
+      # Let's Encrypt / ACME
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      # Uncomment for staging (to avoid rate limits during testing)
+      # - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      
+      # Logs
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      
+      # Metrics (optional - for monitoring)
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.buckets=0.1,0.3,1.2,5.0"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8081:8080" # Traefik dashboard (protect this in production!)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/letsencrypt:/letsencrypt
+      - ./traefik/logs:/logs
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    labels:
+      # Dashboard
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
+      # Dashboard authentication (change credentials!)
+      - "traefik.http.routers.traefik-dashboard.middlewares=dashboard-auth"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"
+
+  # ========================
+  # Database
+  # ========================
+  db:
+    image: postgres:17
+    container_name: rispo-db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Backup location
+      - ./backups:/backups
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========================
+  # Redis Cache
+  # ========================
+  redis:
+    image: redis:7-alpine
+    container_name: rispo-redis
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ========================
+  # RabbitMQ Message Queue
+  # ========================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rispo-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      # RabbitMQ Management UI
+      - "traefik.enable=true"
+      - "traefik.http.routers.rabbitmq.rule=Host(`rabbitmq.${DOMAIN}`)"
+      - "traefik.http.routers.rabbitmq.entrypoints=websecure"
+      - "traefik.http.routers.rabbitmq.tls.certresolver=letsencrypt"
+      - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
+
+  # ========================
+  # Rispo Application (Load Balanced)
+  # ========================
+  # Instance 1
+  app-1:
+    image: ${DOCKER_IMAGE}:${IMAGE_TAG:-latest}
+    container_name: rispo-app-1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+      MANAGEMENT_OTLP_METRICS_EXPORT_URL: http://otel-collector:4318/v1/metrics
+      # JWT and Security
+      JWT_SECRET: ${JWT_SECRET}
+      INSTANCE_ID: "app-1"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      # Main application routing
+      - "traefik.http.routers.rispo-app.rule=Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)"
+      - "traefik.http.routers.rispo-app.entrypoints=websecure"
+      - "traefik.http.routers.rispo-app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.rispo-app.loadbalancer.server.port=8080"
+      # Sticky sessions for WebSocket/Session support
+      - "traefik.http.services.rispo-app.loadbalancer.sticky.cookie=true"
+      - "traefik.http.services.rispo-app.loadbalancer.sticky.cookie.name=rispo_session"
+      # Health check
+      - "traefik.http.services.rispo-app.loadbalancer.healthcheck.path=/actuator/health"
+      - "traefik.http.services.rispo-app.loadbalancer.healthcheck.interval=10s"
+      # Security Headers
+      - "traefik.http.middlewares.security-headers.headers.framedeny=true"
+      - "traefik.http.middlewares.security-headers.headers.sslredirect=true"
+      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.routers.rispo-app.middlewares=security-headers"
+
+  # Instance 2 (for load balancing)
+  app-2:
+    image: ${DOCKER_IMAGE}:${IMAGE_TAG:-latest}
+    container_name: rispo-app-2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+      MANAGEMENT_OTLP_METRICS_EXPORT_URL: http://otel-collector:4318/v1/metrics
+      JWT_SECRET: ${JWT_SECRET}
+      INSTANCE_ID: "app-2"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rispo-app.rule=Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)"
+      - "traefik.http.services.rispo-app.loadbalancer.server.port=8080"
+
+  # ========================
+  # Observability Stack
+  # ========================
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: rispo-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./telemetry/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    networks:
+      - rispo-net
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rispo-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - ./telemetry/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - prometheus-data:/prometheus
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.${DOMAIN}`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      # Add basic auth for security
+      - "traefik.http.routers.prometheus.middlewares=metrics-auth"
+      - "traefik.http.middlewares.metrics-auth.basicauth.users=${METRICS_AUTH}"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rispo-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: https://grafana.${DOMAIN}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./telemetry/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  # ========================
+  # Backup Service (Optional)
+  # ========================
+  backup:
+    image: postgres:17
+    container_name: rispo-backup
+    depends_on:
+      - db
+    environment:
+      PGHOST: db
+      PGDATABASE: ${DB_NAME}
+      PGUSER: ${DB_USER}
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./backups:/backups
+      - ./scripts:/scripts:ro
+    networks:
+      - rispo-net
+    entrypoint: /scripts/backup.sh
+    restart: "no"
+    profiles:
+      - backup
+
+# ========================
+# Shared Resources
+# ========================
+volumes:
+  db-data:
+  redis-data:
+  rabbitmq-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  rispo-net:
+    name: rispo-net
+    driver: bridge

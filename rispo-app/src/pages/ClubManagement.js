@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import clubService from '../services/clubService';
+import Pagination from '../components/Pagination';
 import '../styles/ClubManagement.css';
 
 function ClubManagement() {
@@ -12,6 +13,12 @@ function ClubManagement() {
   const [tokens, setTokens] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Pagination states
+  const [clubsPage, setClubsPage] = useState(1);
+  const [tokensPage, setTokensPage] = useState(1);
+  const [requestsPage, setRequestsPage] = useState(1);
+  const itemsPerPage = 20;
   
   // Form states
   const [showCreateClubForm, setShowCreateClubForm] = useState(false);
@@ -207,6 +214,17 @@ function ClubManagement() {
     return <div className="loading-screen">Loading...</div>;
   }
 
+  // Pagination helper
+  const getPaginatedItems = (items, page) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return items.slice(startIndex, endIndex);
+  };
+
+  const paginatedClubs = getPaginatedItems(clubs, clubsPage);
+  const paginatedTokens = getPaginatedItems(tokens, tokensPage);
+  const paginatedRequests = getPaginatedItems(joinRequests, requestsPage);
+
   return (
     <div className="club-management">
       <nav className="management-navbar">
@@ -343,7 +361,7 @@ function ClubManagement() {
             )}
 
             <div className="clubs-grid">
-              {clubs.map(club => (
+              {paginatedClubs.map(club => (
                 <div key={club.clubId} className="club-card">
                   <div className="club-header">
                     <h3>{club.name}</h3>
@@ -396,6 +414,12 @@ function ClubManagement() {
                 </div>
               ))}
             </div>
+            <Pagination
+              currentPage={clubsPage}
+              totalItems={clubs.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setClubsPage}
+            />
           </div>
         )}
 
@@ -467,7 +491,7 @@ function ClubManagement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tokens.map(token => (
+                  {paginatedTokens.map(token => (
                     <tr key={token.tokenId}>
                       <td><code>{token.token.substring(0, 20)}...</code></td>
                       <td>{token.clubName}</td>
@@ -488,6 +512,12 @@ function ClubManagement() {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              currentPage={tokensPage}
+              totalItems={tokens.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setTokensPage}
+            />
           </div>
         )}
 
@@ -510,7 +540,7 @@ function ClubManagement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {joinRequests.map(request => (
+                  {paginatedRequests.map(request => (
                     <tr key={request.requestId}>
                       <td><strong>{request.playerName}</strong></td>
                       <td>
@@ -565,6 +595,12 @@ function ClubManagement() {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              currentPage={requestsPage}
+              totalItems={joinRequests.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setRequestsPage}
+            />
           </div>
         )}
       </div>

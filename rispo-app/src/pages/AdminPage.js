@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import authService from '../services/authService';
+import Pagination from '../components/Pagination';
 import '../styles/AdminPage.css';
 
 const AdminPage = () => {
@@ -10,6 +11,8 @@ const AdminPage = () => {
   const [filter, setFilter] = useState('unverified'); // 'all' or 'unverified'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   const currentUser = authService.getCurrentUser();
 
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
@@ -23,6 +26,7 @@ const AdminPage = () => {
         : `${API_BASE_URL}/players`;
       const response = await axios.get(endpoint);
       setPlayers(response.data);
+      setCurrentPage(1);
     } catch (err) {
       setError('Failed to fetch players');
     } finally {
@@ -92,6 +96,11 @@ const AdminPage = () => {
     );
   }
 
+  // Pagination logic
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedPlayers = players.slice(startIndex, endIndex);
+
   return (
     <div className="admin-container">
       <div className="admin-header">
@@ -132,68 +141,76 @@ const AdminPage = () => {
       {loading ? (
         <div className="loading">Loading players...</div>
       ) : (
-        <div className="players-table-container">
-          <table className="players-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Rating</th>
-                <th>Matches</th>
-                <th>W/L/D</th>
-                <th>Status</th>
-                <th>Verified By</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {players.length === 0 ? (
+        <>
+          <div className="players-table-container">
+            <table className="players-table">
+              <thead>
                 <tr>
-                  <td colSpan="10" style={{textAlign: 'center', padding: '40px'}}>
-                    No players found
-                  </td>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Rating</th>
+                  <th>Matches</th>
+                  <th>W/L/D</th>
+                  <th>Status</th>
+                  <th>Verified By</th>
+                  <th>Actions</th>
                 </tr>
-              ) : (
-                players.map(player => (
-                  <tr key={player.id}>
-                    <td>{player.id}</td>
-                    <td><strong>{player.name}</strong></td>
-                    <td>{player.email || '-'}</td>
-                    <td>{player.phone || '-'}</td>
-                    <td><span className="rating-badge">{player.rating}</span></td>
-                    <td>{player.matchesPlayed}</td>
-                    <td>{player.wins}/{player.losses}/{player.draws}</td>
-                    <td>
-                      <span className={`status-badge ${player.isVerified ? 'verified' : 'unverified'}`}>
-                        {player.isVerified ? '✓ Verified' : '⚠ Unverified'}
-                      </span>
-                    </td>
-                    <td>{player.verifiedBy || '-'}</td>
-                    <td>
-                      {player.isVerified ? (
-                        <button 
-                          className="action-button unverify"
-                          onClick={() => handleUnverify(player.id)}
-                        >
-                          Unverify
-                        </button>
-                      ) : (
-                        <button 
-                          className="action-button verify"
-                          onClick={() => handleVerify(player.id)}
-                        >
-                          Verify
-                        </button>
-                      )}
+              </thead>
+              <tbody>
+                {players.length === 0 ? (
+                  <tr>
+                    <td colSpan="10" style={{textAlign: 'center', padding: '40px'}}>
+                      No players found
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  paginatedPlayers.map(player => (
+                    <tr key={player.id}>
+                      <td>{player.id}</td>
+                      <td><strong>{player.name}</strong></td>
+                      <td>{player.email || '-'}</td>
+                      <td>{player.phone || '-'}</td>
+                      <td><span className="rating-badge">{player.rating}</span></td>
+                      <td>{player.matchesPlayed}</td>
+                      <td>{player.wins}/{player.losses}/{player.draws}</td>
+                      <td>
+                        <span className={`status-badge ${player.isVerified ? 'verified' : 'unverified'}`}>
+                          {player.isVerified ? '✓ Verified' : '⚠ Unverified'}
+                        </span>
+                      </td>
+                      <td>{player.verifiedBy || '-'}</td>
+                      <td>
+                        {player.isVerified ? (
+                          <button 
+                            className="action-button unverify"
+                            onClick={() => handleUnverify(player.id)}
+                          >
+                            Unverify
+                          </button>
+                        ) : (
+                          <button 
+                            className="action-button verify"
+                            onClick={() => handleVerify(player.id)}
+                          >
+                            Verify
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={players.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
+        </>
       )}
     </div>
   );

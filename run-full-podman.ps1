@@ -42,6 +42,7 @@ Write-Host "Stopping any existing containers..." -ForegroundColor Yellow
 
 Write-Host ""
 Write-Host "Building application..." -ForegroundColor Cyan
+$env:BUILDAH_FORMAT = "docker"
 & $podmanPath compose -f docker-compose.yml build
 
 if ($LASTEXITCODE -ne 0) {
