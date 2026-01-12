@@ -1,0 +1,179 @@
+version: "3.9"
+
+services:
+  # ========================
+  # Traefik Reverse Proxy (HTTP only - no SSL)
+  # ========================
+  traefik:
+    image: traefik:v2.11
+    container_name: rispo-traefik
+    command:
+      # API and Dashboard
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      
+      # Providers
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=rispo-net"
+      
+      # Entry Points (HTTP only for testing)
+      - "--entrypoints.web.address=:80"
+      
+      # Logs
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      
+      # Metrics
+      - "--metrics.prometheus=true"
+    ports:
+      - "80:80"
+      - "8080:8080" # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - rispo-net
+    restart: unless-stopped
+
+  # ========================
+  # Database
+  # ========================
+  db:
+    image: postgres:17
+    container_name: rispo-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-rispo}
+      POSTGRES_USER: ${DB_USER:-rispo_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-RispoTest123}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-rispo_admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========================
+  # Redis Cache
+  # ========================
+  redis:
+    image: redis:7-alpine
+    container_name: rispo-redis
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ========================
+  # RabbitMQ Message Queue
+  # ========================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rispo-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-rispo_admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-RispoTest123}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rabbitmq.rule=PathPrefix(`/rabbitmq`)"
+      - "traefik.http.routers.rabbitmq.entrypoints=web"
+      - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
+
+  # ========================
+  # Rispo Application
+  # ========================
+  app:
+    image: ${DOCKER_IMAGE:-rispo-local}:${IMAGE_TAG:-latest}
+    container_name: rispo-app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:-rispo}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-rispo_admin}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-RispoTest123}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-rispo_admin}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-RispoTest123}
+      JWT_SECRET: ${JWT_SECRET:-test_jwt_secret_key_for_testing_only_change_in_production_12345678}
+      INSTANCE_ID: "app-main"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rispo-app.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.rispo-app.entrypoints=web"
+      - "traefik.http.services.rispo-app.loadbalancer.server.port=8080"
+
+  # ========================
+  # Grafana for Monitoring (optional)
+  # ========================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rispo-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=PathPrefix(`/grafana`)"
+      - "traefik.http.routers.grafana.entrypoints=web"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+# ========================
+# Shared Resources
+# ========================
+volumes:
+  db-data:
+  redis-data:
+  rabbitmq-data:
+  grafana-data:
+
+networks:
+  rispo-net:
+    name: rispo-net
+    driver: bridge
