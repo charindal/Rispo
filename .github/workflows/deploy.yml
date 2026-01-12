@@ -140,8 +140,9 @@ jobs:
               echo "⚠️ Warning: Health check timeout, but continuing..."
             fi
             
-            # Clean up old containers
-            docker compose -f docker-compose.test.yml down --remove-orphans || true
+            # Remove only dangling/orphaned containers (not running ones)
+            echo "🧹 Cleaning up orphaned containers..."
+            docker container prune -f || true
             
             echo "✅ TEST deployment completed!"
             docker compose -f docker-compose.test.yml ps
