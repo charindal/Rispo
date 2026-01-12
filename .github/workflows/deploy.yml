@@ -86,13 +86,12 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           IMAGE_TAG: ${{ github.sha }}
-          REPO_LOWER: ${{ needs.build.outputs.image-name-lower }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
-          envs: IMAGE_TAG,REPO_LOWER
+          envs: IMAGE_TAG
           script: |
             set -e
             
@@ -109,14 +108,14 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             echo "🐳 Pulling Docker image..."
-            docker pull ghcr.io/${REPO_LOWER}:development || \
-            docker pull ghcr.io/${REPO_LOWER}:latest
+            docker pull ghcr.io/charindal/rispo:development || \
+            docker pull ghcr.io/charindal/rispo:latest
             
             echo "🛑 Stopping old container..."
             docker compose -f docker-compose.test.yml down app || true
             
             echo "🔄 Starting new container..."
-            export DOCKER_IMAGE=ghcr.io/${REPO_LOWER}
+            export DOCKER_IMAGE=ghcr.io/charindal/rispo
             export IMAGE_TAG=development
             docker compose -f docker-compose.test.yml up -d --force-recreate app
             
@@ -163,13 +162,12 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           IMAGE_TAG: ${{ github.sha }}
-          REPO_LOWER: ${{ needs.build.outputs.image-name-lower }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
-          envs: IMAGE_TAG,REPO_LOWER
+          envs: IMAGE_TAG
           script: |
             set -e
             
@@ -188,7 +186,7 @@ jobs:
             
             # Pull latest Docker image
             echo "🐳 Pulling Docker image..."
-            docker pull ghcr.io/${REPO_LOWER}:latest
+            docker pull ghcr.io/charindal/rispo:latest
             
             # Update environment file with new image tag
             sed -i "s/IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env.prod
