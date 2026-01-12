@@ -212,9 +212,7 @@ jobs:
   backup:
     name: Backup Database
     runs-on: ubuntu-latest
-    needs: deploy-prodDatabase
-    runs-on: ubuntu-latest
-    needs: deploy
+    needs: deploy-prod
     if: success()
     
     steps:
@@ -228,4 +226,5 @@ jobs:
           script: |
             cd /opt/rispo
             ./scripts/backup.sh
+            echo "✅ Backup completed!"
             echo "✅ Backup completed!"
