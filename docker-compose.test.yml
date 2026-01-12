@@ -110,6 +110,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:-rispo}
@@ -122,6 +124,8 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+      MANAGEMENT_OTLP_METRICS_EXPORT_URL: http://otel-collector:4318/v1/metrics
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-rispo_admin}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-RispoTest123}
       JWT_SECRET: ${JWT_SECRET:-test_jwt_secret_key_for_testing_only_change_in_production_12345678}
@@ -142,8 +146,61 @@ services:
       - "traefik.http.services.rispo-app.loadbalancer.server.port=8080"
 
   # ========================
-  # Grafana for Monitoring (optional)
+  # Observability Stack
   # ========================
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: rispo-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./telemetry/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    networks:
+      - rispo-net
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rispo-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - ./telemetry/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - prometheus-data:/prometheus
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=PathPrefix(`/prometheus`)"
+      - "traefik.http.routers.prometheus.entrypoints=web"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: rispo-tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./telemetry/tempo.yaml:/etc/tempo.yaml
+      - tempo-data:/tmp/tempo
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    user: root
+
+  loki:
+    image: grafana/loki:latest
+    container_name: rispo-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    user: root
+
   grafana:
     image: grafana/grafana:latest
     container_name: rispo-grafana
@@ -153,6 +210,7 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./telemetry/grafana/provisioning:/etc/grafana/provisioning
     networks:
       - rispo-net
     restart: unless-stopped
@@ -162,6 +220,28 @@ services:
       - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: rispo-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://rispo_admin:RispoTest123@db:5432/rispo?sslmode=disable"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    depends_on:
+      - db
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: rispo-redis-exporter
+    environment:
+      REDIS_ADDR: "redis:6379"
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    depends_on:
+      - redis
+
 # ========================
 # Shared Resources
 # ========================
@@ -170,6 +250,9 @@ volumes:
   redis-data:
   rabbitmq-data:
   grafana-data:
+  prometheus-data:
+  tempo-data:
+  loki-data:
 
 networks:
   rispo-net:
