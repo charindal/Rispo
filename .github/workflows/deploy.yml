@@ -76,28 +76,46 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to Production VPS via SSH
+      - name: Deploy to Test VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
           IMAGE_TAG: ${{ github.sha }}
         with:
-          host: ${{ secrets.VPS_PROD_HOST || secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_PROD_USERNAME || secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_PROD_SSH_KEY || secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PROD_PORT || secrets.VPS_PORT || 22 }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
           envs: IMAGE_TAG
           script: |
             set -e
             
-            echo "🚀 Starting PRODUCTION deployment..."
+            echo "🚀 Starting TEST deployment from development branch..."
             
-            # Navigate to application directory
             cd /opt/rispo || { echo "❌ Directory /opt/rispo not found"; exit 1; }
             
-            # Pull latest changes
-            echo "📥 Pulling latest code from main..."
+            echo "📥 Pulling latest code from development..."
             git fetch origin
-            git checkout main
+            git checkout development
+            git pull origin development
+            
+            echo "🔐 Logging in to GitHub Container Registry..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            echo "🐳 Pulling Docker image..."
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:development || \
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            
+            echo "🛑 Stopping old container..."
+            docker compose -f docker-compose.test.yml down app || true
+            
+            echo "🔄 Starting new container..."
+            docker compose -f docker-compose.test.yml up -d --force-recreate app
+            
+            echo "⏳ Waiting for health checks..."
+            sleep 15
+            
+            echo "✅ TEST deployment completed!"
+            docker compose -f docker-compose.test.yml ps
             git pull origin development
             
             echo "🔐 Logging in to GitHub Container Registry..."

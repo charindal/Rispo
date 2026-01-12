@@ -91,6 +91,21 @@ babel.cache.json
 .env.development.local
 .env.test.local
 .env.production.local
+.env.prod
+
+# SSH Keys (NEVER commit these!)
+vps-key
+vps-key.pub
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Docker image archives
+*.tar.gz
+rispo-image.tar.gz
 
 # OS files
 .DS_Store
