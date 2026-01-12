@@ -96,9 +96,6 @@ services:
       - "traefik.http.routers.rabbitmq.rule=PathPrefix(`/rabbitmq`)"
       - "traefik.http.routers.rabbitmq.entrypoints=web"
       - "traefik.http.routers.rabbitmq.priority=100"
-      - "traefik.http.routers.rabbitmq.middlewares=rabbitmq-strip"
-      - "traefik.http.middlewares.rabbitmq-strip.stripprefix.prefixes=/rabbitmq"
-      - "traefik.http.middlewares.rabbitmq-strip.stripprefix.forceSlash=false"
       - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
 
   # ========================
@@ -174,7 +171,7 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.external-url=http://135.125.133.211/prometheus'
+      - '--web.external-url=http://135.125.133.211/prometheus/'
       - '--web.route-prefix=/'
     volumes:
       - ./telemetry/prometheus.yaml:/etc/prometheus/prometheus.yaml
@@ -187,9 +184,6 @@ services:
       - "traefik.http.routers.prometheus.rule=PathPrefix(`/prometheus`)"
       - "traefik.http.routers.prometheus.entrypoints=web"
       - "traefik.http.routers.prometheus.priority=100"
-      - "traefik.http.routers.prometheus.middlewares=prometheus-strip"
-      - "traefik.http.middlewares.prometheus-strip.stripprefix.prefixes=/prometheus"
-      - "traefik.http.middlewares.prometheus-strip.stripprefix.forceSlash=false"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
 
   tempo:
@@ -222,6 +216,8 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "http://135.125.133.211/grafana"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./telemetry/grafana/provisioning:/etc/grafana/provisioning
@@ -233,9 +229,6 @@ services:
       - "traefik.http.routers.grafana.rule=PathPrefix(`/grafana`)"
       - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.routers.grafana.priority=100"
-      - "traefik.http.routers.grafana.middlewares=grafana-strip"
-      - "traefik.http.middlewares.grafana-strip.stripprefix.prefixes=/grafana"
-      - "traefik.http.middlewares.grafana-strip.stripprefix.forceSlash=false"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
   postgres-exporter:
