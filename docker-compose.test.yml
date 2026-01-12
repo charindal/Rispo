@@ -95,6 +95,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.rabbitmq.rule=PathPrefix(`/rabbitmq`)"
       - "traefik.http.routers.rabbitmq.entrypoints=web"
+      - "traefik.http.routers.rabbitmq.priority=100"
       - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
 
   # ========================
@@ -143,6 +144,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.rispo-app.rule=PathPrefix(`/`)"
       - "traefik.http.routers.rispo-app.entrypoints=web"
+      - "traefik.http.routers.rispo-app.priority=1"
       - "traefik.http.services.rispo-app.loadbalancer.server.port=8080"
       # Health check for load balancer
       - "traefik.http.services.rispo-app.loadbalancer.healthcheck.path=/actuator/health"
@@ -169,6 +171,8 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.external-url=/prometheus'
+      - '--web.route-prefix=/'
     volumes:
       - ./telemetry/prometheus.yaml:/etc/prometheus/prometheus.yaml
       - prometheus-data:/prometheus
@@ -179,6 +183,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.prometheus.rule=PathPrefix(`/prometheus`)"
       - "traefik.http.routers.prometheus.entrypoints=web"
+      - "traefik.http.routers.prometheus.priority=100"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
 
   tempo:
@@ -211,6 +216,8 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://%(domain)s/grafana
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./telemetry/grafana/provisioning:/etc/grafana/provisioning
@@ -221,6 +228,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.grafana.rule=PathPrefix(`/grafana`)"
       - "traefik.http.routers.grafana.entrypoints=web"
+      - "traefik.http.routers.grafana.priority=100"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
   postgres-exporter:

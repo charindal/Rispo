@@ -36,7 +36,7 @@ function AdminDashboard() {
   const loadDashboardData = async () => {
     try {
       // Fetch all players
-      const response = await fetch('http://localhost:8080/api/players');
+      const response = await fetch('/api/players');
       const players = await response.json();
 
       // Calculate stats
