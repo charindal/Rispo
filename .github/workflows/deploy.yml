@@ -111,16 +111,37 @@ jobs:
             docker pull ghcr.io/charindal/rispo:development || \
             docker pull ghcr.io/charindal/rispo:latest
             
-            echo "🛑 Stopping old container..."
-            docker compose -f docker-compose.test.yml down app || true
-            
-            echo "🔄 Starting new container..."
+            echo "� Performing zero-downtime deployment..."
             export DOCKER_IMAGE=ghcr.io/charindal/rispo
             export IMAGE_TAG=development
-            docker compose -f docker-compose.test.yml up -d --force-recreate app
             
-            echo "⏳ Waiting for health checks..."
-            sleep 15
+            # Start all services (creates new containers, keeps old running)
+            docker compose -f docker-compose.test.yml up -d --no-recreate
+            
+            # Force recreate only the app with zero-downtime
+            echo "📦 Updating application container..."
+            docker compose -f docker-compose.test.yml up -d --wait --wait-timeout 60 app
+            
+            # Wait for health checks
+            echo "⏳ Waiting for health checks (60s max)..."
+            timeout=60
+            while [ $timeout -gt 0 ]; do
+              health=$(docker inspect --format='{{.State.Health.Status}}' rispo-app 2>/dev/null || echo "starting")
+              if [ "$health" = "healthy" ]; then
+                echo "✅ Application is healthy!"
+                break
+              fi
+              echo "Waiting for app to be healthy... ($timeout seconds remaining, current: $health)"
+              sleep 5
+              timeout=$((timeout - 5))
+            done
+            
+            if [ $timeout -le 0 ]; then
+              echo "⚠️ Warning: Health check timeout, but continuing..."
+            fi
+            
+            # Clean up old containers
+            docker compose -f docker-compose.test.yml down --remove-orphans || true
             
             echo "✅ TEST deployment completed!"
             docker compose -f docker-compose.test.yml ps

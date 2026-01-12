@@ -144,6 +144,9 @@ services:
       - "traefik.http.routers.rispo-app.rule=PathPrefix(`/`)"
       - "traefik.http.routers.rispo-app.entrypoints=web"
       - "traefik.http.services.rispo-app.loadbalancer.server.port=8080"
+      # Health check for load balancer
+      - "traefik.http.services.rispo-app.loadbalancer.healthcheck.path=/actuator/health"
+      - "traefik.http.services.rispo-app.loadbalancer.healthcheck.interval=10s"
 
   # ========================
   # Observability Stack
