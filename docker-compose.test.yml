@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ========================
   # Traefik Reverse Proxy (HTTP only - no SSL)
@@ -103,7 +101,7 @@ services:
   # Rispo Application
   # ========================
   app:
-    image: ${DOCKER_IMAGE:-rispo-local}:${IMAGE_TAG:-latest}
+    image: ${DOCKER_IMAGE:-ghcr.io/charindal/rispo}:${IMAGE_TAG:-development}
     container_name: rispo-app
     depends_on:
       db:

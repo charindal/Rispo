@@ -116,6 +116,8 @@ jobs:
             docker compose -f docker-compose.test.yml down app || true
             
             echo "🔄 Starting new container..."
+            export DOCKER_IMAGE=ghcr.io/${REPO_LOWER}
+            export IMAGE_TAG=development
             docker compose -f docker-compose.test.yml up -d --force-recreate app
             
             echo "⏳ Waiting for health checks..."
