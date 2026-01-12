@@ -124,26 +124,6 @@ jobs:
             
             echo "✅ TEST deployment completed!"
             docker compose -f docker-compose.test.yml ps
-            git pull origin development
-            
-            echo "🔐 Logging in to GitHub Container Registry..."
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            echo "🐳 Pulling Docker image..."
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:development || \
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            
-            echo "🛑 Stopping old container..."
-            docker compose -f docker-compose.test.yml down app || true
-            
-            echo "🔄 Starting new container..."
-            docker compose -f docker-compose.test.yml up -d --force-recreate app
-            
-            echo "⏳ Waiting for health checks..."
-            sleep 15
-            
-            echo "✅ TEST deployment completed!"
-            docker compose -f docker-compose.test.yml ps
 
   # ========================
   # Deploy to Production VPS (main branch)
