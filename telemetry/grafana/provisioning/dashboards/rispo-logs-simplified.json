@@ -1,0 +1,304 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "datasource": "Loki",
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# Simplified Application Logs\n\nView application logs with timestamp and message. Filter by log level (INFO, DEBUG, ERROR, or ALL).",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.0.0",
+      "title": "Dashboard Info",
+      "type": "text"
+    },
+    {
+      "datasource": "Loki",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Timestamp"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Level"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "ERROR": {
+                        "color": "red",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "WARN": {
+                        "color": "yellow",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "INFO": {
+                        "color": "green",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "DEBUG": {
+                        "color": "blue",
+                        "index": 3
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Message"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 800
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 3
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Timestamp"
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": "Loki",
+          "editorMode": "code",
+          "expr": "{job=\"rispo\"} ${log_level} | logfmt | line_format \"{{.ts}} | {{.level}} | {{.msg}}\"",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Application Logs",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "auto",
+            "keepTime": false,
+            "replace": true,
+            "source": "Line"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "labels": true,
+              "Time": false
+            },
+            "indexByName": {
+              "Time": 0,
+              "Line": 2
+            },
+            "renameByName": {
+              "Line": "Message",
+              "Time": "Timestamp"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": "Loki",
+      "gridPos": {
+        "h": 15,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 3,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": "Loki",
+          "editorMode": "code",
+          "expr": "{job=\"rispo\"} ${log_level}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Raw Logs Stream (with full details)",
+      "type": "logs"
+    }
+  ],
+  "refresh": "180s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["rispo", "logs", "monitoring"],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "ALL",
+          "value": ""
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Log Level",
+        "multi": false,
+        "name": "log_level",
+        "options": [
+          {
+            "selected": true,
+            "text": "ALL",
+            "value": ""
+          },
+          {
+            "selected": false,
+            "text": "ERROR",
+            "value": "|~ \"ERROR\""
+          },
+          {
+            "selected": false,
+            "text": "WARN",
+            "value": "|~ \"WARN\""
+          },
+          {
+            "selected": false,
+            "text": "INFO",
+            "value": "|~ \"INFO\""
+          },
+          {
+            "selected": false,
+            "text": "DEBUG",
+            "value": "|~ \"DEBUG\""
+          }
+        ],
+        "query": "ALL : , ERROR : |~ \"ERROR\", WARN : |~ \"WARN\", INFO : |~ \"INFO\", DEBUG : |~ \"DEBUG\"",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Rispo - Simplified Logs",
+  "uid": "rispo-simple-logs",
+  "version": 1,
+  "weekStart": ""
+}

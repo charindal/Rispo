@@ -282,7 +282,8 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_SERVER_ROOT_URL: https://grafana.${DOMAIN}
+      GF_SERVER_ROOT_URL: "http://135.125.133.211/grafana"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./telemetry/grafana/provisioning:/etc/grafana/provisioning
@@ -291,9 +292,12 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
-      - "traefik.http.routers.grafana.entrypoints=websecure"
-      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.grafana.rule=PathPrefix(`/grafana`)"
+      - "traefik.http.routers.grafana.entrypoints=web"
+      - "traefik.http.routers.grafana.priority=100"
+      - "traefik.http.middlewares.grafana-rewrite.replacepathregex.regex=^/grafana/(.*)"
+      - "traefik.http.middlewares.grafana-rewrite.replacepathregex.replacement=/$${1}"
+      - "traefik.http.routers.grafana.middlewares=grafana-rewrite"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
   # ========================
