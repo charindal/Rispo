@@ -10,7 +10,10 @@
   "liveNow": true,
   "panels": [
     {
-      "datasource": "Loki",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
       "gridPos": {
         "h": 3,
         "w": 24,
@@ -32,7 +35,10 @@
       "type": "text"
     },
     {
-      "datasource": "Loki",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -169,7 +175,10 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": "Loki",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
           "editorMode": "code",
           "expr": "{job=\"rispo\"} $log_level",
           "legendFormat": "",
@@ -209,7 +218,10 @@
       "type": "table"
     },
     {
-      "datasource": "Loki",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
       "gridPos": {
         "h": 15,
         "w": 24,
@@ -229,7 +241,10 @@
       },
       "targets": [
         {
-          "datasource": "Loki",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
           "editorMode": "code",
           "expr": "{job=\"rispo\"} $log_level",
           "queryType": "range",

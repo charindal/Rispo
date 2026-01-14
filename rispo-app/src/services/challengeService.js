@@ -105,6 +105,17 @@ const challengeService = {
       console.error('Error fetching unresolved flags:', error);
       return [];
     }
+  },
+
+  // Get upcoming challenges (accepted challenges for today/future)
+  getUpcomingChallenges: async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/challenges/upcoming`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching upcoming challenges:', error);
+      return [];
+    }
   }
 };
 

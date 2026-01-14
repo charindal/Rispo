@@ -106,6 +106,17 @@ public class ChallengeController {
         }
     }
 
+    @GetMapping("/upcoming")
+    public ResponseEntity<List<ChallengeResponse>> getUpcomingChallenges() {
+        try {
+            List<ChallengeResponse> challenges = challengeService.getUpcomingChallenges();
+            return ResponseEntity.ok(challenges);
+        } catch (Exception e) {
+            log.error("Error getting upcoming challenges", e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @GetMapping("/flags/player/{playerId}")
     public ResponseEntity<List<PlayerFlagResponse>> getPlayerFlags(@PathVariable Long playerId) {
         try {

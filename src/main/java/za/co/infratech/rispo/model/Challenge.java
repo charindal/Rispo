@@ -36,6 +36,21 @@ public class Challenge {
     @Column(columnDefinition = "TEXT")
     private String message;
 
+    @Column(name = "format")
+    private String format; // e.g., "Race to 7", "Race to 9", "Best of 5"
+
+    @Column(name = "date_of_match")
+    private LocalDateTime dateOfMatch;
+
+    @Column(name = "time_of_match")
+    private String timeOfMatch; // e.g., "14:00", "7:00 PM"
+
+    @Column(name = "pot")
+    private Double pot; // Total amount to be won
+
+    @Column(name = "venue")
+    private String venue; // Place and area where match is happening
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

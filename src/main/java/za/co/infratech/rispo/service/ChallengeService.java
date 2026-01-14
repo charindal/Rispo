@@ -52,6 +52,11 @@ public class ChallengeService {
                 .challenged(challenged)
                 .challengeName(request.getChallengeName())
                 .message(request.getMessage())
+                .format(request.getFormat())
+                .dateOfMatch(request.getDateOfMatch())
+                .timeOfMatch(request.getTimeOfMatch())
+                .pot(request.getPot())
+                .venue(request.getVenue())
                 .build();
 
         challenge = challengeRepository.save(challenge);
@@ -260,6 +265,26 @@ public class ChallengeService {
     }
 
     @Transactional(readOnly = true)
+    public List<ChallengeResponse> getUpcomingChallenges() {
+        log.info("Fetching upcoming accepted challenges");
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Get all accepted challenges with date_of_match >= today, ordered by highest rating
+        return challengeRepository.findAll()
+                .stream()
+                .filter(c -> c.getStatus() == Challenge.ChallengeStatus.ACCEPTED)
+                .filter(c -> c.getDateOfMatch() != null && !c.getDateOfMatch().isBefore(now.toLocalDate().atStartOfDay()))
+                .sorted((c1, c2) -> {
+                    // Sort by highest combined rating (challenger + challenged)
+                    int rating1 = c1.getChallenger().getRating() + c1.getChallenged().getRating();
+                    int rating2 = c2.getChallenger().getRating() + c2.getChallenged().getRating();
+                    return Integer.compare(rating2, rating1); // Descending order
+                })
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<PlayerFlagResponse> getPlayerFlags(Long playerId) {
         Player player = playerRepository.findById(playerId)
                 .orElseThrow(() -> new RuntimeException("Player not found"));
@@ -294,11 +319,18 @@ public class ChallengeService {
                 .challengeId(challenge.getChallengeId())
                 .challengerId(challenge.getChallenger().getId())
                 .challengerName(challenge.getChallenger().getName())
+                .challengerRating(challenge.getChallenger().getRating())
                 .challengedId(challenge.getChallenged().getId())
                 .challengedName(challenge.getChallenged().getName())
+                .challengedRating(challenge.getChallenged().getRating())
                 .challengeName(challenge.getChallengeName())
                 .status(challenge.getStatus().name())
                 .message(challenge.getMessage())
+                .format(challenge.getFormat())
+                .dateOfMatch(challenge.getDateOfMatch())
+                .timeOfMatch(challenge.getTimeOfMatch())
+                .pot(challenge.getPot())
+                .venue(challenge.getVenue())
                 .matchId(matchId)
                 .matchSubmitted(matchSubmitted)
                 .createdAt(challenge.getCreatedAt())

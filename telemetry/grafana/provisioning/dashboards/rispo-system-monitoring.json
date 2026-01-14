@@ -24,7 +24,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "# VPS System Monitoring\n\nReal-time monitoring of CPU, memory, disk, and network usage on the VPS server.",
+        "content": "# VPS System Monitoring\n\n**Overall System Health** - Green means healthy system resources. Container-specific metrics shown below are relative to each container's allocation, not system-wide usage.",
         "mode": "markdown"
       },
       "pluginVersion": "10.0.0",
@@ -90,7 +90,70 @@
           "refId": "A"
         }
       ],
-      "title": "CPU Usage",
+      "title": "Overall System CPU Usage",
+      "type": "gauge"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "green",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 3
+      },
+      "id": 12,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "editorMode": "code",
+          "expr": "avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100",
+          "legendFormat": "CPU Idle %",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "System CPU Idle % (Higher is Better)",
       "type": "gauge"
     },
     {
@@ -127,7 +190,7 @@
       "gridPos": {
         "h": 8,
         "w": 6,
-        "x": 6,
+        "x": 12,
         "y": 3
       },
       "id": 3,
@@ -152,7 +215,7 @@
           "refId": "A"
         }
       ],
-      "title": "Memory Usage",
+      "title": "System Memory Usage",
       "type": "gauge"
     },
     {
@@ -174,11 +237,11 @@
               },
               {
                 "color": "yellow",
-                "value": 70
+                "value": 80
               },
               {
                 "color": "red",
-                "value": 90
+                "value": 95
               }
             ]
           },
@@ -189,7 +252,7 @@
       "gridPos": {
         "h": 8,
         "w": 6,
-        "x": 12,
+        "x": 18,
         "y": 3
       },
       "id": 4,
@@ -214,7 +277,7 @@
           "refId": "A"
         }
       ],
-      "title": "Disk Usage",
+      "title": "System Disk Usage",
       "type": "gauge"
     },
     {
@@ -647,7 +710,7 @@
           "refId": "B"
         }
       ],
-      "title": "Container Resource Usage",
+      "title": "Container Resource Usage (Per-Container Metrics)",
       "transformations": [
         {
           "id": "merge",

@@ -13,12 +13,18 @@ const ChallengesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [incomingChallenges, setIncomingChallenges] = useState([]);
   const [outgoingChallenges, setOutgoingChallenges] = useState([]);
+  const [upcomingChallenges, setUpcomingChallenges] = useState([]);
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
   const [pendingOutgoingCount, setPendingOutgoingCount] = useState(0);
-  const [activeTab, setActiveTab] = useState('incoming'); // incoming, outgoing, create
+  const [activeTab, setActiveTab] = useState('upcoming'); // upcoming, incoming, outgoing, create
   const [selectedOpponent, setSelectedOpponent] = useState('');
   const [challengeName, setChallengeName] = useState('');
   const [challengeMessage, setChallengeMessage] = useState('');
+  const [format, setFormat] = useState('');
+  const [dateOfMatch, setDateOfMatch] = useState('');
+  const [timeOfMatch, setTimeOfMatch] = useState('');
+  const [pot, setPot] = useState('');
+  const [venue, setVenue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [incomingPage, setIncomingPage] = useState(1);
@@ -30,12 +36,14 @@ const ChallengesPage = () => {
 
   const loadChallenges = useCallback(async (currentUser) => {
     try {
-      const [incoming, outgoing] = await Promise.all([
+      const [incoming, outgoing, upcoming] = await Promise.all([
         challengeService.getIncomingChallenges(currentUser.userId),
-        challengeService.getOutgoingChallenges(currentUser.userId)
+        challengeService.getOutgoingChallenges(currentUser.userId),
+        challengeService.getUpcomingChallenges()
       ]);
       setIncomingChallenges(incoming);
       setOutgoingChallenges(outgoing);
+      setUpcomingChallenges(upcoming);
       
       // Calculate pending counts (only PENDING status)
       setPendingIncomingCount(incoming.filter(c => c.status === 'PENDING').length);
@@ -91,13 +99,23 @@ const ChallengesPage = () => {
       await challengeService.createChallenge({
         challengedPlayerId: parseInt(selectedOpponent),
         challengeName: challengeName || null,
-        message: challengeMessage
+        message: challengeMessage,
+        format: format || null,
+        dateOfMatch: dateOfMatch ? new Date(dateOfMatch).toISOString() : null,
+        timeOfMatch: timeOfMatch || null,
+        pot: pot ? parseFloat(pot) : null,
+        venue: venue || null
       }, user.userId);
 
       alert('Challenge sent successfully!');
       setSelectedOpponent('');
       setChallengeName('');
       setChallengeMessage('');
+      setFormat('');
+      setDateOfMatch('');
+      setTimeOfMatch('');
+      setPot('');
+      setVenue('');
       await loadChallenges(user);
       setActiveTab('outgoing');
     } catch (err) {
@@ -172,6 +190,12 @@ const ChallengesPage = () => {
       <div className="challenges-container">
         <div className="tabs">
           <button 
+            className={`tab ${activeTab === 'upcoming' ? 'active' : ''}`}
+            onClick={() => setActiveTab('upcoming')}
+          >
+            🔥 Upcoming Matches
+          </button>
+          <button 
             className={`tab ${activeTab === 'incoming' ? 'active' : ''}`}
             onClick={() => setActiveTab('incoming')}
           >
@@ -192,6 +216,58 @@ const ChallengesPage = () => {
         </div>
 
         {error && <div className="error-message">{error}</div>}
+
+        {/* Upcoming Challenges Tab */}
+        {activeTab === 'upcoming' && (
+          <div className="tab-content">
+            <h2>🔥 Upcoming Matches ({upcomingChallenges.length})</h2>
+            {upcomingChallenges.length === 0 ? (
+              <p className="no-challenges">No upcoming matches scheduled</p>
+            ) : (
+              <div className="challenges-list">
+                {upcomingChallenges.map(challenge => (
+                  <div key={challenge.challengeId} className="challenge-card upcoming">
+                    <div className="challenge-header">
+                      <h3>{challenge.challengerName} vs {challenge.challengedName}</h3>
+                      <div className="challenge-ratings">
+                        <span className="rating">⭐ {challenge.challengerRating}</span>
+                        <span className="vs">VS</span>
+                        <span className="rating">⭐ {challenge.challengedRating}</span>
+                      </div>
+                    </div>
+                    <div className="challenge-details">
+                      {challenge.format && (
+                        <div className="detail-row">
+                          <strong>Format:</strong> {challenge.format}
+                        </div>
+                      )}
+                      {challenge.dateOfMatch && (
+                        <div className="detail-row">
+                          <strong>Date:</strong> {new Date(challenge.dateOfMatch).toLocaleDateString()}
+                        </div>
+                      )}
+                      {challenge.timeOfMatch && (
+                        <div className="detail-row">
+                          <strong>Time:</strong> {challenge.timeOfMatch}
+                        </div>
+                      )}
+                      {challenge.pot && (
+                        <div className="detail-row pot">
+                          <strong>💰 Pot:</strong> R {challenge.pot.toFixed(2)}
+                        </div>
+                      )}
+                      {challenge.venue && (
+                        <div className="detail-row">
+                          <strong>📍 Venue:</strong> {challenge.venue}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Incoming Challenges Tab */}
         {activeTab === 'incoming' && (

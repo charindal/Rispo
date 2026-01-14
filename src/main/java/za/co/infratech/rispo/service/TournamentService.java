@@ -21,6 +21,7 @@ public class TournamentService {
 
     private final TournamentRepository tournamentRepository;
     private final TournamentPlayerRepository tournamentPlayerRepository;
+    private final TournamentTemplateRepository templateRepository;
     private final UserRepository userRepository;
     private final ClubRepository clubRepository;
     private final PlayerRepository playerRepository;
@@ -1117,5 +1118,213 @@ public class TournamentService {
         }
 
         return match;
+    }
+
+    // ===== CLUB TOURNAMENT METHODS =====
+    
+    @Transactional
+    public TournamentResponse createClubTournamentFromTemplate(Long clubId, Long templateId, String tournamentName, Long userId) {
+        // Verify club exists
+        Club club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new RuntimeException("Club not found"));
+        
+        // Verify user is club admin
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (!isClubAdmin(user, club)) {
+            throw new RuntimeException("Only club admins can create club tournaments");
+        }
+        
+        // Get template
+        TournamentTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new RuntimeException("Template not found"));
+        
+        if (!template.getIsActive()) {
+            throw new RuntimeException("Template is inactive");
+        }
+        
+        // Create tournament from template
+        Tournament tournament = new Tournament();
+        tournament.setName(tournamentName != null ? tournamentName : template.getTemplateName());
+        tournament.setDescription(template.getDescription());
+        tournament.setCreatedBy(user);
+        tournament.setClub(club);
+        tournament.setTemplate(template);
+        tournament.setMaxParticipants(template.getMaxPlayers());
+        tournament.setMinParticipants(template.getMinPlayers());
+        tournament.setTotalRounds(template.getNumberOfRounds());
+        tournament.setRules(template.getRules());
+        tournament.setStatus("DRAFT");
+        tournament.setApprovalStatus("PENDING_APPROVAL");
+        
+        // Map template tournament type to Tournament.TournamentFormat enum
+        switch (template.getTournamentType()) {
+            case "SWISS":
+                tournament.setFormat(Tournament.TournamentFormat.SWISS);
+                break;
+            case "KNOCKOUT":
+            case "SINGLE_ELIMINATION":
+                tournament.setFormat(Tournament.TournamentFormat.KNOCKOUT);
+                break;
+            case "ROUND_ROBIN":
+                tournament.setFormat(Tournament.TournamentFormat.ROUND_ROBIN);
+                break;
+            case "RANDOM":
+                tournament.setFormat(Tournament.TournamentFormat.RANDOM);
+                break;
+            default:
+                tournament.setFormat(Tournament.TournamentFormat.SWISS);
+        }
+        
+        Tournament saved = tournamentRepository.save(tournament);
+        
+        // Auto-join all club members
+        autoJoinClubMembers(saved, club);
+        
+        return toResponse(saved);
+    }
+    
+    @Transactional
+    protected void autoJoinClubMembers(Tournament tournament, Club club) {
+        // Get all verified club members
+        List<Player> clubMembers = playerRepository.findByClubIdAndIsVerifiedOrderByNameAsc(club.getClubId());
+        
+        for (Player player : clubMembers) {
+            TournamentPlayer tournamentPlayer = new TournamentPlayer();
+            tournamentPlayer.setTournament(tournament);
+            tournamentPlayer.setPlayer(player);
+            tournamentPlayer.setStatus("PENDING"); // Club admin must approve each player
+            tournamentPlayer.setRequestedAt(LocalDateTime.now());
+            tournamentPlayer.setRespondedAt(null); // Will be set when admin approves/rejects
+            
+            tournamentPlayerRepository.save(tournamentPlayer);
+        }
+    }
+    
+    @Transactional
+    public TournamentResponse approveClubTournament(Long tournamentId, Long userId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+        
+        if (tournament.getClub() == null) {
+            throw new RuntimeException("Tournament is not a club tournament");
+        }
+        
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (!isClubAdmin(user, tournament.getClub())) {
+            throw new RuntimeException("Only club admins can approve club tournaments");
+        }
+        
+        if (!"PENDING_APPROVAL".equals(tournament.getApprovalStatus())) {
+            throw new RuntimeException("Tournament is not pending approval");
+        }
+        
+        tournament.setApprovalStatus("APPROVED");
+        tournament.setApprovedBy(user);
+        tournament.setApprovedAt(LocalDateTime.now());
+        
+        Tournament updated = tournamentRepository.save(tournament);
+        return toResponse(updated);
+    }
+    
+    @Transactional
+    public TournamentResponse rejectClubTournament(Long tournamentId, String reason, Long userId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+        
+        if (tournament.getClub() == null) {
+            throw new RuntimeException("Tournament is not a club tournament");
+        }
+        
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (!isClubAdmin(user, tournament.getClub())) {
+            throw new RuntimeException("Only club admins can reject club tournaments");
+        }
+        
+        if (!"PENDING_APPROVAL".equals(tournament.getApprovalStatus())) {
+            throw new RuntimeException("Tournament is not pending approval");
+        }
+        
+        tournament.setApprovalStatus("REJECTED");
+        tournament.setApprovedBy(user);
+        tournament.setApprovedAt(LocalDateTime.now());
+        
+        // Optionally store rejection reason in tournament description or rules
+        if (reason != null && !reason.isEmpty()) {
+            tournament.setRules(tournament.getRules() + "\n\n[REJECTION REASON: " + reason + "]");
+        }
+        
+        Tournament updated = tournamentRepository.save(tournament);
+        return toResponse(updated);
+    }
+    
+    @Transactional
+    public TournamentResponse startClubTournament(Long tournamentId, Long userId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Tournament not found"));
+        
+        if (tournament.getClub() == null) {
+            throw new RuntimeException("Tournament is not a club tournament");
+        }
+        
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (!isClubAdmin(user, tournament.getClub())) {
+            throw new RuntimeException("Only club admins can start club tournaments");
+        }
+        
+        if (!"APPROVED".equals(tournament.getApprovalStatus())) {
+            throw new RuntimeException("Tournament must be approved before starting");
+        }
+        
+        if ("ONGOING".equals(tournament.getStatus()) || "COMPLETED".equals(tournament.getStatus())) {
+            throw new RuntimeException("Tournament is already " + tournament.getStatus().toLowerCase());
+        }
+        
+        // Set tournament to published status so it can be started via regular workflow
+        tournament.setStatus("PUBLISHED");
+        tournament.setApprovalStatus("APPROVED");
+        Tournament updated = tournamentRepository.save(tournament);
+        
+        // Note: Club admin will need to use the standard tournament start endpoint to begin
+        // This ensures proper pairing generation via the existing tournament workflow
+        
+        return toResponse(updated);
+    }
+    
+    public List<TournamentResponse> getClubTournaments(Long clubId, String approvalStatus) {
+        List<Tournament> tournaments;
+        
+        if (approvalStatus != null && !approvalStatus.isEmpty()) {
+            tournaments = tournamentRepository.findByClubClubIdAndApprovalStatus(clubId, approvalStatus);
+        } else {
+            tournaments = tournamentRepository.findByClubClubId(clubId);
+        }
+        
+        return tournaments.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+    
+    private boolean isClubAdmin(UserEntity user, Club club) {
+        // Check if user is club creator
+        if (club.getCreatedBy() != null && club.getCreatedBy().getId().equals(user.getId())) {
+            return true;
+        }
+        
+        // Check if user is super user or admin
+        if (isAdmin(user.getRole())) {
+            return true;
+        }
+        
+        // TODO: Add proper club admin role checking when ClubMember table is implemented
+        // For now, only club creator and system admins can manage tournaments
+        return false;
     }
 }

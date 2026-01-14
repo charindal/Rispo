@@ -41,6 +41,19 @@ public class Tournament {
     @JoinColumn(name = "club_id")
     private Club club;
 
+    @ManyToOne
+    @JoinColumn(name = "template_id")
+    private TournamentTemplate template; // Reference to the template used to create this tournament
+
+    @Column(name = "approval_status")
+    private String approvalStatus; // DRAFT, PENDING_APPROVAL, APPROVED, REJECTED
+
+    @ManyToOne
+    @JoinColumn(name = "approved_by")
+    private UserEntity approvedBy; // Club admin who approved the tournament
+
+    private LocalDateTime approvedAt;
+
     private Integer maxParticipants;
     private Integer minParticipants; // Minimum participants required to start
     private String venue;
