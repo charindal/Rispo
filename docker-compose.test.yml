@@ -229,9 +229,6 @@ services:
       - "traefik.http.routers.grafana.rule=PathPrefix(`/grafana`)"
       - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.routers.grafana.priority=100"
-      - "traefik.http.middlewares.grafana-rewrite.replacepathregex.regex=^/grafana/(.*)"
-      - "traefik.http.middlewares.grafana-rewrite.replacepathregex.replacement=/$${1}"
-      - "traefik.http.routers.grafana.middlewares=grafana-rewrite"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
   postgres-exporter:
