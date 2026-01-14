@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import tournamentService from '../services/tournamentService';
 import clubService from '../services/clubService';
 import authService from '../services/authService';
+import HamburgerMenu from '../components/HamburgerMenu';
 import '../styles/FormCard.css';
 
 const TournamentManagementPage = () => {
@@ -242,51 +243,9 @@ const TournamentManagementPage = () => {
                         {currentUser?.role?.replace('_', ' ') || 'Admin'}
                     </span>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                        onClick={() => navigate('/admin-dashboard')}
-                        style={{
-                            padding: '8px 16px',
-                            backgroundColor: '#3498db',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '14px'
-                        }}
-                    >
-                        🏠 Admin Dashboard
-                    </button>
-                    {currentUser?.playerId && (
-                        <button
-                            onClick={() => navigate('/player-dashboard')}
-                            style={{
-                                padding: '8px 16px',
-                                backgroundColor: '#9b59b6',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '14px'
-                            }}
-                        >
-                            🎱 Player Mode
-                        </button>
-                    )}
-                    <button
-                        onClick={() => { authService.logout(); navigate('/login'); }}
-                        style={{
-                            padding: '8px 16px',
-                            backgroundColor: '#e74c3c',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '14px'
-                        }}
-                    >
-                        Sign Out
-                    </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <span style={{ color: 'white', fontWeight: '600' }}>{currentUser?.username}</span>
+                    <HamburgerMenu user={currentUser} onSignOut={() => { authService.logout(); navigate('/login'); }} isAdmin={true} />
                 </div>
             </nav>
 

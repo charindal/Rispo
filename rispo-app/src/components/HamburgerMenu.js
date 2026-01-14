@@ -111,15 +111,18 @@ const HamburgerMenu = ({ user, onSignOut, isAdmin = false }) => {
                     <span className="menu-icon">🏢</span>
                     <span>Club Management</span>
                   </button>
-
-                  <button 
-                    onClick={() => handleNavigation('/rating-settings')} 
-                    className="menu-item"
-                  >
-                    <span className="menu-icon">⚙️</span>
-                    <span>Rating Settings</span>
-                  </button>
                 </>
+              )}
+
+              {(user?.role === 'SUPER_USER' || user?.role === 'SYSTEM_ADMIN' || 
+                user?.role === 'RATING_ADMIN') && (
+                <button 
+                  onClick={() => handleNavigation('/rating-settings')} 
+                  className="menu-item"
+                >
+                  <span className="menu-icon">⚙️</span>
+                  <span>Rating Settings</span>
+                </button>
               )}
 
               <button 

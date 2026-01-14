@@ -158,7 +158,7 @@ function AdminDashboard() {
               </button>
             )}
 
-            {(user.role === 'SUPER_USER' || user.role === 'SYSTEM_ADMIN' || user.role === 'CLUB_ADMIN' || user.role === 'RATING_ADMIN') && (
+            {(user.role === 'SUPER_USER' || user.role === 'SYSTEM_ADMIN' || user.role === 'RATING_ADMIN') && (
               <button className="action-card" onClick={() => navigate('/rating-settings')}>
                 <div className="action-icon">⚙️</div>
                 <h3>Rating Settings</h3>

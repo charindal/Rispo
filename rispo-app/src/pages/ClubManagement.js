@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import clubService from '../services/clubService';
 import Pagination from '../components/Pagination';
+import HamburgerMenu from '../components/HamburgerMenu';
 import '../styles/ClubManagement.css';
 
 function ClubManagement() {
@@ -233,12 +234,8 @@ function ClubManagement() {
           <span className="admin-badge">{user.role === 'SUPER_USER' ? 'Super User' : user.role === 'SYSTEM_ADMIN' ? 'System Admin' : user.role === 'CLUB_ADMIN' ? 'Club Admin' : 'Rating Admin'}</span>
         </div>
         <div className="navbar-actions">
-          <button onClick={() => navigate('/admin-dashboard')} className="back-btn">
-            🏠 Home
-          </button>
-          <button onClick={() => { authService.logout(); navigate('/login'); }} className="signout-btn">
-            Sign Out
-          </button>
+          <span className="admin-username">{user.username}</span>
+          <HamburgerMenu user={user} onSignOut={() => { authService.logout(); navigate('/login'); }} isAdmin={true} />
         </div>
       </nav>
 

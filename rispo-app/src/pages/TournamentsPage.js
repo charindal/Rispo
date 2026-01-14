@@ -251,19 +251,6 @@ const TournamentsPage = () => {
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button
-                        onClick={() => navigate('/diagnostic')}
-                        style={{
-                            padding: '8px 16px',
-                            backgroundColor: '#6c757d',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        🔧 Debug
-                    </button>
-                    <button
                         onClick={() => navigate('/player-dashboard')}
                         style={{
                             padding: '8px 16px',
