@@ -2,7 +2,7 @@
 ALTER TABLE tournament 
 ADD COLUMN template_id BIGINT REFERENCES tournament_template(template_id),
 ADD COLUMN approval_status VARCHAR(50) DEFAULT 'DRAFT',
-ADD COLUMN approved_by BIGINT REFERENCES users(user_id),
+ADD COLUMN approved_by BIGINT REFERENCES users(id),
 ADD COLUMN approved_at TIMESTAMP;
 
 -- Create indexes for efficient querying
