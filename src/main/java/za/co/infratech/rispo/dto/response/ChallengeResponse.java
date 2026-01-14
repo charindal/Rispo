@@ -21,7 +21,7 @@ public class ChallengeResponse {
     private String format;
     private LocalDateTime dateOfMatch;
     private String timeOfMatch;
-    private Double pot;
+    private java.math.BigDecimal pot;
     private String venue;
     private Long matchId;
     private Boolean matchSubmitted;

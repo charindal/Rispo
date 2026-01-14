@@ -11,6 +11,6 @@ public class CreateChallengeRequest {
     private String format; // e.g., "Race to 7", "Race to 9"
     private LocalDateTime dateOfMatch;
     private String timeOfMatch; // e.g., "14:00", "7:00 PM"
-    private Double pot; // Total amount to be won
+    private java.math.BigDecimal pot; // Total amount to be won
     private String venue; // Place and area where match is happening
 }

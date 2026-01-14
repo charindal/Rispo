@@ -45,8 +45,8 @@ public class Challenge {
     @Column(name = "time_of_match")
     private String timeOfMatch; // e.g., "14:00", "7:00 PM"
 
-    @Column(name = "pot")
-    private Double pot; // Total amount to be won
+    @Column(name = "pot", precision = 10, scale = 2)
+    private java.math.BigDecimal pot; // Total amount to be won
 
     @Column(name = "venue")
     private String venue; // Place and area where match is happening
