@@ -1,10 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/HamburgerMenu.css';
 
-const HamburgerMenu = ({ user, onSignOut }) => {
+const HamburgerMenu = ({ user, onSignOut, isAdmin = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Prevent body scroll when menu is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -68,47 +82,110 @@ const HamburgerMenu = ({ user, onSignOut }) => {
             <span>My Profile</span>
           </button>
 
-          <button 
-            onClick={() => handleNavigation('/rankings')} 
-            className="menu-item"
-          >
-            <span className="menu-icon">📊</span>
-            <span>Rankings</span>
-          </button>
+          {isAdmin ? (
+            <>
+              {/* Admin Menu Items */}
+              <button 
+                onClick={() => handleNavigation('/review-matches')} 
+                className="menu-item"
+              >
+                <span className="menu-icon">⚖️</span>
+                <span>Review Matches</span>
+              </button>
 
-          <button 
-            onClick={() => handleNavigation('/tournaments')} 
-            className="menu-item"
-          >
-            <span className="menu-icon">🏆</span>
-            <span>Tournaments</span>
-          </button>
+              <button 
+                onClick={() => handleNavigation('/admin')} 
+                className="menu-item"
+              >
+                <span className="menu-icon">✓</span>
+                <span>Player Verification</span>
+              </button>
 
-          <button 
-            onClick={() => handleNavigation('/challenges')} 
-            className="menu-item"
-          >
-            <span className="menu-icon">⚔️</span>
-            <span>Challenges</span>
-          </button>
+              {(user?.role === 'SUPER_USER' || user?.role === 'SYSTEM_ADMIN' || 
+                user?.role === 'CLUB_ADMIN' || user?.role === 'RATING_ADMIN') && (
+                <>
+                  <button 
+                    onClick={() => handleNavigation('/club-management')} 
+                    className="menu-item"
+                  >
+                    <span className="menu-icon">🏢</span>
+                    <span>Club Management</span>
+                  </button>
 
-          <button 
-            onClick={() => handleNavigation('/submit-match')} 
-            className="menu-item"
-          >
-            <span className="menu-icon">📝</span>
-            <span>Submit Match</span>
-          </button>
+                  <button 
+                    onClick={() => handleNavigation('/rating-settings')} 
+                    className="menu-item"
+                  >
+                    <span className="menu-icon">⚙️</span>
+                    <span>Rating Settings</span>
+                  </button>
+                </>
+              )}
 
-          {(user?.role === 'SUPER_USER' || user?.role === 'SYSTEM_ADMIN' || 
-            user?.role === 'RATING_ADMIN' || user?.role === 'CLUB_ADMIN') && (
-            <button 
-              onClick={() => handleNavigation('/admin-dashboard')} 
-              className="menu-item admin-item"
-            >
-              <span className="menu-icon">⚙️</span>
-              <span>Admin Mode</span>
-            </button>
+              <button 
+                onClick={() => handleNavigation('/tournaments/manage')} 
+                className="menu-item"
+              >
+                <span className="menu-icon">🏆</span>
+                <span>Manage Tournaments</span>
+              </button>
+
+              {user?.playerId && (
+                <button 
+                  onClick={() => handleNavigation('/player-dashboard')} 
+                  className="menu-item admin-item"
+                >
+                  <span className="menu-icon">🎱</span>
+                  <span>Player Mode</span>
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Player Menu Items */}
+              <button 
+                onClick={() => handleNavigation('/rankings')} 
+                className="menu-item"
+              >
+                <span className="menu-icon">📊</span>
+                <span>Rankings</span>
+              </button>
+
+              <button 
+                onClick={() => handleNavigation('/tournaments')} 
+                className="menu-item"
+              >
+                <span className="menu-icon">🏆</span>
+                <span>Tournaments</span>
+              </button>
+
+              <button 
+                onClick={() => handleNavigation('/challenges')} 
+                className="menu-item"
+              >
+                <span className="menu-icon">⚔️</span>
+                <span>Challenges</span>
+              </button>
+
+              <button 
+                onClick={() => handleNavigation('/submit-match')} 
+                className="menu-item"
+              >
+                <span className="menu-icon">📝</span>
+                <span>Submit Match</span>
+              </button>
+
+              {(user?.role === 'SUPER_USER' || user?.role === 'SYSTEM_ADMIN' || 
+                user?.role === 'RATING_ADMIN' || user?.role === 'CLUB_ADMIN') && (
+                <button 
+                  onClick={() => handleNavigation('/admin-dashboard')} 
+                  className="menu-item admin-item"
+                >
+                  <span className="menu-icon">⚙️</span>
+                  <span>Admin Mode</span>
+                </button>
+              )}
+            </>
           )}
 
           <div className="menu-divider"></div>

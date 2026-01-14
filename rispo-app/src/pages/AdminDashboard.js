@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import HamburgerMenu from '../components/HamburgerMenu';
 import '../styles/AdminDashboard.css';
 
 function AdminDashboard() {
@@ -86,16 +87,8 @@ function AdminDashboard() {
           </span>
         </div>
         <div className="navbar-actions">
-          {user.playerId && (
-            <button onClick={() => navigate('/player-dashboard')} className="player-mode-btn">
-              🎱 Player Mode
-            </button>
-          )}
-          <button onClick={() => navigate('/profile')} className="profile-btn">My Profile</button>
           <span className="admin-username">{user.username}</span>
-          <button onClick={handleSignOut} className="signout-btn">
-            Sign Out
-          </button>
+          <HamburgerMenu user={user} onSignOut={handleSignOut} isAdmin={true} />
         </div>
       </nav>
 

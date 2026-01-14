@@ -163,8 +163,8 @@ const PlayerDashboard = () => {
           <p>Your personal rating dashboard</p>
         </div>
 
-        {/* Top Banner Advertisement */}
-        <AdPanel placement="banner" size="medium" />
+        {/* Top Sidebar Advertisement */}
+        <AdPanel placement="sidebar" size="medium" />
 
         {!playerData?.isVerified && (
           <div className="verification-alert">
@@ -340,9 +340,9 @@ const PlayerDashboard = () => {
           </div>
         </div>
 
-        {/* Sidebar Advertisement */}
+        {/* Bottom Banner Advertisement */}
         <div className="ad-sidebar-section">
-          <AdPanel placement="sidebar" size="medium" />
+          <AdPanel placement="banner" size="medium" />
         </div>
       </div>
 

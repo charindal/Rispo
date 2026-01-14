@@ -18,7 +18,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/tournaments")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class TournamentController {
 
     private final TournamentService tournamentService;
