@@ -5,6 +5,7 @@ import authService from '../services/authService';
 import clubService from '../services/clubService';
 import challengeService from '../services/challengeService';
 import AdPanel from '../components/AdPanel';
+import HamburgerMenu from '../components/HamburgerMenu';
 import '../styles/PlayerDashboard.css';
 
 const PlayerDashboard = () => {
@@ -151,15 +152,8 @@ const PlayerDashboard = () => {
           <span className="player-badge">Player</span>
         </div>
         <div className="navbar-user">
-          {(user?.role === 'SUPER_USER' || user?.role === 'SYSTEM_ADMIN' || user?.role === 'RATING_ADMIN' || user?.role === 'CLUB_ADMIN') && (
-            <button onClick={() => navigate('/admin-dashboard')} className="admin-mode-btn">
-              ⚙️ Admin Mode
-            </button>
-          )}
-          <button onClick={() => navigate('/rankings')} className="profile-btn">Rankings</button>
-          <button onClick={() => navigate('/profile')} className="profile-btn">My Profile</button>
           <span className="username">{user?.username}</span>
-          <button onClick={handleSignOut} className="signout-btn">Sign Out</button>
+          <HamburgerMenu user={user} onSignOut={handleSignOut} />
         </div>
       </nav>
 
@@ -285,24 +279,34 @@ const PlayerDashboard = () => {
           </div>
         </div>
 
-        <div className="contact-info">
-          <h2>Actions</h2>
-          <div className="actions-section">
-            <button onClick={() => navigate('/rankings')} className="action-button primary">
-              📊 View Rankings
-            </button>
-            <button onClick={() => navigate('/tournaments')} className="action-button primary">
-              🏆 View Tournaments
-            </button>
-            <button onClick={() => navigate('/challenges')} className="action-button primary">
-              ⚔️ Challenge Players
-            </button>
-            <button onClick={() => navigate('/submit-match')} className="action-button primary">
-              📝 Submit Match Result
-            </button>
-            <button onClick={() => navigate('/profile')} className="action-button">
-              👤 Edit Profile
-            </button>
+        <div className="actions-container">
+          <h2>Quick Actions</h2>
+          <div className="actions-grid">
+            <div className="action-card" onClick={() => navigate('/rankings')}>
+              <div className="action-icon">📊</div>
+              <h3>View Rankings</h3>
+              <p>See player standings and leaderboards</p>
+            </div>
+            <div className="action-card" onClick={() => navigate('/tournaments')}>
+              <div className="action-icon">🏆</div>
+              <h3>Tournaments</h3>
+              <p>Browse and join tournaments</p>
+            </div>
+            <div className="action-card" onClick={() => navigate('/challenges')}>
+              <div className="action-icon">⚔️</div>
+              <h3>Challenge Players</h3>
+              <p>Send or accept challenges</p>
+            </div>
+            <div className="action-card" onClick={() => navigate('/submit-match')}>
+              <div className="action-icon">📝</div>
+              <h3>Submit Match</h3>
+              <p>Record your match results</p>
+            </div>
+            <div className="action-card" onClick={() => navigate('/profile')}>
+              <div className="action-icon">👤</div>
+              <h3>Edit Profile</h3>
+              <p>Update your information</p>
+            </div>
           </div>
         </div>
 

@@ -72,7 +72,7 @@ const MatchReviewPage = () => {
     <div className="match-review-page">
       <nav className="review-navbar">
         <h2>Match Review & Rating</h2>
-        <button onClick={() => navigate('/admin-dashboard')} className="back-btn">← Back</button>
+        <button onClick={() => navigate('/admin-dashboard')} className="back-btn">🏠 Home</button>
       </nav>
 
       <div className="review-container">

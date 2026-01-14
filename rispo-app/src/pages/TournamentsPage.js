@@ -49,10 +49,18 @@ const TournamentsPage = () => {
     }, [activeTab, playerClubId]);
 
     const loadTournaments = async () => {
+        console.log('=== loadTournaments START ===');
+        console.log('API URL:', process.env.REACT_APP_API_URL);
+        console.log('playerClubId:', playerClubId);
+        console.log('currentUser:', currentUser);
+        
         setLoading(true);
         setError('');
         try {
             const response = await tournamentService.getPublishedTournaments();
+            console.log('Tournaments response received:', response.data);
+            console.log('Number of tournaments:', response.data?.length);
+            
             // Filter tournaments: show open tournaments (no club) OR tournaments for player's club
             const availableTournaments = response.data.filter(tournament => {
                 // No club = open to everyone
@@ -62,16 +70,33 @@ const TournamentsPage = () => {
                 // Club-affiliated = only show if player belongs to that club
                 return playerClubId && tournament.clubId === playerClubId;
             });
+            
+            console.log('Filtered tournaments:', availableTournaments.length);
             setTournaments(availableTournaments);
         } catch (err) {
-            console.error('Failed to load tournaments:', err);
-            setError('Failed to load tournaments');
+            console.error('=== TOURNAMENT LOAD FAILED ===');
+            console.error('Error object:', err);
+            console.error('Error message:', err.message);
+            console.error('Error response:', err.response);
+            console.error('Error response data:', err.response?.data);
+            console.error('Error response status:', err.response?.status);
+            console.error('Request URL:', err.config?.url);
+            console.error('Request headers:', err.config?.headers);
+            
+            const errorMsg = err.response?.status === 404 
+                ? 'Tournament endpoint not found (404). Backend may not be fully deployed.'
+                : err.response?.status === 401
+                ? 'Unauthorized (401). Please log out and log in again.'
+                : err.response?.data?.message || err.message || 'Unknown error';
+            
+            setError(`Failed to load tournaments: ${errorMsg}`);
         } finally {
             setLoading(false);
         }
     };
 
     const loadMyTournaments = async () => {
+        console.log('loadMyTournaments called, playerId:', playerId);
         if (!playerId) {
             setError('You must be logged in as a player to view your tournaments');
             setLoading(false);
@@ -81,6 +106,7 @@ const TournamentsPage = () => {
         setLoading(true);
         setError('');
         try {
+            console.log('Fetching tournaments for player:', playerId);
             // Get all tournaments and filter for player's participations
             const allTournamentsResponse = await tournamentService.getAllTournaments();
             const playerTournaments = [];
@@ -103,9 +129,12 @@ const TournamentsPage = () => {
                 }
             }
             
+            console.log('My tournaments:', playerTournaments);
             setMyTournaments(playerTournaments);
         } catch (err) {
-            setError('Failed to load your tournaments');
+            console.error('Failed to load my tournaments:', err);
+            console.error('Error response:', err.response?.data);
+            setError('Failed to load your tournaments: ' + (err.response?.data?.message || err.message));
         } finally {
             setLoading(false);
         }
@@ -222,6 +251,19 @@ const TournamentsPage = () => {
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button
+                        onClick={() => navigate('/diagnostic')}
+                        style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#6c757d',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        🔧 Debug
+                    </button>
+                    <button
                         onClick={() => navigate('/player-dashboard')}
                         style={{
                             padding: '8px 16px',
@@ -233,7 +275,7 @@ const TournamentsPage = () => {
                             fontSize: '14px'
                         }}
                     >
-                        🏠 Dashboard
+                        🏠 Home
                     </button>
                     <button
                         onClick={() => navigate('/profile')}
@@ -315,20 +357,6 @@ const TournamentsPage = () => {
 
             {selectedTournament ? (
                 <div>
-                    <button 
-                        onClick={() => setSelectedTournament(null)}
-                        style={{
-                            padding: '8px 16px',
-                            backgroundColor: '#6c757d',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            marginBottom: '20px'
-                        }}
-                    >
-                        ← Back to Tournaments
-                    </button>
 
                     <div className="form-card">
                         <h2>{selectedTournament.name}</h2>

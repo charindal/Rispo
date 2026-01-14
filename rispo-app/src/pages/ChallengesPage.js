@@ -166,7 +166,7 @@ const ChallengesPage = () => {
     <div className="challenges-page">
       <nav className="challenges-navbar">
         <h2>🎯 Challenges</h2>
-        <button onClick={() => navigate('/player-dashboard')} className="back-btn">← Back</button>
+        <button onClick={() => navigate('/player-dashboard')} className="back-btn">🏠 Home</button>
       </nav>
 
       <div className="challenges-container">

@@ -22,11 +22,17 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
 
+    console.log('Login form submitted');
+    console.log('Username:', username);
+
     try {
       const userData = await authService.login(username, password);
       
+      console.log('Login successful, user data:', { ...userData, token: '***' });
+      
       // Check if user must change password
       if (userData.mustChangePassword) {
+        console.log('User must change password');
         setPasswordChangeData({
           userId: userData.userId,
           oldPassword: password,
@@ -39,17 +45,22 @@ const LoginPage = () => {
       }
       
       // Route based on user role and player profile
+      console.log('Navigating user. Role:', userData.role, 'PlayerId:', userData.playerId);
       if (userData.role === 'SUPER_USER' || userData.role === 'SYSTEM_ADMIN' || userData.role === 'RATING_ADMIN' || userData.role === 'CLUB_ADMIN') {
         // If admin has a player profile, go to player dashboard, otherwise admin dashboard
         if (userData.playerId) {
+          console.log('Navigating to player dashboard');
           navigate('/player-dashboard');
         } else {
+          console.log('Navigating to admin dashboard');
           navigate('/admin-dashboard');
         }
       } else {
+        console.log('Navigating to player dashboard');
         navigate('/player-dashboard');
       }
     } catch (err) {
+      console.error('Login failed in component:', err);
       setError(err.toString());
     } finally {
       setLoading(false);

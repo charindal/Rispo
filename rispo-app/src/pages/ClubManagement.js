@@ -234,7 +234,7 @@ function ClubManagement() {
         </div>
         <div className="navbar-actions">
           <button onClick={() => navigate('/admin-dashboard')} className="back-btn">
-            ← Dashboard
+            🏠 Home
           </button>
           <button onClick={() => { authService.logout(); navigate('/login'); }} className="signout-btn">
             Sign Out

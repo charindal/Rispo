@@ -184,8 +184,8 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        // Find user by username
-        UserEntity user = userRepository.findByUsername(request.getUsername())
+        // Find user by username (case-insensitive)
+        UserEntity user = userRepository.findByUsernameIgnoreCase(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("Invalid username or password"));
 
         // Validate password using BCrypt

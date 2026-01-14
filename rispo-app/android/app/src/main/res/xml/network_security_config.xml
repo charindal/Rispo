@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext (HTTP) traffic for all domains -->
+    <!-- WARNING: This is for development only. In production, use HTTPS! -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- You can also specify specific domains if needed -->
+    <!-- <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">your-server-ip-or-domain</domain>
+    </domain-config> -->
+</network-security-config>

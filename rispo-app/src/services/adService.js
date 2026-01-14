@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from './axiosConfig';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 

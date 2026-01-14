@@ -95,7 +95,7 @@ const RatingSettingsPage = () => {
         </div>
         <div className="navbar-actions">
           <button onClick={() => navigate('/admin-dashboard')} className="back-btn">
-            ← Back to Dashboard
+            🏠 Home
           </button>
         </div>
       </nav>

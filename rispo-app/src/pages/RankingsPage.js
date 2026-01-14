@@ -120,10 +120,6 @@ const RankingsPage = () => {
                     {isCurrentUser && <span className="you-badge">You</span>}
                 </td>
                 <td className="rating-cell">{ranking.rating}</td>
-                <td className="stats-cell">{ranking.matchesPlayed}</td>
-                <td className="stats-cell">{ranking.wins}</td>
-                <td className="stats-cell">{ranking.losses}</td>
-                <td className="stats-cell">{ranking.draws}</td>
                 <td className="club-cell">{ranking.clubName || 'N/A'}</td>
             </tr>
         );
@@ -150,7 +146,7 @@ const RankingsPage = () => {
                     <h2>Player Rankings</h2>
                 </div>
                 <div className="nav-right">
-                    <button onClick={() => navigate(-1)} className="nav-btn">← Back</button>
+                    <button onClick={() => navigate('/player-dashboard')} className="nav-btn">🏠 Home</button>
                     <button onClick={() => navigate('/profile')} className="nav-btn">Profile</button>
                     <button onClick={handleLogout} className="nav-btn logout-btn">Sign Out</button>
                 </div>
@@ -190,10 +186,6 @@ const RankingsPage = () => {
                                     <th>Rank</th>
                                     <th>Player Name</th>
                                     <th>Rating</th>
-                                    <th>Matches</th>
-                                    <th>Wins</th>
-                                    <th>Losses</th>
-                                    <th>Draws</th>
                                     <th>Club</th>
                                 </tr>
                             </thead>
@@ -221,10 +213,6 @@ const RankingsPage = () => {
                                 <th>Rank</th>
                                 <th>Player Name</th>
                                 <th>Rating</th>
-                                <th>Matches</th>
-                                <th>Wins</th>
-                                <th>Losses</th>
-                                <th>Draws</th>
                                 <th>Club</th>
                             </tr>
                         </thead>
@@ -252,10 +240,6 @@ const RankingsPage = () => {
                                     <th>Rank</th>
                                     <th>Player Name</th>
                                     <th>Rating</th>
-                                    <th>Matches</th>
-                                    <th>Wins</th>
-                                    <th>Losses</th>
-                                    <th>Draws</th>
                                     <th>Club</th>
                                 </tr>
                             </thead>

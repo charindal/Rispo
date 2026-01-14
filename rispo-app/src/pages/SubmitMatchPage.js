@@ -118,7 +118,7 @@ const SubmitMatchPage = () => {
     <div className="submit-match-page">
       <nav className="submit-navbar">
         <h2>🎱 Record Game</h2>
-        <button onClick={() => navigate(-1)} className="back-btn">← Back</button>
+        <button onClick={() => navigate('/player-dashboard')} className="back-btn">🏠 Home</button>
       </nav>
 
       <div className="submit-container">

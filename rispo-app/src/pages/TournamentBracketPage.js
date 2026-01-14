@@ -118,7 +118,7 @@ const TournamentBracketPage = () => {
                         <h2>Tournament Bracket</h2>
                     </div>
                     <div className="nav-right">
-                        <button onClick={() => navigate(-1)} className="nav-btn">← Back</button>
+                        <button onClick={() => navigate('/player-dashboard')} className="nav-btn">🏠 Home</button>
                     </div>
                 </div>
                 <div className="error-message">{error}</div>
@@ -137,7 +137,7 @@ const TournamentBracketPage = () => {
                     <span className="tournament-status">{bracket?.status}</span>
                 </div>
                 <div className="nav-right">
-                    <button onClick={() => navigate('/admin')} className="nav-btn">Dashboard</button>
+                    <button onClick={() => navigate('/player-dashboard')} className="nav-btn">🏠 Dashboard</button>
                     <button onClick={() => navigate('/rankings')} className="nav-btn">Rankings</button>
                     <button onClick={() => navigate('/profile')} className="nav-btn">Profile</button>
                     <button onClick={() => navigate(`/tournament-matches/${tournamentId}`)} className="nav-btn">Matches</button>

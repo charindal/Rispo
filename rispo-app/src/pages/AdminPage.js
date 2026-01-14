@@ -112,7 +112,7 @@ const AdminPage = () => {
           </div>
         </div>
         <button onClick={() => navigate('/admin-dashboard')} className="back-to-dashboard-btn">
-          ← Back to Dashboard
+          🏠 Home
         </button>
       </div>
 

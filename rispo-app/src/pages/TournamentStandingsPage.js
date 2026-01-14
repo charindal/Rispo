@@ -75,7 +75,7 @@ const TournamentStandingsPage = () => {
                     <h2>{tournament?.name} - Results</h2>
                 </div>
                 <div className="nav-right">
-                    <button onClick={() => navigate('/admin')} className="nav-btn">Dashboard</button>
+                    <button onClick={() => navigate('/player-dashboard')} className="nav-btn">🏠 Home</button>
                     <button onClick={() => navigate('/profile')} className="nav-btn">Profile</button>
                     <button onClick={() => navigate(`/tournament-matches/${tournamentId}`)} className="nav-btn">Matches</button>
                     {tournament?.format === 'KNOCKOUT' && (

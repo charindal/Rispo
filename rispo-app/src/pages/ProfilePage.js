@@ -180,9 +180,9 @@ const ProfilePage = () => {
             </button>
             <button 
               className="back-button"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/player-dashboard')}
             >
-              ← Back
+              🏠 Home
             </button>
           </div>
         </div>

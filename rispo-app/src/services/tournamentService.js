@@ -1,42 +1,60 @@
-import axios from 'axios';
+import axios from './axiosConfig';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
+
+console.log('TOURNAMENT SERVICE - API_URL:', API_URL);
 
 const tournamentService = {
     // Admin functions
     createTournament: (tournamentData, userId) => {
+        console.log('Creating tournament:', tournamentData);
         return axios.post(`${API_URL}/tournaments`, tournamentData, {
             headers: { 'X-User-Id': userId }
         });
     },
 
     updateTournament: (tournamentId, tournamentData, userId) => {
+        console.log('Updating tournament:', tournamentId);
         return axios.put(`${API_URL}/tournaments/${tournamentId}`, tournamentData, {
             headers: { 'X-User-Id': userId }
         });
     },
 
     publishTournament: (tournamentId, userId) => {
+        console.log('Publishing tournament:', tournamentId);
         return axios.post(`${API_URL}/tournaments/${tournamentId}/publish`, {}, {
             headers: { 'X-User-Id': userId }
         });
     },
 
     deleteTournament: (tournamentId, userId) => {
+        console.log('Deleting tournament:', tournamentId);
         return axios.delete(`${API_URL}/tournaments/${tournamentId}`, {
             headers: { 'X-User-Id': userId }
         });
     },
 
     getAllTournaments: () => {
+        console.log('Fetching all tournaments from:', `${API_URL}/tournaments`);
         return axios.get(`${API_URL}/tournaments`);
     },
 
     getPublishedTournaments: () => {
-        return axios.get(`${API_URL}/tournaments/published`);
+        console.log('Fetching published tournaments from:', `${API_URL}/tournaments/published`);
+        return axios.get(`${API_URL}/tournaments/published`)
+            .then(response => {
+                console.log('Published tournaments response:', response.data);
+                return response;
+            })
+            .catch(error => {
+                console.error('Error fetching published tournaments:', error);
+                console.error('Error details:', error.response?.data);
+                throw error;
+            });
     },
 
     getTournamentById: (tournamentId) => {
+        console.log('Fetching tournament by ID:', tournamentId);
         return axios.get(`${API_URL}/tournaments/${tournamentId}`);
     },
 
