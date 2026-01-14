@@ -505,7 +505,7 @@
       "type": "logs"
     }
   ],
-  "refresh": "10s",
+  "refresh": "180s",
   "schemaVersion": 38,
   "style": "dark",
   "tags": ["rispo", "business"],

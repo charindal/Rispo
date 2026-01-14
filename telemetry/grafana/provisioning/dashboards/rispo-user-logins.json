@@ -105,7 +105,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"(?i)(login successful|authentication successful)\" [$__interval]))",
+          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"Login successful\" [$__interval]))",
           "legendFormat": "Successful Logins",
           "queryType": "range",
           "refId": "A"
@@ -113,7 +113,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"(?i)(login failed|authentication failed|invalid.*password|invalid.*username)\" [$__interval]))",
+          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"Login failed\" [$__interval]))",
           "legendFormat": "Failed Logins",
           "queryType": "range",
           "refId": "B"
@@ -173,7 +173,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"(?i)(login successful|authentication successful)\" [$__range]))",
+          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"Login successful\" [$__range]))",
           "legendFormat": "",
           "queryType": "instant",
           "refId": "A"
@@ -233,7 +233,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"(?i)(login failed|authentication failed|invalid.*password|invalid.*username)\" [$__range]))",
+          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"Login failed\" [$__range]))",
           "legendFormat": "",
           "queryType": "instant",
           "refId": "A"
@@ -296,9 +296,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 7
+        "w": 24,
+        "x": 0,
+        "y": 11
       },
       "id": 5,
       "options": {
@@ -310,14 +310,19 @@
           "show": false
         },
         "showHeader": true,
-        "sortBy": []
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Time"
+          }
+        ]
       },
       "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "{job=\"rispo\"} |~ \"(?i)(login|authentication)\" | pattern `<_> <level> <_> - <message>` | line_format \"{{.message}}\"",
+          "expr": "{job=\"rispo\"} |~ \"(?i)(Login (attempt|successful|failed))\" | regexp \"(?P<status>Login (attempt|successful|failed)).*username: (?P<username>[^ ),]+)(.*userId: (?P<userId>\\\\d+))?(.*role: (?P<role>[^ )]+))?\"",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
@@ -328,11 +333,24 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {},
-            "indexByName": {},
+            "excludeByName": {
+              "labels": true,
+              "tsNs": true
+            },
+            "indexByName": {
+              "Time": 0,
+              "username": 1,
+              "userId": 2,
+              "role": 3,
+              "status": 4
+            },
             "renameByName": {
-              "Line": "Log Message",
-              "Time": "Timestamp"
+              "Line": "Message",
+              "Time": "Timestamp",
+              "status": "Status",
+              "username": "Username",
+              "userId": "User ID",
+              "role": "Role"
             }
           }
         }

@@ -254,6 +254,38 @@ services:
     depends_on:
       - redis
 
+  # Node Exporter for system metrics (CPU, memory, disk)
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: rispo-node-exporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+    networks:
+      - rispo-net
+    restart: unless-stopped
+
+  # cAdvisor for Docker container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: rispo-cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - rispo-net
+    restart: unless-stopped
+    privileged: true
+
 # ========================
 # Shared Resources
 # ========================

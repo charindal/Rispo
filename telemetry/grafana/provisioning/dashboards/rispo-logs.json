@@ -370,8 +370,11 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "expr": "sum by (level) (count_over_time({application=\"rispo\"} | json | __error__=\"\" [1m]))",
+          "datasource": "Loki",
+          "editorMode": "code",
+          "expr": "sum by (level) (count_over_time({job=\"rispo\"} | logfmt | level=~\"$log_level\" | __error__=\"\" [$__interval]))",
           "legendFormat": "{{level}}",
+          "queryType": "range",
           "refId": "A"
         }
       ],
@@ -597,7 +600,7 @@
       "type": "logs"
     }
   ],
-  "refresh": "10s",
+  "refresh": "180s",
   "schemaVersion": 38,
   "style": "dark",
   "tags": ["rispo", "logs"],
@@ -605,16 +608,25 @@
     "list": [
       {
         "current": {
-          "selected": false,
-          "text": "INFO",
-          "value": "INFO"
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "hide": 0,
-        "includeAll": false,
+        "includeAll": true,
         "label": "Log Level",
-        "multi": false,
+        "multi": true,
         "name": "log_level",
         "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          },
           {
             "selected": false,
             "text": "ERROR",
@@ -626,7 +638,7 @@
             "value": "WARN"
           },
           {
-            "selected": true,
+            "selected": false,
             "text": "INFO",
             "value": "INFO"
           },

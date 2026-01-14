@@ -171,7 +171,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "{job=\"rispo\"} ${log_level} | logfmt | line_format \"{{.ts}} | {{.level}} | {{.msg}}\"",
+          "expr": "{job=\"rispo\"} $log_level",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
@@ -231,7 +231,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "{job=\"rispo\"} ${log_level}",
+          "expr": "{job=\"rispo\"} $log_level",
           "queryType": "range",
           "refId": "A"
         }

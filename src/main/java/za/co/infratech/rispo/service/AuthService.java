@@ -1,6 +1,7 @@
 package za.co.infratech.rispo.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ import za.co.infratech.rispo.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -184,22 +186,32 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        log.info("Login attempt for username: {}", request.getUsername());
+        
         // Find user by username (case-insensitive)
         UserEntity user = userRepository.findByUsernameIgnoreCase(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+                .orElseThrow(() -> {
+                    log.warn("Login failed - Invalid username: {}", request.getUsername());
+                    return new RuntimeException("Invalid username or password");
+                });
 
         // Validate password using BCrypt
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            log.warn("Login failed - Invalid password for username: {}", request.getUsername());
             throw new RuntimeException("Invalid username or password");
         }
 
         // Check if user is active
         if (!user.getIsActive()) {
+            log.warn("Login failed - Inactive account for username: {}", request.getUsername());
             throw new RuntimeException("Account is not active");
         }
 
         // Get player info if user has a player profile (regardless of role)
         Player player = playerRepository.findByUserId(user.getId()).orElse(null);
+
+        log.info("Login successful for username: {} (userId: {}, role: {})", 
+                request.getUsername(), user.getId(), user.getRole());
 
         // Build response
         AuthResponse response = new AuthResponse();
