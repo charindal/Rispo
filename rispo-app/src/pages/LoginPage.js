@@ -120,9 +120,11 @@ const LoginPage = () => {
             <input
               type="text"
               id="username"
+              name="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter your username"
+              autoComplete="username"
               required
               disabled={loading}
             />
@@ -133,9 +135,11 @@ const LoginPage = () => {
             <input
               type="password"
               id="password"
+              name="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
+              autoComplete="current-password"
               required
               disabled={loading}
             />

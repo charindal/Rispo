@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { App as CapacitorApp } from '@capacitor/app';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AdminPage from './pages/AdminPage';
@@ -20,6 +21,34 @@ import TournamentStandingsPage from './pages/TournamentStandingsPage';
 import TournamentBracketPage from './pages/TournamentBracketPage';
 import RankingsPage from './pages/RankingsPage';
 import DiagnosticPage from './pages/DiagnosticPage';
+
+// Component to handle hardware back button within Router context
+function BackButtonHandler() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const handleBackButton = () => {
+      // If we're on the login page, exit the app
+      if (location.pathname === '/login' || location.pathname === '/') {
+        CapacitorApp.exitApp();
+        return;
+      }
+      
+      // Otherwise, navigate back in history
+      navigate(-1);
+    };
+
+    // Listen for hardware back button
+    const backButtonListener = CapacitorApp.addListener('backButton', handleBackButton);
+
+    return () => {
+      backButtonListener.remove();
+    };
+  }, [navigate, location]);
+
+  return null; // This component doesn't render anything
+}
 
 function App() {
   useEffect(() => {
@@ -44,6 +73,7 @@ function App() {
 
   return (
     <Router>
+      <BackButtonHandler />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
