@@ -95,6 +95,7 @@ public class ChallengeService {
         challenge = challengeRepository.save(challenge);
 
         // Auto-create match when challenge is accepted
+        // Match starts in PENDING_REVIEW status, players can submit results which updates the match
         Match match = Match.builder()
                 .player1(challenge.getChallenger())
                 .player2(challenge.getChallenged())

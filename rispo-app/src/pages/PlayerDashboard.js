@@ -148,6 +148,7 @@ const PlayerDashboard = () => {
     <div className="player-dashboard">
       <nav className="player-navbar">
         <div className="navbar-brand">
+          <img src="/logo.jpeg" alt="Rispo Logo" className="navbar-logo" />
           <h2>Rispo</h2>
           <span className="player-badge">Player</span>
         </div>
@@ -296,6 +297,11 @@ const PlayerDashboard = () => {
               <div className="action-icon">⚔️</div>
               <h3>Challenge Players</h3>
               <p>Send or accept challenges</p>
+            </div>
+            <div className="action-card" onClick={() => navigate('/match-history')}>
+              <div className="action-icon">📜</div>
+              <h3>Match History</h3>
+              <p>View your previous matches and results</p>
             </div>
             <div className="action-card" onClick={() => navigate('/submit-match')}>
               <div className="action-icon">📝</div>

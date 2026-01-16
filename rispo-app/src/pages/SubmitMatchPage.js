@@ -55,16 +55,26 @@ const SubmitMatchPage = () => {
         headers: { 'X-User-Id': currentUser.userId }
       });
       const match = response.data;
+      
+      // Validate that this is a challenge match, not a tournament match
+      if (match.tournamentId) {
+        setError('Tournament matches must be updated by the tournament administrator. Players cannot submit results for tournament matches.');
+        return;
+      }
+      
+      if (!match.challengeId) {
+        setError('This match is not associated with a challenge. Please contact the administrator.');
+        return;
+      }
+      
       setMatchDetails(match);
       
       // Pre-fill opponent
       const opponentPlayer = match.player1Id === currentUser.playerId ? match.player2Id : match.player1Id;
       setOpponentId(opponentPlayer);
       
-      // Store challengeId if exists
-      if (match.challengeId) {
-        setChallengeId(match.challengeId);
-      }
+      // Store challengeId
+      setChallengeId(match.challengeId);
       
       // Still load all players for the dropdown
       await loadPlayers(currentUser.playerId);

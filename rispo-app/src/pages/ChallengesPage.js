@@ -18,8 +18,9 @@ const ChallengesPage = () => {
   const [pendingOutgoingCount, setPendingOutgoingCount] = useState(0);
   const [activeTab, setActiveTab] = useState('upcoming'); // upcoming, incoming, outgoing, create
   const [selectedOpponent, setSelectedOpponent] = useState('');
-  const [challengeName, setChallengeName] = useState('');
-  const [challengeMessage, setChallengeMessage] = useState('');
+  const [selectedOpponentName, setSelectedOpponentName] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchResultsPage, setSearchResultsPage] = useState(1);
   const [format, setFormat] = useState('');
   const [dateOfMatch, setDateOfMatch] = useState('');
   const [timeOfMatch, setTimeOfMatch] = useState('');
@@ -91,6 +92,10 @@ const ChallengesPage = () => {
       setError('Please select an opponent');
       return;
     }
+    if (!format || !dateOfMatch || !timeOfMatch || !pot || !venue) {
+      setError('All fields are required');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -98,24 +103,25 @@ const ChallengesPage = () => {
     try {
       await challengeService.createChallenge({
         challengedPlayerId: parseInt(selectedOpponent),
-        challengeName: challengeName || null,
-        message: challengeMessage,
-        format: format || null,
-        dateOfMatch: dateOfMatch ? new Date(dateOfMatch).toISOString() : null,
-        timeOfMatch: timeOfMatch || null,
-        pot: pot ? parseFloat(pot) : null,
-        venue: venue || null
+        challengeName: null,
+        message: '',
+        format: format,
+        dateOfMatch: new Date(dateOfMatch).toISOString(),
+        timeOfMatch: timeOfMatch,
+        pot: parseFloat(pot),
+        venue: venue
       }, user.userId);
 
       alert('Challenge sent successfully!');
       setSelectedOpponent('');
-      setChallengeName('');
-      setChallengeMessage('');
+      setSelectedOpponentName('');
       setFormat('');
       setDateOfMatch('');
       setTimeOfMatch('');
       setPot('');
       setVenue('');
+      setSearchTerm('');
+      setPlayers([]);
       await loadChallenges(user);
       setActiveTab('outgoing');
     } catch (err) {
@@ -127,15 +133,40 @@ const ChallengesPage = () => {
 
   const handleSearchPlayers = async (term) => {
     setSearchTerm(term);
-    if (user && user.clubId) {
-      try {
-        const results = await playerService.searchPlayersByClub(user.clubId, term);
-        setPlayers(results.filter(p => p.id !== user.playerId));
-      } catch (err) {
-        console.error('Error searching players:', err);
-      }
+    if (term.trim().length < 2) {
+      setPlayers([]);
+      setShowSearchResults(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      console.log('Searching for players with term:', term, 'clubId:', user?.clubId);
+      const results = await playerService.searchPlayersByClub(user.clubId, term);
+      console.log('Search results:', results);
+      setPlayers(results.filter(p => p.id !== user.playerId));
+      setShowSearchResults(true);
+      setSearchResultsPage(1);
+    } catch (err) {
+      console.error('Search error:', err);
+      setError('Failed to search players. Please try again.');
+      setPlayers([]);
+      setShowSearchResults(false);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleSelectOpponent = (player) => {
+    setSelectedOpponent(player.id);
+    setSelectedOpponentName(player.name);
+    setShowSearchResults(false);
+    setSearchTerm('');
+  };
+
+  const paginatedSearchResults = players.slice(
+    (searchResultsPage - 1) * 5,
+    searchResultsPage * 5
+  );
 
   const handleRespondToChallenge = async (challengeId, response) => {
     try {
@@ -398,61 +429,158 @@ const ChallengesPage = () => {
               <h2>Create New Challenge</h2>
               <form onSubmit={handleCreateChallenge}>
                 <div className="form-group">
-                  <label>Search Opponent *</label>
-                  <input
-                    type="text"
-                    placeholder="Search by name..."
-                    value={searchTerm}
-                    onChange={(e) => handleSearchPlayers(e.target.value)}
-                    className="search-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Select Opponent *</label>
-                  <select 
-                    value={selectedOpponent} 
-                    onChange={(e) => setSelectedOpponent(e.target.value)}
-                    required
-                    disabled={loading}
-                  >
-                    <option value="">Choose opponent...</option>
-                    {players.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} (Rating: {p.rating})
-                      </option>
-                    ))}
-                  </select>
-                  {user?.clubId && (
-                    <small className="form-hint">Showing verified players from your club</small>
+                  <label>Search & Select Opponent *</label>
+                  <div className="search-container">
+                    <div className="search-input-group">
+                      <input
+                        type="text"
+                        placeholder="Type player name (min 2 characters)..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSearchPlayers(searchTerm);
+                          }
+                        }}
+                        className="search-input"
+                        disabled={loading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSearchPlayers(searchTerm)}
+                        className="search-btn"
+                        disabled={loading || searchTerm.trim().length < 2}
+                      >
+                        🔍 Search
+                      </button>
+                    </div>
+                    {selectedOpponent && (
+                      <div className="selected-opponent">
+                        <span>✓ Selected: <strong>{selectedOpponentName}</strong></span>
+                        <button 
+                          type="button" 
+                          className="clear-selection-btn"
+                          onClick={() => {
+                            setSelectedOpponent('');
+                            setSelectedOpponentName('');
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {showSearchResults && players.length > 0 && (
+                    <div className="search-results-box">
+                      <div className="search-results-list">
+                        {paginatedSearchResults.map(player => (
+                          <div 
+                            key={player.id} 
+                            className="search-result-item"
+                            onClick={() => handleSelectOpponent(player)}
+                          >
+                            <div className="player-info">
+                              <span className="player-name">{player.name}</span>
+                              <span className="player-rating">⭐ {player.rating}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {players.length > 5 && (
+                        <div className="search-pagination">
+                          <button
+                            type="button"
+                            onClick={() => setSearchResultsPage(prev => Math.max(1, prev - 1))}
+                            disabled={searchResultsPage === 1}
+                            className="page-btn"
+                          >
+                            ‹ Prev
+                          </button>
+                          <span className="page-info">
+                            {searchResultsPage} / {Math.ceil(players.length / 5)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSearchResultsPage(prev => Math.min(Math.ceil(players.length / 5), prev + 1))}
+                            disabled={searchResultsPage >= Math.ceil(players.length / 5)}
+                            className="page-btn"
+                          >
+                            Next ›
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {showSearchResults && players.length === 0 && (
+                    <div className="no-results">No players found</div>
                   )}
                 </div>
 
                 <div className="form-group">
-                  <label>Challenge Name (Optional)</label>
+                  <label>Format *</label>
                   <input
                     type="text"
-                    placeholder="e.g., Friday Night Match"
-                    value={challengeName}
-                    onChange={(e) => setChallengeName(e.target.value)}
+                    placeholder="e.g., Race to 7, Race to 9, Best of 5"
+                    value={format}
+                    onChange={(e) => setFormat(e.target.value)}
                     maxLength="100"
                     disabled={loading}
+                    required
                   />
-                  <small className="form-hint">Give your challenge a friendly name</small>
                 </div>
 
                 <div className="form-group">
-                  <label>Message (Optional)</label>
-                  <textarea
-                    value={challengeMessage}
-                    onChange={(e) => setChallengeMessage(e.target.value)}
-                    placeholder="Add a message to your challenge..."
-                    rows="4"
+                  <label>Date of Match *</label>
+                  <input
+                    type="date"
+                    value={dateOfMatch}
+                    onChange={(e) => setDateOfMatch(e.target.value)}
                     disabled={loading}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
                   />
                 </div>
 
-                <button type="submit" className="submit-btn" disabled={loading}>
+                <div className="form-group">
+                  <label>Time of Match *</label>
+                  <input
+                    type="time"
+                    value={timeOfMatch}
+                    onChange={(e) => setTimeOfMatch(e.target.value)}
+                    disabled={loading}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Pot Amount (R) *</label>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={pot}
+                    onChange={(e) => setPot(e.target.value)}
+                    step="0.01"
+                    min="0"
+                    disabled={loading}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Venue *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Club House, Main Street, Johannesburg"
+                    value={venue}
+                    onChange={(e) => setVenue(e.target.value)}
+                    maxLength="255"
+                    disabled={loading}
+                    required
+                  />
+                </div>
+
+                <button type="submit" className="submit-btn" disabled={loading || !selectedOpponent}>
                   {loading ? 'Sending...' : '⚔ Send Challenge'}
                 </button>
               </form>

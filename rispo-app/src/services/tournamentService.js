@@ -130,6 +130,67 @@ const tournamentService = {
             {},
             { headers: { 'X-User-Id': userId } }
         );
+    },
+
+    // Tournament Template functions
+    getAllTemplates: () => {
+        return axios.get(`${API_URL}/api/admin/tournament-templates`);
+    },
+
+    getActiveTemplates: () => {
+        return axios.get(`${API_URL}/api/admin/tournament-templates/active`);
+    },
+
+    getTemplateById: (templateId) => {
+        return axios.get(`${API_URL}/api/admin/tournament-templates/${templateId}`);
+    },
+
+    createTemplate: (templateData, userId) => {
+        return axios.post(`${API_URL}/api/admin/tournament-templates`, templateData, {
+            headers: { 'X-User-Id': userId }
+        });
+    },
+
+    updateTemplate: (templateId, templateData, userId) => {
+        return axios.put(`${API_URL}/api/admin/tournament-templates/${templateId}`, templateData, {
+            headers: { 'X-User-Id': userId }
+        });
+    },
+
+    deleteTemplate: (templateId, userId) => {
+        return axios.delete(`${API_URL}/api/admin/tournament-templates/${templateId}`, {
+            headers: { 'X-User-Id': userId }
+        });
+    },
+
+    // Club Tournament functions
+    getClubTournaments: (clubId) => {
+        return axios.get(`${API_URL}/clubs/${clubId}/tournaments`);
+    },
+
+    createClubTournamentFromTemplate: (clubId, request, userId) => {
+        return axios.post(`${API_URL}/clubs/${clubId}/tournaments/from-template`, request, {
+            headers: { 'X-User-Id': userId }
+        });
+    },
+
+    approveClubTournament: (clubId, tournamentId, userId) => {
+        return axios.patch(`${API_URL}/clubs/${clubId}/tournaments/${tournamentId}/approve`, {}, {
+            headers: { 'X-User-Id': userId }
+        });
+    },
+
+    rejectClubTournament: (clubId, tournamentId, reason, userId) => {
+        return axios.patch(`${API_URL}/clubs/${clubId}/tournaments/${tournamentId}/reject`, 
+            { reason }, 
+            { headers: { 'X-User-Id': userId } }
+        );
+    },
+
+    startClubTournament: (clubId, tournamentId, userId) => {
+        return axios.post(`${API_URL}/clubs/${clubId}/tournaments/${tournamentId}/start`, {}, {
+            headers: { 'X-User-Id': userId }
+        });
     }
 };
 

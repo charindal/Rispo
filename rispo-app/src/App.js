@@ -10,6 +10,7 @@ import ProfilePage from './pages/ProfilePage';
 import RatingSettingsPage from './pages/RatingSettingsPage';
 import SubmitMatchPage from './pages/SubmitMatchPage';
 import MatchReviewPage from './pages/MatchReviewPage';
+import MatchHistoryPage from './pages/MatchHistoryPage';
 import ChallengesPage from './pages/ChallengesPage';
 import TournamentsPage from './pages/TournamentsPage';
 import TournamentManagementPage from './pages/TournamentManagementPage';
@@ -56,6 +57,7 @@ function App() {
         <Route path="/rating-settings" element={<RatingSettingsPage />} />
         <Route path="/submit-match" element={<SubmitMatchPage />} />
         <Route path="/review-matches" element={<MatchReviewPage />} />
+        <Route path="/match-history" element={<MatchHistoryPage />} />
         <Route path="/challenges" element={<ChallengesPage />} />
         <Route path="/tournaments" element={<TournamentsPage />} />
         <Route path="/tournaments/manage" element={<TournamentManagementPage />} />

@@ -3,19 +3,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #0d5e2f 0%, #0a472d 50%, #1a8a4a 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
   padding: 20px;
 }
 
 .login-card {
   background: white;
   border-radius: 16px;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 48px rgba(30, 58, 138, 0.3);
   width: 100%;
   max-width: 420px;
   padding: 40px;
   animation: slideUp 0.5s ease-out;
-  border: 3px solid var(--wood-brown);
+  border: 3px solid #1e3a8a;
 }
 
 @keyframes slideUp {
@@ -31,21 +31,20 @@
 
 .login-header {
   text-align: center;
+  margin-bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-logo {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
   margin-bottom: 30px;
-}
-
-.login-header h1 {
-  font-size: 42px;
-  font-weight: 800;
-  color: var(--primary-green);
-  margin: 0 0 8px 0;
-  letter-spacing: -1px;
-}
-
-.login-header p {
-  font-size: 16px;
-  color: var(--text-light);
-  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
 }
 
 .login-form {
@@ -76,8 +75,8 @@
 }
 
 .form-group input:focus {
-  border-color: var(--red-ball);
-  box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .form-group input:disabled {
@@ -95,7 +94,7 @@
 }
 
 .login-button {
-  background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
   color: white;
   padding: 14px 24px;
   border: none;
@@ -111,8 +110,8 @@
 
 .login-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(13, 94, 47, 0.4);
-  background: linear-gradient(135deg, var(--secondary-green) 0%, var(--primary-green) 100%);
+  box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
 }
 
 .login-button:active:not(:disabled) {
@@ -139,14 +138,14 @@
 }
 
 .login-footer a {
-  color: var(--secondary-green);
+  color: #1e40af;
   text-decoration: none;
   font-weight: 600;
   transition: color 0.3s ease;
 }
 
 .login-footer a:hover {
-  color: var(--red-ball);
+  color: #3b82f6;
 }
 
 /* Responsive design */

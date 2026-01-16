@@ -78,6 +78,7 @@ function AdminDashboard() {
       {/* Admin Navbar */}
       <nav className="admin-navbar">
         <div className="navbar-brand">
+          <img src="/logo.jpeg" alt="Rispo Logo" className="navbar-logo" />
           <h2>🎯 Rispo Admin</h2>
           <span className="admin-badge">
             {user.role === 'SUPER_USER' ? 'Super User' : 

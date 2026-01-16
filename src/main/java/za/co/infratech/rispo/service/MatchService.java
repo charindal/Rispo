@@ -63,6 +63,13 @@ public class MatchService {
             if (existingMatch != null && existingMatch.getSubmittedBy() != null) {
                 throw new Exception("Match result has already been submitted for this challenge");
             }
+            
+            // Verify this is NOT a tournament match
+            if (existingMatch != null && existingMatch.getTournament() != null) {
+                throw new Exception("Tournament matches cannot be submitted by players. Only tournament administrators can update tournament match results.");
+            }
+        } else {
+            throw new Exception("Match submission is only allowed for challenge matches. Please use the challenge feature to create matches.");
         }
 
         // Create or update match

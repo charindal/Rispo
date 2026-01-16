@@ -111,8 +111,7 @@ const LoginPage = () => {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <h1>Rispo</h1>
-          <p>Rating System Platform</p>
+          <img src="/logo.jpeg" alt="Rispo Logo" className="login-logo" />
         </div>
         
         <form onSubmit={handleSubmit} className="login-form">

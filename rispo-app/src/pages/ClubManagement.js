@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import clubService from '../services/clubService';
+import tournamentService from '../services/tournamentService';
 import Pagination from '../components/Pagination';
 import HamburgerMenu from '../components/HamburgerMenu';
 import '../styles/ClubManagement.css';
@@ -44,6 +45,19 @@ function ClubManagement() {
     clubId: '',
     role: '',
     validityDays: 30
+  });
+
+  // Club Tournament Modal states
+  const [showTournamentModal, setShowTournamentModal] = useState(false);
+  const [selectedClub, setSelectedClub] = useState(null);
+  const [clubTournaments, setClubTournaments] = useState([]);
+  const [tournamentTemplates, setTournamentTemplates] = useState([]);
+  const [showCreateTournamentForm, setShowCreateTournamentForm] = useState(false);
+  const [tournamentForm, setTournamentForm] = useState({
+    templateId: '',
+    name: '',
+    startDate: '',
+    endDate: ''
   });
 
   useEffect(() => {
@@ -208,6 +222,88 @@ function ClubManagement() {
       loadData();
     } catch (error) {
       alert('Error: ' + (typeof error === 'string' ? error : error.message || 'Failed to update status'));
+    }
+  };
+
+  // Club Tournament Handlers
+  const handleManageTournaments = async (club) => {
+    setSelectedClub(club);
+    setShowTournamentModal(true);
+    try {
+      const [tournamentsResp, templatesResp] = await Promise.all([
+        tournamentService.getClubTournaments(club.clubId),
+        tournamentService.getActiveTemplates()
+      ]);
+      setClubTournaments(tournamentsResp.data || []);
+      setTournamentTemplates(templatesResp.data || []);
+    } catch (error) {
+      console.error('Error loading club tournaments:', error);
+      alert('Error loading tournament data');
+    }
+  };
+
+  const handleCreateClubTournament = async (e) => {
+    e.preventDefault();
+    if (!tournamentForm.templateId || !tournamentForm.name) {
+      alert('Please select a template and provide a tournament name');
+      return;
+    }
+    try {
+      await tournamentService.createClubTournamentFromTemplate(
+        selectedClub.clubId,
+        {
+          templateId: parseInt(tournamentForm.templateId),
+          name: tournamentForm.name,
+          startDate: tournamentForm.startDate || null,
+          endDate: tournamentForm.endDate || null
+        },
+        user.userId
+      );
+      alert('Club tournament created! Players have been auto-joined with PENDING status.');
+      setShowCreateTournamentForm(false);
+      setTournamentForm({ templateId: '', name: '', startDate: '', endDate: '' });
+      // Reload tournaments
+      const tournamentsResp = await tournamentService.getClubTournaments(selectedClub.clubId);
+      setClubTournaments(tournamentsResp.data || []);
+    } catch (error) {
+      alert('Error: ' + (error.response?.data?.message || error.message || 'Failed to create tournament'));
+    }
+  };
+
+  const handleApproveTournament = async (tournamentId) => {
+    if (!window.confirm('Approve this tournament? It will move to APPROVED status.')) return;
+    try {
+      await tournamentService.approveClubTournament(selectedClub.clubId, tournamentId, user.userId);
+      alert('Tournament approved!');
+      const tournamentsResp = await tournamentService.getClubTournaments(selectedClub.clubId);
+      setClubTournaments(tournamentsResp.data || []);
+    } catch (error) {
+      alert('Error: ' + (error.response?.data?.message || error.message || 'Failed to approve'));
+    }
+  };
+
+  const handleRejectTournament = async (tournamentId) => {
+    const reason = prompt('Enter rejection reason:');
+    if (!reason) return;
+    try {
+      await tournamentService.rejectClubTournament(selectedClub.clubId, tournamentId, reason, user.userId);
+      alert('Tournament rejected');
+      const tournamentsResp = await tournamentService.getClubTournaments(selectedClub.clubId);
+      setClubTournaments(tournamentsResp.data || []);
+    } catch (error) {
+      alert('Error: ' + (error.response?.data?.message || error.message || 'Failed to reject'));
+    }
+  };
+
+  const handleStartTournament = async (tournamentId) => {
+    if (!window.confirm('Start this tournament? It will change to PUBLISHED status.')) return;
+    try {
+      await tournamentService.startClubTournament(selectedClub.clubId, tournamentId, user.userId);
+      alert('Tournament started and published!');
+      const tournamentsResp = await tournamentService.getClubTournaments(selectedClub.clubId);
+      setClubTournaments(tournamentsResp.data || []);
+    } catch (error) {
+      alert('Error: ' + (error.response?.data?.message || error.message || 'Failed to start'));
     }
   };
 
@@ -377,6 +473,13 @@ function ClubManagement() {
                     <p className="club-meta">Created by {club.createdByUsername}</p>
                   </div>
                   <div className="club-actions">
+                    <button 
+                      onClick={() => handleManageTournaments(club)}
+                      className="action-btn primary"
+                      title="Manage Club Tournaments"
+                    >
+                      🏆 Tournaments
+                    </button>
                     <button 
                       onClick={() => handleEditClub(club)}
                       className="action-btn info"
@@ -712,6 +815,223 @@ function ClubManagement() {
               >
                 {reviewAction === 'APPROVED' ? 'Approve Request' : 'Reject Request'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Club Tournament Modal */}
+      {showTournamentModal && selectedClub && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+              <h2>🏆 {selectedClub.name} - Tournaments</h2>
+              <button 
+                onClick={() => {
+                  setShowTournamentModal(false);
+                  setSelectedClub(null);
+                  setShowCreateTournamentForm(false);
+                  setTournamentForm({ templateId: '', name: '', startDate: '', endDate: '' });
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#999'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Create Tournament Form */}
+            {!showCreateTournamentForm && (
+              <button 
+                onClick={() => setShowCreateTournamentForm(true)}
+                className="primary-btn"
+                style={{marginBottom: '20px'}}
+              >
+                + Create Club Tournament
+              </button>
+            )}
+
+            {showCreateTournamentForm && (
+              <div className="form-card" style={{marginBottom: '20px'}}>
+                <h3>Create Tournament from Template</h3>
+                <form onSubmit={handleCreateClubTournament}>
+                  <div className="form-group">
+                    <label>Tournament Template *</label>
+                    <select
+                      value={tournamentForm.templateId}
+                      onChange={(e) => setTournamentForm({...tournamentForm, templateId: e.target.value})}
+                      required
+                    >
+                      <option value="">Select a template...</option>
+                      {tournamentTemplates.map(template => (
+                        <option key={template.id} value={template.id}>
+                          {template.templateName} - {template.tournamentType} ({template.maxPlayers} players max)
+                        </option>
+                      ))}
+                    </select>
+                    {tournamentForm.templateId && tournamentTemplates.find(t => t.id === parseInt(tournamentForm.templateId)) && (
+                      <small style={{color: '#666', marginTop: '8px', display: 'block'}}>
+                        {tournamentTemplates.find(t => t.id === parseInt(tournamentForm.templateId)).description}
+                      </small>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label>Tournament Name *</label>
+                    <input
+                      type="text"
+                      value={tournamentForm.name}
+                      onChange={(e) => setTournamentForm({...tournamentForm, name: e.target.value})}
+                      placeholder="e.g., January 2026 Club Championship"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Start Date (Optional)</label>
+                      <input
+                        type="date"
+                        value={tournamentForm.startDate}
+                        onChange={(e) => setTournamentForm({...tournamentForm, startDate: e.target.value})}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>End Date (Optional)</label>
+                      <input
+                        type="date"
+                        value={tournamentForm.endDate}
+                        onChange={(e) => setTournamentForm({...tournamentForm, endDate: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{display: 'flex', gap: '10px'}}>
+                    <button type="submit" className="submit-btn">Create Tournament</button>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setShowCreateTournamentForm(false);
+                        setTournamentForm({ templateId: '', name: '', startDate: '', endDate: '' });
+                      }}
+                      className="cancel-btn"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+                <p style={{marginTop: '15px', padding: '10px', background: '#e3f2fd', borderRadius: '5px', fontSize: '0.9em'}}>
+                  <strong>Note:</strong> All club members will be auto-joined with PENDING status. 
+                  You must approve players before they can participate.
+                </p>
+              </div>
+            )}
+
+            {/* Tournament List */}
+            <div>
+              <h3>Club Tournaments</h3>
+              {clubTournaments.length === 0 ? (
+                <p style={{textAlign: 'center', padding: '40px', color: '#999'}}>
+                  No tournaments created yet. Create one using a template!
+                </p>
+              ) : (
+                <div style={{display: 'grid', gap: '15px'}}>
+                  {clubTournaments.map(tournament => (
+                    <div 
+                      key={tournament.id} 
+                      style={{
+                        border: '2px solid #ddd',
+                        borderRadius: '8px',
+                        padding: '15px',
+                        background: '#f9f9f9'
+                      }}
+                    >
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px'}}>
+                        <div>
+                          <h4 style={{margin: '0 0 8px 0'}}>{tournament.name}</h4>
+                          <div style={{fontSize: '0.9em', color: '#666'}}>
+                            <div><strong>Type:</strong> {tournament.tournamentType}</div>
+                            {tournament.startDate && (
+                              <div><strong>Start:</strong> {new Date(tournament.startDate).toLocaleDateString()}</div>
+                            )}
+                            {tournament.endDate && (
+                              <div><strong>End:</strong> {new Date(tournament.endDate).toLocaleDateString()}</div>
+                            )}
+                            <div><strong>Template:</strong> {tournament.templateName || 'N/A'}</div>
+                          </div>
+                        </div>
+                        <span 
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '12px',
+                            fontSize: '0.85em',
+                            fontWeight: '600',
+                            background: 
+                              tournament.approvalStatus === 'APPROVED' ? '#4caf50' :
+                              tournament.approvalStatus === 'REJECTED' ? '#f44336' :
+                              tournament.approvalStatus === 'PENDING_APPROVAL' ? '#ff9800' :
+                              '#999',
+                            color: 'white'
+                          }}
+                        >
+                          {tournament.approvalStatus || tournament.status}
+                        </span>
+                      </div>
+
+                      {/* Actions based on status */}
+                      <div style={{display: 'flex', gap: '8px', marginTop: '12px'}}>
+                        {tournament.approvalStatus === 'PENDING_APPROVAL' && (
+                          <>
+                            <button 
+                              onClick={() => handleApproveTournament(tournament.id)}
+                              className="action-btn success"
+                              style={{fontSize: '0.9em'}}
+                            >
+                              ✓ Approve
+                            </button>
+                            <button 
+                              onClick={() => handleRejectTournament(tournament.id)}
+                              className="action-btn danger"
+                              style={{fontSize: '0.9em'}}
+                            >
+                              × Reject
+                            </button>
+                          </>
+                        )}
+                        {tournament.approvalStatus === 'APPROVED' && tournament.status !== 'PUBLISHED' && (
+                          <button 
+                            onClick={() => handleStartTournament(tournament.id)}
+                            className="action-btn primary"
+                            style={{fontSize: '0.9em'}}
+                          >
+                            🚀 Start Tournament
+                          </button>
+                        )}
+                        {tournament.status === 'PUBLISHED' && (
+                          <button 
+                            onClick={() => navigate(`/tournaments/${tournament.id}`)}
+                            className="action-btn info"
+                            style={{fontSize: '0.9em'}}
+                          >
+                            📊 View Tournament
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Player count info */}
+                      <div style={{marginTop: '10px', padding: '8px', background: '#fff', borderRadius: '5px', fontSize: '0.85em'}}>
+                        <strong>Players:</strong> Auto-joined all club members with PENDING status. 
+                        Approve individual players in tournament management.
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
