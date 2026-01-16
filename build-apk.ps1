@@ -58,15 +58,24 @@ if ($LASTEXITCODE -ne 0) {
 
 Set-Location ..\..
 
+# Rename APK to Rispo
+Write-Host "`nRenaming APK to Rispo.apk..." -ForegroundColor Green
+$sourcePath = "rispo-app\android\app\build\outputs\apk\debug\app-debug.apk"
+$destPath = "rispo-app\android\app\build\outputs\apk\debug\Rispo.apk"
+if (Test-Path $sourcePath) {
+    Copy-Item -Path $sourcePath -Destination $destPath -Force
+    Write-Host "APK renamed successfully" -ForegroundColor Green
+}
+
 Write-Host "`n===============================================" -ForegroundColor Cyan
 Write-Host "  Build Complete!" -ForegroundColor Green
 Write-Host "===============================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "APK Location:" -ForegroundColor Yellow
-Write-Host "  rispo-app\android\app\build\outputs\apk\debug\app-debug.apk"
+Write-Host "  rispo-app\android\app\build\outputs\apk\debug\Rispo.apk"
 Write-Host ""
 Write-Host "To install on device:" -ForegroundColor Yellow
-Write-Host "  adb install -r rispo-app\android\app\build\outputs\apk\debug\app-debug.apk"
+Write-Host "  adb install -r rispo-app\android\app\build\outputs\apk\debug\Rispo.apk"
 Write-Host ""
 Write-Host "To view logs:" -ForegroundColor Yellow
 Write-Host "  adb logcat | Select-String 'AUTH SERVICE|Login'"

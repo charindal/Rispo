@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">rispo-app</string>
-    <string name="title_activity_main">rispo-app</string>
+    <string name="app_name">Rispo</string>
+    <string name="title_activity_main">Rispo</string>
     <string name="package_name">co.infratech.rispo.app</string>
     <string name="custom_url_scheme">co.infratech.rispo.app</string>
 </resources>
