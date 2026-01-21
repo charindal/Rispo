@@ -65,7 +65,8 @@ const TournamentMatchesPage = () => {
                         bracketData.rounds[round].forEach(match => {
                             allMatches.push({
                                 ...match,
-                                round: parseInt(round)
+                                round: parseInt(round),
+                                matchId: match.matchNumber // Use matchNumber as matchId for consistency
                             });
                         });
                     });
@@ -189,9 +190,9 @@ const TournamentMatchesPage = () => {
             const p2Games = parseInt(input.player2Games);
             
             if (p1Games > p2Games) {
-                winnerId = match.player1?.playerId;
+                winnerId = tournament?.isKnockout ? match.player1?.playerId : match.player1?.playerId;
             } else if (p2Games > p1Games) {
-                winnerId = match.player2?.playerId;
+                winnerId = tournament?.isKnockout ? match.player2?.playerId : match.player2?.playerId;
             }
             // null winner means draw
 
@@ -290,12 +291,24 @@ const TournamentMatchesPage = () => {
         return roundMatches.length > 0 && roundMatches.every(m => m.status === 'APPROVED');
     };
 
-    const getMatchStatusDisplay = (status) => {
-        switch (status) {
-            case 'PENDING_REVIEW': return { text: 'Awaiting Result/Review', class: 'status-pending' };
-            case 'APPROVED': return { text: 'Approved', class: 'status-approved' };
-            case 'REJECTED': return { text: 'Rejected', class: 'status-rejected' };
-            default: return { text: status, class: '' };
+    const getMatchStatusDisplay = (match, isKnockout) => {
+        if (isKnockout) {
+            // For knockout tournaments, status is based on whether winner is set
+            if (match.winner) {
+                return { text: 'Complete', class: 'status-approved' };
+            } else if (match.player1 && match.player2) {
+                return { text: 'Pending Result', class: 'status-pending' };
+            } else {
+                return { text: 'Awaiting Players', class: 'status-pending' };
+            }
+        } else {
+            // For regular tournaments, use the status field
+            switch (match.status) {
+                case 'PENDING_REVIEW': return { text: 'Awaiting Result/Review', class: 'status-pending' };
+                case 'APPROVED': return { text: 'Approved', class: 'status-approved' };
+                case 'REJECTED': return { text: 'Rejected', class: 'status-rejected' };
+                default: return { text: match.status, class: '' };
+            }
         }
     };
 
@@ -374,7 +387,7 @@ const TournamentMatchesPage = () => {
                     <p className="no-matches">No matches in this round yet.</p>
                 ) : (
                     getRoundMatches().map(match => {
-                        const statusDisplay = getMatchStatusDisplay(match.status);
+                        const statusDisplay = getMatchStatusDisplay(match, tournament?.isKnockout);
                         return (
                             <div key={match.matchId} className={`match-card ${statusDisplay.class}`}>
                                 <div className="match-header">
@@ -383,10 +396,22 @@ const TournamentMatchesPage = () => {
                                 </div>
                                 
                                 <div className="match-players">
-                                    <div className={`player ${match.winner?.playerId === match.player1?.playerId ? 'winner' : ''}`}>
-                                        <span className="player-name">{match.player1?.name || 'TBD'}</span>
-                                        <span className="player-rating">({match.player1?.rating || '-'})</span>
-                                        {match.status === 'APPROVED' && match.player1RatingChange !== null && (
+                                    <div className={`player ${tournament?.isKnockout ? 
+                                        (match.winner?.playerId === match.player1?.playerId) : 
+                                        (match.winner?.playerId === match.player1?.playerId) ? 'winner' : ''}`}>
+                                        <span className="player-name">
+                                            {tournament?.isKnockout ? 
+                                                (match.player1?.playerName || 'TBD') : 
+                                                (match.player1?.name || 'TBD')
+                                            }
+                                        </span>
+                                        <span className="player-rating">
+                                            ({tournament?.isKnockout ? 
+                                                (match.player1?.rating ? Math.round(match.player1.rating) : '-') : 
+                                                (match.player1?.rating || '-')
+                                            })
+                                        </span>
+                                        {!tournament?.isKnockout && match.status === 'APPROVED' && match.player1RatingChange !== null && (
                                             <span className={`rating-change ${match.player1RatingChange >= 0 ? 'positive' : 'negative'}`}>
                                                 {match.player1RatingChange >= 0 ? '+' : ''}{match.player1RatingChange}
                                             </span>
@@ -394,20 +419,36 @@ const TournamentMatchesPage = () => {
                                     </div>
                                     
                                     <div className="vs">
-                                        {match.games && match.games.length > 0 ? (
-                                            <span className="score">
-                                                {match.games.filter(g => g.winnerId === match.player1?.playerId).length} - 
-                                                {match.games.filter(g => g.winnerId === match.player2?.playerId).length}
-                                            </span>
+                                        {tournament?.isKnockout ? (
+                                            match.winner ? <span className="completed">✓</span> : <span>VS</span>
                                         ) : (
-                                            <span>VS</span>
+                                            match.games && match.games.length > 0 ? (
+                                                <span className="score">
+                                                    {match.games.filter(g => g.winnerId === match.player1?.playerId).length} - 
+                                                    {match.games.filter(g => g.winnerId === match.player2?.playerId).length}
+                                                </span>
+                                            ) : (
+                                                <span>VS</span>
+                                            )
                                         )}
                                     </div>
                                     
-                                    <div className={`player ${match.winner?.playerId === match.player2?.playerId ? 'winner' : ''}`}>
-                                        <span className="player-name">{match.player2?.name || 'TBD'}</span>
-                                        <span className="player-rating">({match.player2?.rating || '-'})</span>
-                                        {match.status === 'APPROVED' && match.player2RatingChange !== null && (
+                                    <div className={`player ${tournament?.isKnockout ? 
+                                        (match.winner?.playerId === match.player2?.playerId) : 
+                                        (match.winner?.playerId === match.player2?.playerId) ? 'winner' : ''}`}>
+                                        <span className="player-name">
+                                            {tournament?.isKnockout ? 
+                                                (match.player2?.playerName || 'TBD') : 
+                                                (match.player2?.name || 'TBD')
+                                            }
+                                        </span>
+                                        <span className="player-rating">
+                                            ({tournament?.isKnockout ? 
+                                                (match.player2?.rating ? Math.round(match.player2.rating) : '-') : 
+                                                (match.player2?.rating || '-')
+                                            })
+                                        </span>
+                                        {!tournament?.isKnockout && match.status === 'APPROVED' && match.player2RatingChange !== null && (
                                             <span className={`rating-change ${match.player2RatingChange >= 0 ? 'positive' : 'negative'}`}>
                                                 {match.player2RatingChange >= 0 ? '+' : ''}{match.player2RatingChange}
                                             </span>
@@ -415,11 +456,19 @@ const TournamentMatchesPage = () => {
                                     </div>
                                 </div>
 
-                                {/* Input for pending matches - allow result entry and approval */}
-                                {canManageMatches && match.status === 'PENDING_REVIEW' && (
+                                {/* Input for matches - knockout matches don't have status, regular matches use PENDING_REVIEW */}
+                                {canManageMatches && (
+                                    (tournament?.isKnockout && !match.winner) || 
+                                    (!tournament?.isKnockout && match.status === 'PENDING_REVIEW')
+                                ) && match.player1 && match.player2 && (
                                     <div className="result-input">
                                         <div className="input-row">
-                                            <label>{match.player1?.name} Games:</label>
+                                            <label>
+                                                {tournament?.isKnockout ? 
+                                                    (match.player1?.playerName || 'Player 1') : 
+                                                    (match.player1?.name || 'Player 1')
+                                                } Games:
+                                            </label>
                                             <input 
                                                 type="number" 
                                                 min="0"
@@ -428,7 +477,12 @@ const TournamentMatchesPage = () => {
                                             />
                                         </div>
                                         <div className="input-row">
-                                            <label>{match.player2?.name} Games:</label>
+                                            <label>
+                                                {tournament?.isKnockout ? 
+                                                    (match.player2?.playerName || 'Player 2') : 
+                                                    (match.player2?.name || 'Player 2')
+                                                } Games:
+                                            </label>
                                             <input 
                                                 type="number" 
                                                 min="0"
@@ -447,12 +501,23 @@ const TournamentMatchesPage = () => {
                                     </div>
                                 )}
 
-                                {match.status === 'APPROVED' && match.winner && (
-                                    <div className="match-result">
-                                        Winner: {match.winner.name}
-                                    </div>
+                                {/* Show match result for completed matches */}
+                                {tournament?.isKnockout ? (
+                                    // Knockout tournament result display
+                                    match.winner ? (
+                                        <div className="match-result">
+                                            Winner: {match.winner.playerName}
+                                        </div>
+                                    ) : null
+                                ) : (
+                                    // Regular tournament result display
+                                    match.status === 'APPROVED' && match.winner && (
+                                        <div className="match-result">
+                                            Winner: {match.winner.name}
+                                        </div>
+                                    )
                                 )}
-                                {match.status === 'APPROVED' && !match.winner && (
+                                {!tournament?.isKnockout && match.status === 'APPROVED' && !match.winner && (
                                     <div className="match-result draw">Draw</div>
                                 )}
                             </div>

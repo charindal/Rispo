@@ -183,8 +183,8 @@ public class KnockoutTournamentService {
             
             matchToUpdate.setWinner(winner);
             
-            // TODO: Generate next round matches if needed
-            // This would involve creating matches for the next round using the winners from completed matches
+            // Generate next round matches if this completes a round
+            generateNextRoundIfNeeded(bracket, matchToUpdate.getRound());
             
             // Save the updated bracket data
             try {
@@ -198,6 +198,66 @@ public class KnockoutTournamentService {
         } else {
             throw new RuntimeException("Winner ID is required");
         }
+    }
+    
+    private void generateNextRoundIfNeeded(BracketStructure bracket, int currentRound) {
+        // Check if all matches in the current round are complete
+        List<BracketMatch> currentRoundMatches = bracket.getMatches().stream()
+                .filter(match -> match.getRound() == currentRound)
+                .collect(Collectors.toList());
+        
+        boolean allMatchesComplete = currentRoundMatches.stream()
+                .allMatch(match -> match.getWinner() != null || match.isBye());
+        
+        if (!allMatchesComplete) {
+            return; // Not all matches are complete yet
+        }
+        
+        // Check if next round already exists
+        boolean nextRoundExists = bracket.getMatches().stream()
+                .anyMatch(match -> match.getRound() == currentRound + 1);
+        
+        if (nextRoundExists) {
+            return; // Next round already generated
+        }
+        
+        // Generate next round matches
+        List<BracketParticipant> winners = currentRoundMatches.stream()
+                .map(match -> {
+                    if (match.isBye()) {
+                        return match.getPlayer1(); // Bye winners advance automatically
+                    }
+                    return match.getWinner();
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        
+        if (winners.size() <= 1) {
+            // Tournament is complete
+            return;
+        }
+        
+        // Create matches for next round
+        int nextRound = currentRound + 1;
+        int matchCounter = bracket.getMatches().stream()
+                .mapToInt(BracketMatch::getMatchNumber)
+                .max().orElse(0) + 1;
+        
+        for (int i = 0; i < winners.size(); i += 2) {
+            BracketParticipant player1 = winners.get(i);
+            BracketParticipant player2 = (i + 1 < winners.size()) ? winners.get(i + 1) : null;
+            
+            BracketMatch nextRoundMatch = new BracketMatch(matchCounter++, nextRound, player1, player2, null);
+            if (player2 == null) {
+                // This is a bye match
+                nextRoundMatch.setBye(true);
+                nextRoundMatch.setWinner(player1);
+            }
+            
+            bracket.getMatches().add(nextRoundMatch);
+        }
+        
+        log.info("Generated {} matches for round {}", winners.size() / 2, nextRound);
     }
     
     // Tournament frequency enum
