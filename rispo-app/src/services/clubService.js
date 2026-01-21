@@ -228,8 +228,8 @@ const clubService = {
   // Review club join request
   reviewClubJoinRequest: async (requestId, status, reviewNotes, userId) => {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/clubs/join-requests/${requestId}/review`,
+      const response = await axios.patch(
+        `${API_BASE_URL}/clubs/join-requests/${requestId}`,
         { status, reviewNotes },
         { headers: { 'X-User-Id': userId } }
       );

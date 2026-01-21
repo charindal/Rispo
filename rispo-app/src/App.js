@@ -41,10 +41,25 @@ function BackButtonHandler() {
     };
 
     // Listen for hardware back button
-    const backButtonListener = CapacitorApp.addListener('backButton', handleBackButton);
+    const setupBackButtonListener = async () => {
+      try {
+        const backButtonListener = await CapacitorApp.addListener('backButton', handleBackButton);
+        return backButtonListener;
+      } catch (error) {
+        console.log('Capacitor back button not available (running in browser)');
+        return null;
+      }
+    };
+
+    let listener = null;
+    setupBackButtonListener().then(l => {
+      listener = l;
+    });
 
     return () => {
-      backButtonListener.remove();
+      if (listener && typeof listener.remove === 'function') {
+        listener.remove();
+      }
     };
   }, [navigate, location]);
 

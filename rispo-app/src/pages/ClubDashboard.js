@@ -385,13 +385,13 @@ const ClubDashboard = () => {
                   <div key={member.userId} className="member-card">
                     <div className="member-info">
                       <div className="member-avatar">
-                        {member.username.charAt(0).toUpperCase()}
+                        {member.name ? member.name.charAt(0).toUpperCase() : 'U'}
                       </div>
                       <div className="member-details">
-                        <h4>{member.username}</h4>
+                        <h4>{member.name || 'Unknown'}</h4>
                         <div className="member-rating">Rating: {member.rating || 'Unrated'}</div>
-                        {member.isAdmin && (
-                          <span className="admin-badge">Admin</span>
+                        {member.clubId && (
+                          <span className="member-badge">Member</span>
                         )}
                       </div>
                     </div>
