@@ -31,6 +31,7 @@ const ClubTournaments = () => {
     loadClubData();
     loadTournaments();
     loadLeaderboard();
+    loadPointsConfig();
   }, [clubId]);
 
   const loadClubData = async () => {
@@ -39,6 +40,15 @@ const ClubTournaments = () => {
       setClub(clubData);
     } catch (error) {
       console.error('Error loading club:', error);
+    }
+  };
+
+  const loadPointsConfig = async () => {
+    try {
+      const config = await clubService.getTournamentPointsConfig(clubId);
+      setPointsConfig(config);
+    } catch (error) {
+      console.error('Error loading points config:', error);
     }
   };
 
@@ -175,7 +185,7 @@ const ClubTournaments = () => {
                     </div>
                     <div className="tournament-actions">
                       <button 
-                        onClick={() => navigate(`/tournament-bracket/${clubId}/${tournament.id}`)}
+                        onClick={() => navigate(`/club/${clubId}/tournament-bracket/${tournament.id}`)}
                         className="view-bracket-btn"
                       >
                         View Bracket
@@ -190,7 +200,7 @@ const ClubTournaments = () => {
                       )}
                       {isClubAdmin() && tournament.status === 'IN_PROGRESS' && (
                         <button 
-                          onClick={() => navigate(`/tournament-bracket/${clubId}/${tournament.id}`)}
+                          onClick={() => navigate(`/club/${clubId}/tournament-bracket/${tournament.id}`)}
                           className="manage-btn"
                         >
                           Manage

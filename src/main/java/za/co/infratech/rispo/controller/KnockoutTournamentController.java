@@ -182,8 +182,20 @@ public class KnockoutTournamentController {
                             java.util.Map<String, Object> matchData = new java.util.HashMap<>();
                             matchData.put("matchId", matchNode.get("matchNumber").asInt());
                             matchData.put("round", round);
-                            matchData.put("status", matchNode.get("winner") != null ? "APPROVED" : "PENDING");
+                            
+                            // Get status from bracket data - default to PENDING if not set
+                            com.fasterxml.jackson.databind.JsonNode statusNode = matchNode.get("status");
+                            String matchStatus = (statusNode != null && !statusNode.isNull()) 
+                                ? statusNode.asText() 
+                                : (matchNode.get("winner") != null && !matchNode.get("winner").isNull() ? "APPROVED" : "PENDING");
+                            matchData.put("status", matchStatus);
                             matchData.put("isBye", matchNode.get("bye").asBoolean());
+                            
+                            // Get game scores from bracket data
+                            com.fasterxml.jackson.databind.JsonNode p1GamesNode = matchNode.get("player1Games");
+                            com.fasterxml.jackson.databind.JsonNode p2GamesNode = matchNode.get("player2Games");
+                            int player1Games = (p1GamesNode != null && !p1GamesNode.isNull()) ? p1GamesNode.asInt() : 0;
+                            int player2Games = (p2GamesNode != null && !p2GamesNode.isNull()) ? p2GamesNode.asInt() : 0;
                             
                             // Player 1
                             com.fasterxml.jackson.databind.JsonNode player1Node = matchNode.get("player1");
@@ -193,7 +205,7 @@ public class KnockoutTournamentController {
                                 player1.put("name", player1Node.get("playerName").asText());
                                 player1.put("rating", player1Node.get("rating").asDouble());
                                 matchData.put("player1", player1);
-                                matchData.put("player1Games", 0); // Will need to be updated when match results are implemented
+                                matchData.put("player1Games", player1Games);
                             }
                             
                             // Player 2
@@ -204,7 +216,7 @@ public class KnockoutTournamentController {
                                 player2.put("name", player2Node.get("playerName").asText());
                                 player2.put("rating", player2Node.get("rating").asDouble());
                                 matchData.put("player2", player2);
-                                matchData.put("player2Games", 0);
+                                matchData.put("player2Games", player2Games);
                             } else {
                                 matchData.put("player2", null);
                                 matchData.put("player2Games", 0);

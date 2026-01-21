@@ -7,7 +7,9 @@ import authService from '../services/authService';
 import '../styles/TournamentMatchesPage.css';
 
 const TournamentMatchesPage = () => {
+    console.log('=== TournamentMatchesPage LOADED ===');
     const { clubId, tournamentId } = useParams();
+    console.log('URL params - clubId:', clubId, 'tournamentId:', tournamentId);
     const navigate = useNavigate();
     const [tournament, setTournament] = useState(null);
     const [matches, setMatches] = useState([]);
@@ -20,15 +22,11 @@ const TournamentMatchesPage = () => {
     
     const currentUser = authService.getCurrentUser();
     const userId = currentUser?.userId;
-    const isSuperUser = currentUser?.roles?.some(role => 
-        ['SUPER_USER'].includes(role)
-    );
-    const isAnyAdmin = currentUser?.roles?.some(role => 
-        ['SUPER_USER', 'SYSTEM_ADMIN', 'CLUB_ADMIN', 'RATING_ADMIN'].includes(role)
-    );
+    const isSuperUser = currentUser?.role === 'SUPER_USER';
+    const isAnyAdmin = ['SUPER_USER', 'SYSTEM_ADMIN', 'CLUB_ADMIN', 'RATING_ADMIN'].includes(currentUser?.role);
     
-    // Can manage tournament matches if super user OR tournament creator
-    const canManageMatches = isSuperUser || (tournament && tournament.createdById === userId);
+    // Can manage tournament matches if any admin OR tournament creator
+    const canManageMatches = isAnyAdmin || (tournament && tournament.createdById === userId);
 
     useEffect(() => {
         if (!userId) {
@@ -37,14 +35,14 @@ const TournamentMatchesPage = () => {
             return;
         }
         loadTournamentData();
-    }, [tournamentId, userId]);
+    }, [tournamentId, userId, clubId]);
 
     const loadTournamentData = async () => {
         try {
             setLoading(true);
             
-            // Check if this is a knockout tournament (clubId is present)
-            if (clubId) {
+            // Check if this is a knockout tournament (clubId is present and not undefined)
+            if (clubId && clubId !== 'undefined') {
                 // This is a knockout tournament
                 const tournamentRes = await tournamentService.getKnockoutTournamentBracket(clubId, tournamentId);
                 const bracketData = tournamentRes.data;
@@ -66,10 +64,14 @@ const TournamentMatchesPage = () => {
                             allMatches.push({
                                 ...match,
                                 round: parseInt(round),
-                                matchId: match.matchNumber // Use matchNumber as matchId for consistency
+                                matchId: match.matchId || match.matchNumber // Use matchId if available, otherwise matchNumber
                             });
                         });
                     });
+                    console.log('Loaded knockout matches:', allMatches);
+                    console.log('Current user role:', currentUser?.role);
+                    console.log('isAnyAdmin:', isAnyAdmin);
+                    console.log('canManageMatches:', canManageMatches);
                     setMatches(allMatches);
                     
                     // Find max round
@@ -96,7 +98,7 @@ const TournamentMatchesPage = () => {
 
     const loadMatches = async () => {
         // Skip loading if this is a knockout tournament (already loaded in loadTournamentData)
-        if (clubId) {
+        if (clubId && clubId !== 'undefined') {
             return;
         }
         
@@ -288,7 +290,13 @@ const TournamentMatchesPage = () => {
 
     const isRoundComplete = () => {
         const roundMatches = getRoundMatches();
-        return roundMatches.length > 0 && roundMatches.every(m => m.status === 'APPROVED');
+        if (tournament?.isKnockout) {
+            // For knockout tournaments, a round is complete when all matches have winners
+            return roundMatches.length > 0 && roundMatches.every(m => m.winner || m.isBye);
+        } else {
+            // For regular tournaments, use status
+            return roundMatches.length > 0 && roundMatches.every(m => m.status === 'APPROVED');
+        }
     };
 
     const getMatchStatusDisplay = (match, isKnockout) => {
@@ -297,15 +305,15 @@ const TournamentMatchesPage = () => {
             if (match.winner) {
                 return { text: 'Complete', class: 'status-approved' };
             } else if (match.player1 && match.player2) {
-                return { text: 'Pending Result', class: 'status-pending' };
+                return { text: 'Ready', class: 'status-ready' };
             } else {
-                return { text: 'Awaiting Players', class: 'status-pending' };
+                return { text: 'TBD', class: 'status-waiting' };
             }
         } else {
             // For regular tournaments, use the status field
             switch (match.status) {
-                case 'PENDING_REVIEW': return { text: 'Awaiting Result/Review', class: 'status-pending' };
-                case 'APPROVED': return { text: 'Approved', class: 'status-approved' };
+                case 'PENDING_REVIEW': return { text: 'Ready', class: 'status-ready' };
+                case 'APPROVED': return { text: 'Complete', class: 'status-approved' };
                 case 'REJECTED': return { text: 'Rejected', class: 'status-rejected' };
                 default: return { text: match.status, class: '' };
             }
@@ -344,9 +352,24 @@ const TournamentMatchesPage = () => {
                 <div className="nav-right">
                     <button onClick={() => navigate('/player-dashboard')} className="nav-btn">🏠 Home</button>
                     <button onClick={() => navigate('/profile')} className="nav-btn">Profile</button>
-                    <button onClick={() => navigate(`/tournament-standings/${tournamentId}`)} className="nav-btn">Standings</button>
+                    <button 
+                        onClick={() => clubId ? 
+                            navigate(`/club/${clubId}/tournament-standings/${tournamentId}`) : 
+                            navigate(`/tournament-standings/${tournamentId}`)
+                        } 
+                        className="nav-btn">
+                        Standings
+                    </button>
                     {tournament?.format === 'KNOCKOUT' && (
-                        <button onClick={() => navigate(`/tournament-bracket/${tournamentId}`)} className="nav-btn" style={{ backgroundColor: '#e83e8c' }}>🏆 Bracket</button>
+                        <button 
+                            onClick={() => clubId ?
+                                navigate(`/club/${clubId}/tournament-bracket/${tournamentId}`) :
+                                navigate(`/tournament-bracket/${tournamentId}`)
+                            } 
+                            className="nav-btn" 
+                            style={{ backgroundColor: '#e83e8c' }}>
+                            🏆 Bracket
+                        </button>
                     )}
                     <button onClick={handleLogout} className="nav-btn logout-btn">Sign Out</button>
                 </div>
@@ -396,20 +419,12 @@ const TournamentMatchesPage = () => {
                                 </div>
                                 
                                 <div className="match-players">
-                                    <div className={`player ${tournament?.isKnockout ? 
-                                        (match.winner?.playerId === match.player1?.playerId) : 
-                                        (match.winner?.playerId === match.player1?.playerId) ? 'winner' : ''}`}>
+                                    <div className={`player ${match.winner?.playerId === match.player1?.playerId ? 'winner' : ''}`}>
                                         <span className="player-name">
-                                            {tournament?.isKnockout ? 
-                                                (match.player1?.playerName || 'TBD') : 
-                                                (match.player1?.name || 'TBD')
-                                            }
+                                            {match.player1?.name || match.player1?.playerName || 'TBD'}
                                         </span>
                                         <span className="player-rating">
-                                            ({tournament?.isKnockout ? 
-                                                (match.player1?.rating ? Math.round(match.player1.rating) : '-') : 
-                                                (match.player1?.rating || '-')
-                                            })
+                                            ({match.player1?.rating ? Math.round(match.player1.rating) : '-'})
                                         </span>
                                         {!tournament?.isKnockout && match.status === 'APPROVED' && match.player1RatingChange !== null && (
                                             <span className={`rating-change ${match.player1RatingChange >= 0 ? 'positive' : 'negative'}`}>
@@ -433,20 +448,12 @@ const TournamentMatchesPage = () => {
                                         )}
                                     </div>
                                     
-                                    <div className={`player ${tournament?.isKnockout ? 
-                                        (match.winner?.playerId === match.player2?.playerId) : 
-                                        (match.winner?.playerId === match.player2?.playerId) ? 'winner' : ''}`}>
+                                    <div className={`player ${match.winner?.playerId === match.player2?.playerId ? 'winner' : ''}`}>
                                         <span className="player-name">
-                                            {tournament?.isKnockout ? 
-                                                (match.player2?.playerName || 'TBD') : 
-                                                (match.player2?.name || 'TBD')
-                                            }
+                                            {match.player2?.name || match.player2?.playerName || 'TBD'}
                                         </span>
                                         <span className="player-rating">
-                                            ({tournament?.isKnockout ? 
-                                                (match.player2?.rating ? Math.round(match.player2.rating) : '-') : 
-                                                (match.player2?.rating || '-')
-                                            })
+                                            ({match.player2?.rating ? Math.round(match.player2.rating) : '-'})
                                         </span>
                                         {!tournament?.isKnockout && match.status === 'APPROVED' && match.player2RatingChange !== null && (
                                             <span className={`rating-change ${match.player2RatingChange >= 0 ? 'positive' : 'negative'}`}>
@@ -456,18 +463,17 @@ const TournamentMatchesPage = () => {
                                     </div>
                                 </div>
 
-                                {/* Input for matches - knockout matches don't have status, regular matches use PENDING_REVIEW */}
-                                {canManageMatches && (
-                                    (tournament?.isKnockout && !match.winner) || 
-                                    (!tournament?.isKnockout && match.status === 'PENDING_REVIEW')
-                                ) && match.player1 && match.player2 && (
+                                {/* Debug info - remove in production */}
+                                {console.log('Match check:', match.matchId, 'canManageMatches:', canManageMatches, 'player1:', !!match.player1, 'player2:', !!match.player2, 'isKnockout:', tournament?.isKnockout, 'winner:', match.winner, 'isBye:', match.isBye)}
+
+                                {/* Input for matches - show for matches that can be played */}
+                                {canManageMatches && match.player1 && match.player2 && !match.isBye &&
+                                    ((tournament?.isKnockout && (!match.winner || Object.keys(match.winner).length === 0)) || 
+                                    (!tournament?.isKnockout && match.status !== 'APPROVED')) && (
                                     <div className="result-input">
                                         <div className="input-row">
                                             <label>
-                                                {tournament?.isKnockout ? 
-                                                    (match.player1?.playerName || 'Player 1') : 
-                                                    (match.player1?.name || 'Player 1')
-                                                } Games:
+                                                {match.player1?.name || match.player1?.playerName || 'Player 1'} Games:
                                             </label>
                                             <input 
                                                 type="number" 
@@ -478,10 +484,7 @@ const TournamentMatchesPage = () => {
                                         </div>
                                         <div className="input-row">
                                             <label>
-                                                {tournament?.isKnockout ? 
-                                                    (match.player2?.playerName || 'Player 2') : 
-                                                    (match.player2?.name || 'Player 2')
-                                                } Games:
+                                                {match.player2?.name || match.player2?.playerName || 'Player 2'} Games:
                                             </label>
                                             <input 
                                                 type="number" 
@@ -492,30 +495,17 @@ const TournamentMatchesPage = () => {
                                         </div>
                                         <div className="review-buttons">
                                             <button onClick={() => handleSubmitAndApprove(match.matchId)} className="approve-btn">
-                                                Submit & Approve
-                                            </button>
-                                            <button onClick={() => handleRejectMatch(match.matchId)} className="reject-btn">
-                                                Reject
+                                                Submit Result
                                             </button>
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Show match result for completed matches */}
-                                {tournament?.isKnockout ? (
-                                    // Knockout tournament result display
-                                    match.winner ? (
-                                        <div className="match-result">
-                                            Winner: {match.winner.playerName}
-                                        </div>
-                                    ) : null
-                                ) : (
-                                    // Regular tournament result display
-                                    match.status === 'APPROVED' && match.winner && (
-                                        <div className="match-result">
-                                            Winner: {match.winner.name}
-                                        </div>
-                                    )
+                                {match.winner && (
+                                    <div className="match-result">
+                                        Winner: {match.winner.name || match.winner.playerName}
+                                    </div>
                                 )}
                                 {!tournament?.isKnockout && match.status === 'APPROVED' && !match.winner && (
                                     <div className="match-result draw">Draw</div>

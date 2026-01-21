@@ -33,6 +33,9 @@ public class KnockoutTournamentService {
     @Autowired
     private PlayerRepository playerRepository;
     
+    @Autowired
+    private RatingEngine ratingEngine;
+    
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     public List<KnockoutTournamentDTO> getClubTournaments(Long clubId, Integer year) {
@@ -159,48 +162,257 @@ public class KnockoutTournamentService {
         
         // Extract winner from request
         Object winnerIdObj = request.get("winnerId");
-        if (winnerIdObj != null) {
-            Long winnerId = null;
-            if (winnerIdObj instanceof Number) {
-                winnerId = ((Number) winnerIdObj).longValue();
-            } else if (winnerIdObj instanceof String) {
-                try {
-                    winnerId = Long.parseLong((String) winnerIdObj);
-                } catch (NumberFormatException e) {
-                    throw new RuntimeException("Invalid winner ID format");
+        if (winnerIdObj == null) {
+            throw new RuntimeException("Winner ID is required");
+        }
+        
+        Long winnerId = null;
+        if (winnerIdObj instanceof Number) {
+            winnerId = ((Number) winnerIdObj).longValue();
+        } else if (winnerIdObj instanceof String) {
+            try {
+                winnerId = Long.parseLong((String) winnerIdObj);
+            } catch (NumberFormatException e) {
+                throw new RuntimeException("Invalid winner ID format");
+            }
+        }
+        
+        // Verify winner is one of the players in this match
+        BracketParticipant winner = null;
+        if (matchToUpdate.getPlayer1() != null && matchToUpdate.getPlayer1().getPlayerId().equals(winnerId)) {
+            winner = matchToUpdate.getPlayer1();
+        } else if (matchToUpdate.getPlayer2() != null && matchToUpdate.getPlayer2().getPlayerId().equals(winnerId)) {
+            winner = matchToUpdate.getPlayer2();
+        } else {
+            throw new RuntimeException("Winner must be one of the players in this match");
+        }
+        
+        matchToUpdate.setWinner(winner);
+        
+        // Extract and save game scores from request
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> games = (List<Map<String, Object>>) request.get("games");
+        if (games != null && !games.isEmpty()) {
+            int player1Games = 0;
+            int player2Games = 0;
+            
+            for (Map<String, Object> game : games) {
+                Object winnerIdForGame = game.get("winnerId");
+                if (winnerIdForGame != null) {
+                    Long gameWinnerId = null;
+                    if (winnerIdForGame instanceof Number) {
+                        gameWinnerId = ((Number) winnerIdForGame).longValue();
+                    } else if (winnerIdForGame instanceof String) {
+                        gameWinnerId = Long.parseLong((String) winnerIdForGame);
+                    }
+                    
+                    if (gameWinnerId != null) {
+                        if (matchToUpdate.getPlayer1() != null && matchToUpdate.getPlayer1().getPlayerId().equals(gameWinnerId)) {
+                            player1Games++;
+                        } else if (matchToUpdate.getPlayer2() != null && matchToUpdate.getPlayer2().getPlayerId().equals(gameWinnerId)) {
+                            player2Games++;
+                        }
+                    }
                 }
             }
             
-            // Verify winner is one of the players in this match
-            BracketParticipant winner = null;
-            if (matchToUpdate.getPlayer1() != null && matchToUpdate.getPlayer1().getPlayerId().equals(winnerId)) {
-                winner = matchToUpdate.getPlayer1();
-            } else if (matchToUpdate.getPlayer2() != null && matchToUpdate.getPlayer2().getPlayerId().equals(winnerId)) {
-                winner = matchToUpdate.getPlayer2();
-            } else {
-                throw new RuntimeException("Winner must be one of the players in this match");
+            matchToUpdate.setPlayer1Games(player1Games);
+            matchToUpdate.setPlayer2Games(player2Games);
+            log.info("Match {} scores: Player1 {} - {} Player2", matchId, player1Games, player2Games);
+        }
+        
+        // Check if this is an approval (rating should be applied)
+        Boolean approve = (Boolean) request.get("approve");
+        if (Boolean.TRUE.equals(approve)) {
+            matchToUpdate.setStatus("APPROVED");
+            
+            // Apply ratings if both players exist (not a bye match)
+            if (matchToUpdate.getPlayer1() != null && matchToUpdate.getPlayer2() != null && !matchToUpdate.isBye()) {
+                try {
+                    applyRatingsForKnockoutMatch(matchToUpdate, winnerId);
+                    log.info("Applied ratings for knockout match {} in tournament {}", matchId, tournamentId);
+                } catch (Exception e) {
+                    log.error("Failed to apply ratings for match {}", matchId, e);
+                    // Continue without rating - don't fail the whole operation
+                }
             }
-            
-            matchToUpdate.setWinner(winner);
-            
-            // Generate next round matches if this completes a round
-            generateNextRoundIfNeeded(bracket, matchToUpdate.getRound());
-            
-            // Save the updated bracket data
+        }
+        
+        // Generate next round matches if this completes a round
+        boolean tournamentComplete = generateNextRoundIfNeeded(bracket, matchToUpdate.getRound());
+        
+        // Award tournament points if tournament is complete
+        if (tournamentComplete) {
             try {
-                tournament.setBracketData(objectMapper.writeValueAsString(bracket));
-                tournamentRepository.save(tournament);
-                log.info("Updated match {} result for tournament {} in club {}", matchId, tournamentId, clubId);
+                awardTournamentPoints(tournament, bracket);
+                tournament.setStatus(KnockoutTournament.TournamentStatus.COMPLETED);
+                log.info("Tournament {} completed. Points awarded.", tournamentId);
             } catch (Exception e) {
-                log.error("Failed to save updated bracket data", e);
-                throw new RuntimeException("Failed to update match result");
+                log.error("Failed to award tournament points for tournament {}", tournamentId, e);
             }
-        } else {
-            throw new RuntimeException("Winner ID is required");
+        }
+        
+        // Save the updated bracket data
+        try {
+            tournament.setBracketData(objectMapper.writeValueAsString(bracket));
+            tournamentRepository.save(tournament);
+            log.info("Updated match {} result for tournament {} in club {}", matchId, tournamentId, clubId);
+        } catch (Exception e) {
+            log.error("Failed to save updated bracket data", e);
+            throw new RuntimeException("Failed to update match result");
         }
     }
     
-    private void generateNextRoundIfNeeded(BracketStructure bracket, int currentRound) {
+    /**
+     * Apply ELO ratings for a knockout match
+     */
+    private void applyRatingsForKnockoutMatch(BracketMatch match, Long winnerId) {
+        Long player1Id = match.getPlayer1().getPlayerId();
+        Long player2Id = match.getPlayer2().getPlayerId();
+        
+        Optional<Player> player1Opt = playerRepository.findById(player1Id);
+        Optional<Player> player2Opt = playerRepository.findById(player2Id);
+        
+        if (player1Opt.isEmpty() || player2Opt.isEmpty()) {
+            log.warn("Cannot apply ratings - one or both players not found: {} / {}", player1Id, player2Id);
+            return;
+        }
+        
+        Player player1 = player1Opt.get();
+        Player player2 = player2Opt.get();
+        
+        // Determine player1Score (1.0 if player1 won, 0.0 if player2 won)
+        double player1Score = player1Id.equals(winnerId) ? 1.0 : 0.0;
+        
+        // Calculate rating changes
+        int[] ratingChanges = ratingEngine.calculateRatingChanges(player1, player2, player1Score);
+        int change1 = ratingChanges[0];
+        int change2 = ratingChanges[1];
+        
+        // Apply new ratings
+        player1.setRating(Math.max(400, Math.min(3000, player1.getRating() + change1)));
+        player2.setRating(Math.max(400, Math.min(3000, player2.getRating() + change2)));
+        
+        // Update match statistics
+        player1.setMatchesPlayed((player1.getMatchesPlayed() != null ? player1.getMatchesPlayed() : 0) + 1);
+        player2.setMatchesPlayed((player2.getMatchesPlayed() != null ? player2.getMatchesPlayed() : 0) + 1);
+        
+        // Update win/loss counts
+        if (player1Score == 1.0) {
+            player1.setWins((player1.getWins() != null ? player1.getWins() : 0) + 1);
+            player2.setLosses((player2.getLosses() != null ? player2.getLosses() : 0) + 1);
+        } else {
+            player1.setLosses((player1.getLosses() != null ? player1.getLosses() : 0) + 1);
+            player2.setWins((player2.getWins() != null ? player2.getWins() : 0) + 1);
+        }
+        
+        // Save players
+        playerRepository.save(player1);
+        playerRepository.save(player2);
+        
+        log.info("Applied ratings for knockout match: Player {} ({} -> {}) vs Player {} ({} -> {})",
+                player1Id, player1.getRating() - change1, player1.getRating(),
+                player2Id, player2.getRating() - change2, player2.getRating());
+    }
+    
+    /**
+     * Award tournament points when tournament completes
+     */
+    private void awardTournamentPoints(KnockoutTournament tournament, BracketStructure bracket) {
+        // Get points configuration for this club
+        TournamentPointsConfig pointsConfig = pointsConfigRepository.findByClubId(tournament.getClubId())
+                .orElseGet(() -> {
+                    TournamentPointsConfig defaultConfig = new TournamentPointsConfig();
+                    defaultConfig.setClubId(tournament.getClubId());
+                    defaultConfig.setWinnerPoints(5);
+                    defaultConfig.setRunnerUpPoints(3);
+                    defaultConfig.setSemifinalistPoints(2);
+                    defaultConfig.setQuarterfinalistPoints(1);
+                    return defaultConfig;
+                });
+        
+        // Find the final match (highest round with only one match)
+        int maxRound = bracket.getMatches().stream()
+                .mapToInt(BracketMatch::getRound)
+                .max().orElse(1);
+        
+        Optional<BracketMatch> finalMatch = bracket.getMatches().stream()
+                .filter(m -> m.getRound() == maxRound)
+                .findFirst();
+        
+        if (finalMatch.isEmpty() || finalMatch.get().getWinner() == null) {
+            log.warn("No final match or winner found for tournament {}", tournament.getId());
+            return;
+        }
+        
+        BracketMatch theFinal = finalMatch.get();
+        BracketParticipant winner = theFinal.getWinner();
+        BracketParticipant runnerUp = theFinal.getPlayer1().getPlayerId().equals(winner.getPlayerId()) 
+                ? theFinal.getPlayer2() : theFinal.getPlayer1();
+        
+        // Award winner points
+        if (winner != null) {
+            awardPointsToPlayer(tournament, winner.getPlayerId(), 
+                    pointsConfig.getWinnerPoints(), PlayerTournamentPoints.TournamentPosition.WINNER);
+        }
+        
+        // Award runner-up points
+        if (runnerUp != null) {
+            awardPointsToPlayer(tournament, runnerUp.getPlayerId(), 
+                    pointsConfig.getRunnerUpPoints(), PlayerTournamentPoints.TournamentPosition.RUNNER_UP);
+        }
+        
+        // Award semifinalist points (players who lost in semi-finals)
+        if (maxRound >= 2) {
+            int semiFinalRound = maxRound - 1;
+            bracket.getMatches().stream()
+                    .filter(m -> m.getRound() == semiFinalRound && m.getWinner() != null && !m.isBye())
+                    .forEach(m -> {
+                        // The loser of the semi-final is the semifinalist
+                        Long loserId = m.getPlayer1().getPlayerId().equals(m.getWinner().getPlayerId())
+                                ? m.getPlayer2().getPlayerId() : m.getPlayer1().getPlayerId();
+                        awardPointsToPlayer(tournament, loserId, 
+                                pointsConfig.getSemifinalistPoints(), PlayerTournamentPoints.TournamentPosition.SEMIFINALIST);
+                    });
+        }
+        
+        // Award quarterfinalist points (players who lost in quarter-finals)
+        if (maxRound >= 3) {
+            int quarterFinalRound = maxRound - 2;
+            bracket.getMatches().stream()
+                    .filter(m -> m.getRound() == quarterFinalRound && m.getWinner() != null && !m.isBye())
+                    .forEach(m -> {
+                        Long loserId = m.getPlayer1().getPlayerId().equals(m.getWinner().getPlayerId())
+                                ? m.getPlayer2().getPlayerId() : m.getPlayer1().getPlayerId();
+                        awardPointsToPlayer(tournament, loserId, 
+                                pointsConfig.getQuarterfinalistPoints(), PlayerTournamentPoints.TournamentPosition.QUARTERFINALIST);
+                    });
+        }
+        
+        log.info("Awarded tournament points for tournament {}", tournament.getId());
+    }
+    
+    private void awardPointsToPlayer(KnockoutTournament tournament, Long playerId, 
+                                     int points, PlayerTournamentPoints.TournamentPosition position) {
+        PlayerTournamentPoints ptp = new PlayerTournamentPoints();
+        ptp.setPlayerId(playerId);
+        ptp.setClubId(tournament.getClubId());
+        ptp.setTournamentId(tournament.getId());
+        ptp.setTournamentYear(tournament.getTournamentYear());
+        ptp.setPointsEarned(points);
+        ptp.setPositionAchieved(position);
+        ptp.setDateEarned(LocalDateTime.now());
+        
+        playerPointsRepository.save(ptp);
+        log.info("Awarded {} points to player {} for {} in tournament {}", 
+                points, playerId, position, tournament.getId());
+    }
+    
+    /**
+     * Generate next round matches if the current round is complete.
+     * @return true if the tournament is complete (final match has a winner), false otherwise
+     */
+    private boolean generateNextRoundIfNeeded(BracketStructure bracket, int currentRound) {
         // Check if all matches in the current round are complete
         List<BracketMatch> currentRoundMatches = bracket.getMatches().stream()
                 .filter(match -> match.getRound() == currentRound)
@@ -210,7 +422,7 @@ public class KnockoutTournamentService {
                 .allMatch(match -> match.getWinner() != null || match.isBye());
         
         if (!allMatchesComplete) {
-            return; // Not all matches are complete yet
+            return false; // Not all matches are complete yet
         }
         
         // Check if next round already exists
@@ -218,7 +430,8 @@ public class KnockoutTournamentService {
                 .anyMatch(match -> match.getRound() == currentRound + 1);
         
         if (nextRoundExists) {
-            return; // Next round already generated
+            // Check if next round's final is complete
+            return isTournamentComplete(bracket);
         }
         
         // Generate next round matches
@@ -233,8 +446,8 @@ public class KnockoutTournamentService {
                 .collect(Collectors.toList());
         
         if (winners.size() <= 1) {
-            // Tournament is complete
-            return;
+            // Tournament is complete - only one winner left (or just finished the final)
+            return true;
         }
         
         // Create matches for next round
@@ -258,6 +471,30 @@ public class KnockoutTournamentService {
         }
         
         log.info("Generated {} matches for round {}", winners.size() / 2, nextRound);
+        return false; // Tournament continues
+    }
+    
+    /**
+     * Check if the tournament is complete (final match has a winner)
+     */
+    private boolean isTournamentComplete(BracketStructure bracket) {
+        // Find the highest round
+        int maxRound = bracket.getMatches().stream()
+                .mapToInt(BracketMatch::getRound)
+                .max().orElse(1);
+        
+        // Get matches in the highest round
+        List<BracketMatch> finalRoundMatches = bracket.getMatches().stream()
+                .filter(m -> m.getRound() == maxRound)
+                .collect(Collectors.toList());
+        
+        // Tournament is complete if there's only one match in the final round and it has a winner
+        if (finalRoundMatches.size() == 1) {
+            BracketMatch finalMatch = finalRoundMatches.get(0);
+            return finalMatch.getWinner() != null;
+        }
+        
+        return false;
     }
     
     // Tournament frequency enum
@@ -575,8 +812,13 @@ public class KnockoutTournamentService {
         private BracketParticipant player2;
         private BracketParticipant winner;
         private boolean isBye;
+        private int player1Games;
+        private int player2Games;
+        private String status; // PENDING, APPROVED
         
-        public BracketMatch() {}
+        public BracketMatch() {
+            this.status = "PENDING";
+        }
         
         public BracketMatch(int matchNumber, int round, BracketParticipant player1, BracketParticipant player2, BracketParticipant winner) {
             this.matchNumber = matchNumber;
@@ -585,6 +827,7 @@ public class KnockoutTournamentService {
             this.player2 = player2;
             this.winner = winner;
             this.isBye = (player2 == null && player1 != null);
+            this.status = this.isBye ? "APPROVED" : "PENDING";
         }
         
         // Getters and setters
@@ -600,5 +843,11 @@ public class KnockoutTournamentService {
         public void setWinner(BracketParticipant winner) { this.winner = winner; }
         public boolean isBye() { return isBye; }
         public void setBye(boolean bye) { isBye = bye; }
+        public int getPlayer1Games() { return player1Games; }
+        public void setPlayer1Games(int player1Games) { this.player1Games = player1Games; }
+        public int getPlayer2Games() { return player2Games; }
+        public void setPlayer2Games(int player2Games) { this.player2Games = player2Games; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
     }
 }

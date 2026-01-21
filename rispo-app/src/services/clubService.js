@@ -310,9 +310,17 @@ const clubService = {
 
   updateTournamentPointsConfig: async (clubId, pointsConfig, userId) => {
     try {
+      // Map frontend field names to backend expected field names
+      const backendConfig = {
+        winnerPoints: pointsConfig.winner,
+        runnerUpPoints: pointsConfig.runnerUp,
+        semifinalistPoints: pointsConfig.semifinalist,
+        quarterfinalistPoints: pointsConfig.quarterfinalist
+      };
+      
       const response = await axios.put(
         `${API_BASE_URL}/clubs/${clubId}/tournament-points-config`,
-        pointsConfig,
+        backendConfig,
         { headers: { 'X-User-Id': userId } }
       );
       return response.data;
@@ -324,7 +332,14 @@ const clubService = {
   getTournamentPointsConfig: async (clubId) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/clubs/${clubId}/tournament-points-config`);
-      return response.data;
+      const data = response.data;
+      // Map backend field names to frontend expected field names
+      return {
+        winner: data.winnerPoints || 5,
+        runnerUp: data.runnerUpPoints || 3,
+        semifinalist: data.semifinalistPoints || 2,
+        quarterfinalist: data.quarterfinalistPoints || 1
+      };
     } catch (error) {
       console.error('Error fetching points configuration:', error);
       return { winner: 5, runnerUp: 3, semifinalist: 2, quarterfinalist: 1 };

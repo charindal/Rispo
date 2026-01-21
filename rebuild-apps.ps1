@@ -1,6 +1,10 @@
 $ErrorActionPreference = 'Stop'
 $RootDir = 'C:\DevCode\Rispo'
 
+# Rispo App Rebuild Script
+# By default, preserves node_modules for faster builds
+# To force clean install: $env:CLEAN_INSTALL="true"; .\rebuild-apps.ps1
+
 Write-Host 'Rispo App Rebuild (Backend + Frontend)' -ForegroundColor Green
 Write-Host ''
 
@@ -21,15 +25,18 @@ Write-Host ''
 Write-Host 'Step 1: Building React Frontend' -ForegroundColor Cyan
 Push-Location "$RootDir\rispo-app"
 
-# Clear npm cache and node_modules for clean build
+# Clear npm cache for clean build
 Write-Host 'Clearing npm cache...' -ForegroundColor Yellow
 npm cache clean --force
 
-if (Test-Path "node_modules") {
-    Write-Host 'Removing node_modules (this may take a moment)...' -ForegroundColor Yellow
-    # Use cmd.exe for more robust directory removal on Windows
-    cmd /c "rmdir /s /q node_modules 2>nul" | Out-Null
-    Start-Sleep -Seconds 2
+# Only remove node_modules if specifically requested or if package-lock.json changed
+# This preserves installed packages for faster rebuilds
+if ($env:CLEAN_INSTALL -eq "true") {
+    if (Test-Path "node_modules") {
+        Write-Host 'Clean install requested - removing node_modules (this may take a moment)...' -ForegroundColor Yellow
+        cmd /c "rmdir /s /q node_modules 2>nul" | Out-Null
+        Start-Sleep -Seconds 2
+    }
 }
 
 if (Test-Path "build") {
@@ -37,8 +44,14 @@ if (Test-Path "build") {
     Remove-Item -Path "build" -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host 'Installing npm dependencies...' -ForegroundColor Yellow
-npm install --legacy-peer-deps
+# Install or update dependencies (npm install is smart and only installs missing packages)
+if (-not (Test-Path "node_modules") -or $env:CLEAN_INSTALL -eq "true") {
+    Write-Host 'Installing npm dependencies...' -ForegroundColor Yellow
+    npm install --legacy-peer-deps
+} else {
+    Write-Host 'Updating npm dependencies (preserving existing packages)...' -ForegroundColor Yellow
+    npm install --legacy-peer-deps
+}
 if ($LASTEXITCODE -ne 0) {
     Pop-Location
     Write-Host 'npm install failed' -ForegroundColor Red

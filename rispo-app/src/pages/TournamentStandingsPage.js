@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import tournamentService from '../services/tournamentService';
+import clubService from '../services/clubService';
 import authService from '../services/authService';
 import '../styles/TournamentStandingsPage.css';
 
 const TournamentStandingsPage = () => {
-    const { tournamentId } = useParams();
+    const { tournamentId, clubId } = useParams();
     const navigate = useNavigate();
     const [tournament, setTournament] = useState(null);
     const [standings, setStandings] = useState([]);
@@ -15,6 +16,7 @@ const TournamentStandingsPage = () => {
     const [error, setError] = useState('');
     
     const currentUser = authService.getCurrentUser();
+    const isKnockoutTournament = !!clubId;
 
     useEffect(() => {
         if (!currentUser?.userId) {
@@ -23,20 +25,42 @@ const TournamentStandingsPage = () => {
             return;
         }
         loadData();
-    }, [tournamentId]);
+    }, [tournamentId, clubId]);
 
     const loadData = async () => {
         try {
             setLoading(true);
-            const [tournamentRes, standingsRes, crossTableRes] = await Promise.all([
-                tournamentService.getTournamentById(tournamentId),
-                tournamentService.getTournamentStandings(tournamentId),
-                tournamentService.getTournamentCrossTable(tournamentId)
-            ]);
             
-            setTournament(tournamentRes.data);
-            setStandings(standingsRes.data || []);
-            setCrossTable(crossTableRes.data);
+            if (isKnockoutTournament && clubId && clubId !== 'undefined') {
+                // Load knockout tournament data
+                const [tournamentRes, leaderboardRes] = await Promise.all([
+                    tournamentService.getKnockoutTournamentBracket(clubId, tournamentId),
+                    clubService.getClubTournamentLeaderboard(clubId)
+                ]);
+                
+                // Create tournament-like object from bracket data
+                const bracketData = tournamentRes.data;
+                setTournament({
+                    id: bracketData.tournamentId,
+                    name: bracketData.tournamentName,
+                    status: bracketData.status,
+                    format: "KNOCKOUT",
+                    isKnockout: true
+                });
+                setStandings(leaderboardRes.data || []);
+                setCrossTable(null); // Knockout tournaments don't have cross tables
+            } else {
+                // Load regular tournament data
+                const [tournamentRes, standingsRes, crossTableRes] = await Promise.all([
+                    tournamentService.getTournamentById(tournamentId),
+                    tournamentService.getTournamentStandings(tournamentId),
+                    tournamentService.getTournamentCrossTable(tournamentId)
+                ]);
+                
+                setTournament({ ...tournamentRes.data, isKnockout: false });
+                setStandings(standingsRes.data || []);
+                setCrossTable(crossTableRes.data);
+            }
         } catch (err) {
             setError('Failed to load tournament data');
             console.error(err);
@@ -77,9 +101,23 @@ const TournamentStandingsPage = () => {
                 <div className="nav-right">
                     <button onClick={() => navigate('/player-dashboard')} className="nav-btn">🏠 Home</button>
                     <button onClick={() => navigate('/profile')} className="nav-btn">Profile</button>
-                    <button onClick={() => navigate(`/tournament-matches/${tournamentId}`)} className="nav-btn">Matches</button>
+                    <button 
+                        onClick={() => isKnockoutTournament ? 
+                            navigate(`/club/${clubId}/tournament-matches/${tournamentId}`) : 
+                            navigate(`/tournament-matches/${tournamentId}`)
+                        } 
+                        className="nav-btn">
+                        Matches
+                    </button>
                     {tournament?.format === 'KNOCKOUT' && (
-                        <button onClick={() => navigate(`/tournament-bracket/${tournamentId}`)} className="nav-btn bracket-btn">🏆 Bracket</button>
+                        <button 
+                            onClick={() => isKnockoutTournament ?
+                                navigate(`/club/${clubId}/tournament-bracket/${tournamentId}`) :
+                                navigate(`/tournament-bracket/${tournamentId}`)
+                            } 
+                            className="nav-btn bracket-btn">
+                            🏆 Bracket
+                        </button>
                     )}
                     <button onClick={handleLogout} className="nav-btn logout-btn">Sign Out</button>
                 </div>
@@ -105,7 +143,10 @@ const TournamentStandingsPage = () => {
                 {tournament?.format === 'KNOCKOUT' && (
                     <button 
                         className={`tab-btn ${activeTab === 'bracket' ? 'active' : ''}`}
-                        onClick={() => navigate(`/tournament-bracket/${tournamentId}`)}
+                        onClick={() => isKnockoutTournament ?
+                            navigate(`/club/${clubId}/tournament-bracket/${tournamentId}`) :
+                            navigate(`/tournament-bracket/${tournamentId}`)
+                        }
                     >
                         Bracket View
                     </button>
@@ -119,41 +160,70 @@ const TournamentStandingsPage = () => {
                             <tr>
                                 <th>Rank</th>
                                 <th>Player</th>
-                                <th>Played</th>
-                                <th>W</th>
-                                <th>D</th>
-                                <th>L</th>
-                                <th>Score</th>
-                                <th>Rating</th>
-                                <th>Change</th>
+                                {isKnockoutTournament ? (
+                                    <>
+                                        <th>Points</th>
+                                        <th>Tournaments</th>
+                                        <th>Wins</th>
+                                        <th>Runner-up</th>
+                                        <th>Semi-finals</th>
+                                        <th>Quarter-finals</th>
+                                    </>
+                                ) : (
+                                    <>
+                                        <th>Played</th>
+                                        <th>W</th>
+                                        <th>D</th>
+                                        <th>L</th>
+                                        <th>Score</th>
+                                        <th>Rating</th>
+                                        <th>Change</th>
+                                    </>
+                                )}
                             </tr>
                         </thead>
                         <tbody>
                             {standings.length === 0 ? (
                                 <tr>
-                                    <td colSpan="9" className="no-data">No standings available yet</td>
+                                    <td colSpan={isKnockoutTournament ? "8" : "9"} className="no-data">
+                                        {isKnockoutTournament ? 'No tournament data available' : 'No standings available yet'}
+                                    </td>
                                 </tr>
                             ) : (
                                 standings.map((player, index) => (
-                                    <tr key={player.playerId} className={index < 3 ? `top-${index + 1}` : ''}>
+                                    <tr key={player.playerId} className={isKnockoutTournament && player.rank <= 3 ? `top-${player.rank}` : (index < 3 ? `top-${index + 1}` : '')}>
                                         <td className="rank">
-                                            {player.rank <= 3 && (
-                                                <span className={`medal medal-${player.rank}`}>
-                                                    {player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : '🥉'}
+                                            {(isKnockoutTournament ? player.rank : (index + 1)) <= 3 && (
+                                                <span className={`medal medal-${isKnockoutTournament ? player.rank : (index + 1)}`}>
+                                                    {(isKnockoutTournament ? player.rank : (index + 1)) === 1 ? '🥇' : 
+                                                     (isKnockoutTournament ? player.rank : (index + 1)) === 2 ? '🥈' : '🥉'}
                                                 </span>
                                             )}
-                                            {player.rank}
+                                            {isKnockoutTournament ? player.rank : (index + 1)}
                                         </td>
                                         <td className="player-name">{player.playerName}</td>
-                                        <td>{player.matchesPlayed}</td>
-                                        <td className="wins">{player.wins}</td>
-                                        <td className="draws">{player.draws}</td>
-                                        <td className="losses">{player.losses}</td>
-                                        <td className="score">{player.score}</td>
-                                        <td className="rating">{player.currentRating}</td>
-                                        <td className={`rating-change ${player.ratingChange >= 0 ? 'positive' : 'negative'}`}>
-                                            {player.ratingChange >= 0 ? '+' : ''}{player.ratingChange}
-                                        </td>
+                                        {isKnockoutTournament ? (
+                                            <>
+                                                <td className="points">{player.totalPoints || 0}</td>
+                                                <td>{player.tournamentCount || 0}</td>
+                                                <td className="wins">{player.winCount || 0}</td>
+                                                <td className="runner-up">{player.runnerUpCount || 0}</td>
+                                                <td className="semi">{player.semifinalCount || 0}</td>
+                                                <td className="quarter">{player.quarterfinalCount || 0}</td>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <td>{player.matchesPlayed}</td>
+                                                <td className="wins">{player.wins}</td>
+                                                <td className="draws">{player.draws}</td>
+                                                <td className="losses">{player.losses}</td>
+                                                <td className="score">{player.score}</td>
+                                                <td className="rating">{player.currentRating}</td>
+                                                <td className={`rating-change ${player.ratingChange >= 0 ? 'positive' : 'negative'}`}>
+                                                    {player.ratingChange >= 0 ? '+' : ''}{player.ratingChange}
+                                                </td>
+                                            </>
+                                        )}
                                     </tr>
                                 ))
                             )}

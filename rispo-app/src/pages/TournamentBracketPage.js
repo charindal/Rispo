@@ -20,12 +20,25 @@ const TournamentBracketPage = () => {
             return;
         }
         loadBracket();
-    }, [tournamentId]);
+    }, [tournamentId, clubId]);
 
     const loadBracket = async () => {
         try {
             setLoading(true);
-            const response = await tournamentService.getKnockoutTournamentBracket(clubId, tournamentId);
+            let response;
+            
+            console.log('Loading bracket - clubId:', clubId, 'tournamentId:', tournamentId);
+            
+            if (clubId && clubId !== 'undefined') {
+                // This is a knockout tournament from a club
+                console.log('Using knockout tournament API');
+                response = await tournamentService.getKnockoutTournamentBracket(clubId, tournamentId);
+            } else {
+                // This is a regular tournament bracket
+                console.log('Using regular tournament bracket API');
+                response = await tournamentService.getKnockoutBracket(tournamentId);
+            }
+            
             setBracket(response.data);
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to load bracket');
@@ -140,8 +153,8 @@ const TournamentBracketPage = () => {
                     <button onClick={() => navigate('/player-dashboard')} className="nav-btn">🏠 Dashboard</button>
                     <button onClick={() => navigate('/rankings')} className="nav-btn">Rankings</button>
                     <button onClick={() => navigate('/profile')} className="nav-btn">Profile</button>
-                    <button onClick={() => navigate(`/tournament-matches/${clubId}/${tournamentId}`)} className="nav-btn">Matches</button>
-                    <button onClick={() => navigate(`/tournament-standings/${tournamentId}`)} className="nav-btn">Standings</button>
+                    <button onClick={() => navigate(clubId && clubId !== 'undefined' ? `/club/${clubId}/tournament-matches/${tournamentId}` : `/tournament-matches/${tournamentId}`)} className="nav-btn">Matches</button>
+                    <button onClick={() => navigate(clubId && clubId !== 'undefined' ? `/club/${clubId}/tournament-standings/${tournamentId}` : `/tournament-standings/${tournamentId}`)} className="nav-btn">Standings</button>
                     <button onClick={handleLogout} className="nav-btn logout-btn">Sign Out</button>
                 </div>
             </div>
