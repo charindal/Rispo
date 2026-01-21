@@ -1,5 +1,26 @@
 # =========================
-# Stage 1: Build Spring Boot App
+# Stage 1: Build React Frontend
+# =========================
+FROM node:18-alpine AS frontend-build
+WORKDIR /app/frontend
+
+# Copy package files
+COPY rispo-app/package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY rispo-app/ ./
+
+# Set environment for local container deployment
+ENV REACT_APP_API_URL=http://localhost:8080/api
+
+# Build the React app
+RUN npm run build
+
+# =========================
+# Stage 2: Build Spring Boot App
 # =========================
 FROM maven:3.9.6-eclipse-temurin-21 AS backend-build
 WORKDIR /app
@@ -11,8 +32,10 @@ COPY mvnw.cmd .
 COPY .mvn .mvn
 COPY src ./src
 
+# Copy the React build output to Spring Boot's static resources
+COPY --from=frontend-build /app/frontend/build ./src/main/resources/static
+
 # Build the application JAR (skip tests for faster builds)
-# Note: Frontend is already built and copied to src/main/resources/static
 RUN mvn clean package -DskipTests -B
 
 # =========================

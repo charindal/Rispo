@@ -41,9 +41,77 @@ Write-Host "Stopping any existing containers..." -ForegroundColor Yellow
 & $podmanPath compose -f docker-compose.yml down 2>$null
 
 Write-Host ""
-Write-Host "Building application..." -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Magenta
+Write-Host "  Rebuilding Frontend and Backend" -ForegroundColor Magenta
+Write-Host "========================================" -ForegroundColor Magenta
+
+# Clean up old build artifacts
+Write-Host ""
+Write-Host "Cleaning up old build artifacts..." -ForegroundColor Yellow
+if (Test-Path "target") {
+    Remove-Item -Recurse -Force "target"
+    Write-Host "Removed Spring Boot target directory" -ForegroundColor Gray
+}
+if (Test-Path "rispo-app/build") {
+    Remove-Item -Recurse -Force "rispo-app/build"
+    Write-Host "Removed React build directory" -ForegroundColor Gray
+}
+if (Test-Path "rispo-app/node_modules") {
+    Remove-Item -Recurse -Force "rispo-app/node_modules"
+    Write-Host "Removed React node_modules directory" -ForegroundColor Gray
+}
+
+# Build Spring Boot Backend
+Write-Host ""
+Write-Host "Building Spring Boot backend..." -ForegroundColor Cyan
+try {
+    ./mvnw.cmd clean package -DskipTests
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Backend build failed!" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Backend build successful!" -ForegroundColor Green
+} catch {
+    Write-Host "Backend build error: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
+# Build React Frontend
+Write-Host ""
+Write-Host "Building React frontend for local containers..." -ForegroundColor Cyan
+try {
+    Set-Location "rispo-app"
+    npm ci
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Frontend npm install failed!" -ForegroundColor Red
+        exit 1
+    }
+    
+    # Set environment for local container deployment
+    $env:REACT_APP_API_URL = "http://localhost:8080/api"
+    npm run build
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Frontend build failed!" -ForegroundColor Red
+        exit 1
+    }
+    
+    Set-Location ".."
+    Write-Host "Frontend build successful with localhost API!" -ForegroundColor Green
+} catch {
+    Write-Host "Frontend build error: $($_.Exception.Message)" -ForegroundColor Red
+    Set-Location ".."
+    exit 1
+}
+
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Green
+Write-Host "  Rebuilds Complete!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "Building Docker/Podman containers..." -ForegroundColor Cyan
 $env:BUILDAH_FORMAT = "docker"
-& $podmanPath compose -f docker-compose.yml build
+& $podmanPath compose -f docker-compose.yml build --no-cache
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!" -ForegroundColor Red
@@ -61,8 +129,12 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "  Application Started Successfully!" -ForegroundColor Green
+Write-Host "  Full Rebuild & Deployment Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "✅ Backend rebuilt successfully" -ForegroundColor Green
+Write-Host "✅ Frontend rebuilt successfully" -ForegroundColor Green
+Write-Host "✅ Containers built and deployed" -ForegroundColor Green
 Write-Host ""
 Write-Host "Frontend:  http://localhost:3000" -ForegroundColor Cyan
 Write-Host "Backend:   http://localhost:8080" -ForegroundColor Cyan

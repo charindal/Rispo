@@ -188,6 +188,55 @@ const clubService = {
     } catch (error) {
       throw error.response?.data || error.message || 'Failed to update club status';
     }
+  },
+
+  // Get club by ID
+  getClubById: async (clubId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/clubs/${clubId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to get club details';
+    }
+  },
+
+  // Get club members (implement when backend endpoint is ready)
+  getClubMembers: async (clubId) => {
+    try {
+      // Use the existing search endpoint to get players by club
+      const response = await axios.get(`${API_BASE_URL}/players/search?clubId=${clubId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching club members:', error);
+      // Return empty array if endpoint doesn't exist yet
+      return [];
+    }
+  },
+
+  // Get club tournaments
+  getClubTournaments: async (clubId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/clubs/${clubId}/tournaments`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching club tournaments:', error);
+      // Return empty array if endpoint doesn't exist yet
+      return [];
+    }
+  },
+
+  // Review club join request
+  reviewClubJoinRequest: async (requestId, status, reviewNotes, userId) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/clubs/join-requests/${requestId}/review`,
+        { status, reviewNotes },
+        { headers: { 'X-User-Id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to review join request';
+    }
   }
 };
 

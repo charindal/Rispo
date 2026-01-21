@@ -5,6 +5,8 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 // Log the API URL for debugging (especially important for mobile apps)
 console.log('AUTH SERVICE - API_BASE_URL:', API_BASE_URL);
 console.log('AUTH SERVICE - Environment:', process.env.NODE_ENV);
+console.log('AUTH SERVICE - REACT_APP_API_URL from env:', process.env.REACT_APP_API_URL);
+console.log('AUTH SERVICE - All env vars starting with REACT_APP_:', Object.keys(process.env).filter(key => key.startsWith('REACT_APP_')));
 
 const authService = {
   register: async (userData) => {

@@ -22,6 +22,10 @@ function ClubManagement() {
   const [requestsPage, setRequestsPage] = useState(1);
   const itemsPerPage = 20;
   
+  // Search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredClubs, setFilteredClubs] = useState([]);
+  
   // Form states
   const [showCreateClubForm, setShowCreateClubForm] = useState(false);
   const [showTokenForm, setShowTokenForm] = useState(false);
@@ -85,6 +89,29 @@ function ClubManagement() {
     loadData();
   }, [navigate]);
 
+  const handleSearch = useCallback((query) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setFilteredClubs(clubs);
+      return;
+    }
+    
+    const searchTerms = query.toLowerCase().trim().split(' ');
+    const filtered = clubs.filter(club => {
+      const searchableText = [
+        club.name,
+        club.address,
+        club.city,
+        club.suburb,
+        club.description
+      ].filter(Boolean).join(' ').toLowerCase();
+      
+      return searchTerms.every(term => searchableText.includes(term));
+    });
+    
+    setFilteredClubs(filtered);
+  }, [clubs]);
+
   const loadData = useCallback(async () => {
     try {
       const clubsDataPromise = clubService.getAllClubs();
@@ -102,6 +129,7 @@ function ClubManagement() {
       ]);
       
       setClubs(clubsData);
+      setFilteredClubs(clubsData);
       setTokens(tokensData);
       setJoinRequests(requestsData);
       setLoading(false);
@@ -110,6 +138,18 @@ function ClubManagement() {
       setLoading(false);
     }
   }, [user]);
+
+  // Reset clubs page when search changes
+  React.useEffect(() => {
+    setClubsPage(1);
+  }, [searchQuery]);
+
+  // Update filtered clubs when clubs data changes
+  React.useEffect(() => {
+    if (clubs.length > 0) {
+      handleSearch(searchQuery);
+    }
+  }, [clubs, searchQuery, handleSearch]);
 
   const handleCreateClub = async (e) => {
     e.preventDefault();
@@ -124,19 +164,7 @@ function ClubManagement() {
     }
   };
 
-  const handleEditClub = (club) => {
-    setEditingClub(club);
-    setClubForm({
-      name: club.name || '',
-      description: club.description || '',
-      address: club.address || '',
-      city: club.city || '',
-      suburb: club.suburb || '',
-      contactEmail: club.contactEmail || '',
-      contactPhone: club.contactPhone || ''
-    });
-    setShowCreateClubForm(false);
-  };
+  // handleEditClub removed - functionality moved to ClubDashboard
 
   const handleUpdateClub = async (e) => {
     e.preventDefault();
@@ -226,6 +254,10 @@ function ClubManagement() {
   };
 
   // Club Tournament Handlers
+  const handleClubClick = (club) => {
+    navigate(`/clubs/${club.clubId}`);
+  };
+
   const handleManageTournaments = async (club) => {
     setSelectedClub(club);
     setShowTournamentModal(true);
@@ -318,7 +350,7 @@ function ClubManagement() {
     return items.slice(startIndex, endIndex);
   };
 
-  const paginatedClubs = getPaginatedItems(clubs, clubsPage);
+  const paginatedClubs = getPaginatedItems(filteredClubs, clubsPage);
   const paginatedTokens = getPaginatedItems(tokens, tokensPage);
   const paginatedRequests = getPaginatedItems(joinRequests, requestsPage);
 
@@ -344,28 +376,54 @@ function ClubManagement() {
             Clubs ({clubs.length})
           </button>
           <button 
-            className={`tab ${activeTab === 'tokens' ? 'active' : ''}`}
-            onClick={() => setActiveTab('tokens')}
+            className={`tab`}
+            onClick={() => navigate('/player-verification')}
           >
-            Admin Tokens ({tokens.length})
+            Admin Tokens
           </button>
           <button 
-            className={`tab ${activeTab === 'requests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('requests')}
+            className={`tab`}
+            onClick={() => alert('Join requests are now handled in individual club dashboards. Click on a club to manage its requests.')}
           >
-            Join Requests ({joinRequests.length})
+            Join Requests (Moved to Club Dashboards)
           </button>
         </div>
 
-        {/* Clubs Tab */}
+        {/* Only show clubs tab content now */}
         {activeTab === 'clubs' && (
           <div className="tab-content">
             <div className="content-header">
               <h2>Clubs & Venues</h2>
-              <button onClick={() => setShowCreateClubForm(!showCreateClubForm)} className="primary-btn">
-                {showCreateClubForm ? 'Cancel' : '+ Create Club'}
-              </button>
+              <div className="header-actions">
+                <div className="search-container">
+                  <input
+                    type="text"
+                    placeholder="Search clubs by name, address, city..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="search-input"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => handleSearch('')} 
+                      className="clear-search-btn"
+                      title="Clear search"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                <button onClick={() => setShowCreateClubForm(!showCreateClubForm)} className="primary-btn">
+                  {showCreateClubForm ? 'Cancel' : '+ Create Club'}
+                </button>
+              </div>
             </div>
+            
+            {searchQuery && (
+              <div className="search-results-info">
+                Found {filteredClubs.length} club{filteredClubs.length !== 1 ? 's' : ''} matching "{searchQuery}"
+              </div>
+            )}
 
             {(showCreateClubForm || editingClub) && (
               <div className="form-card">
@@ -454,69 +512,49 @@ function ClubManagement() {
             )}
 
             <div className="clubs-grid">
-              {paginatedClubs.map(club => (
-                <div key={club.clubId} className="club-card">
-                  <div className="club-header">
-                    <h3>{club.name}</h3>
-                    <span className={`status-badge ${club.status.toLowerCase()}`}>
-                      {club.status}
-                    </span>
-                  </div>
-                  <div className="club-details">
-                    {club.description && <p>{club.description}</p>}
-                    {club.address && <p><strong>📍</strong> {club.address}</p>}
-                    {(club.city || club.suburb) && (
-                      <p><strong>🏘️</strong> {[club.suburb, club.city].filter(Boolean).join(', ')}</p>
-                    )}
-                    {club.contactEmail && <p><strong>📧</strong> {club.contactEmail}</p>}
-                    {club.contactPhone && <p><strong>📞</strong> {club.contactPhone}</p>}
-                    <p className="club-meta">Created by {club.createdByUsername}</p>
-                  </div>
-                  <div className="club-actions">
-                    <button 
-                      onClick={() => handleManageTournaments(club)}
-                      className="action-btn primary"
-                      title="Manage Club Tournaments"
-                    >
-                      🏆 Tournaments
-                    </button>
-                    <button 
-                      onClick={() => handleEditClub(club)}
-                      className="action-btn info"
-                    >
-                      Edit
-                    </button>
-                    {club.status === 'ACTIVE' && (
-                      <>
-                        <button 
-                          onClick={() => handleUpdateClubStatus(club.clubId, 'INACTIVE')}
-                          className="action-btn warning"
-                        >
-                          Deactivate
-                        </button>
-                        <button 
-                          onClick={() => handleUpdateClubStatus(club.clubId, 'SUSPENDED')}
-                          className="action-btn danger"
-                        >
-                          Suspend
-                        </button>
-                      </>
-                    )}
-                    {club.status !== 'ACTIVE' && (
-                      <button 
-                        onClick={() => handleUpdateClubStatus(club.clubId, 'ACTIVE')}
-                        className="action-btn success"
-                      >
-                        Activate
-                      </button>
-                    )}
-                  </div>
+              {paginatedClubs.length === 0 ? (
+                <div className="no-results">
+                  {searchQuery ? (
+                    <p>No clubs found matching your search criteria.</p>
+                  ) : (
+                    <p>No clubs available.</p>
+                  )}
                 </div>
-              ))}
+              ) : (
+                paginatedClubs.map(club => (
+                  <div key={club.clubId} className="club-card" onClick={() => handleClubClick(club)}>
+                    <div className="club-header">
+                      <h3>{club.name}</h3>
+                      <span className={`status-badge ${club.status.toLowerCase()}`}>
+                        {club.status}
+                      </span>
+                    </div>
+                    <div className="club-details">
+                      {club.description && <p>{club.description}</p>}
+                      {club.address && <p><strong>📍</strong> {club.address}</p>}
+                      {(club.city || club.suburb) && (
+                        <p><strong>🏘️</strong> {[club.suburb, club.city].filter(Boolean).join(', ')}</p>
+                      )}
+                      {club.contactEmail && <p><strong>📧</strong> {club.contactEmail}</p>}
+                      {club.contactPhone && <p><strong>📞</strong> {club.contactPhone}</p>}
+                      <p className="club-meta">Created by {club.createdByUsername}</p>
+                    </div>
+                    <div className="club-actions" onClick={(e) => e.stopPropagation()}>
+                      <button 
+                        onClick={() => handleClubClick(club)}
+                        className="action-btn primary"
+                        title="View Club Dashboard"
+                      >
+                        🏢 Open Dashboard
+                      </button>
+                    </div>
+                </div>
+                ))
+              )}
             </div>
             <Pagination
               currentPage={clubsPage}
-              totalItems={clubs.length}
+              totalItems={filteredClubs.length}
               itemsPerPage={itemsPerPage}
               onPageChange={setClubsPage}
             />

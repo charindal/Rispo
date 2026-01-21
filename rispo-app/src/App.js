@@ -7,6 +7,7 @@ import AdminPage from './pages/AdminPage';
 import PlayerDashboard from './pages/PlayerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ClubManagement from './pages/ClubManagement';
+import ClubDashboard from './pages/ClubDashboard';
 import ProfilePage from './pages/ProfilePage';
 import RatingSettingsPage from './pages/RatingSettingsPage';
 import SubmitMatchPage from './pages/SubmitMatchPage';
@@ -83,6 +84,7 @@ function App() {
         <Route path="/player-dashboard" element={<PlayerDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/club-management" element={<ClubManagement />} />
+        <Route path="/clubs/:clubId" element={<ClubDashboard />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/rating-settings" element={<RatingSettingsPage />} />
         <Route path="/submit-match" element={<SubmitMatchPage />} />
