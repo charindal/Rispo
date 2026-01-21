@@ -1,10 +1,10 @@
 .register-container {
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #4a90e2 100%);
-  padding: 40px 20px;
+  padding: 20px 15px;
 }
 
 .register-card {
@@ -12,8 +12,9 @@
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   width: 100%;
-  max-width: 700px;
-  padding: 40px;
+  max-width: 600px;
+  padding: 30px 20px;
+  margin-top: 20px;
   animation: slideUp 0.5s ease-out;
 }
 
@@ -30,18 +31,18 @@
 
 .register-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 25px;
 }
 
 .register-header h1 {
-  font-size: 36px;
+  font-size: 28px;
   font-weight: 700;
   color: #1e3c72;
   margin: 0 0 8px 0;
 }
 
 .register-header p {
-  font-size: 16px;
+  font-size: 14px;
   color: #666;
   margin: 0;
 }
@@ -476,5 +477,152 @@
   .search-club-btn,
   .clear-club-btn {
     width: 100%;
+  }
+}
+
+/* New Mobile-Friendly Styles */
+
+/* Register Button at Top */
+.register-action-top {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  padding: 15px 0;
+  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.register-btn {
+  width: 100%;
+  padding: 15px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.register-btn.enabled {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.register-btn.enabled:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.register-btn.disabled {
+  background: #e0e0e0;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.register-hint {
+  display: block;
+  margin-top: 8px;
+  color: #666;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Form Sections */
+.form-section {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  border-left: 4px solid #2196F3;
+}
+
+.form-section.optional-section {
+  border-left-color: #FFC107;
+  background: #fffbf0;
+}
+
+.form-section.club-creation-section {
+  border-left-color: #4CAF50;
+  background: #f1f8e9;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-description {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 20px 0;
+  line-height: 1.4;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .register-container {
+    padding: 10px;
+  }
+  
+  .register-card {
+    padding: 20px 15px;
+    margin-top: 10px;
+    border-radius: 8px;
+  }
+  
+  .register-header h1 {
+    font-size: 24px;
+  }
+  
+  .form-section {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .section-title {
+    font-size: 16px;
+  }
+  
+  .register-btn {
+    font-size: 15px;
+    padding: 12px 16px;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+@media (max-width: 480px) {
+  .register-header h1 {
+    font-size: 22px;
+  }
+  
+  .form-section {
+    padding: 12px;
+  }
+  
+  .section-title {
+    font-size: 15px;
+  }
+}
+
+/* Remove form-row on mobile for better stacking */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
   }
 }

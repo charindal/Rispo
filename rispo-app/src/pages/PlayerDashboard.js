@@ -313,8 +313,8 @@ const PlayerDashboard = () => {
               <h3>Edit Profile</h3>
               <p>Update your information</p>
             </div>
-            {user?.clubId && (
-              <div className="action-card" onClick={() => navigate(`/clubs/${user.clubId}`)}>
+            {(user?.clubId || playerData?.clubId) && (
+              <div className="action-card" onClick={() => navigate(`/clubs/${user?.clubId || playerData?.clubId}`)}>
                 <div className="action-icon">🏢</div>
                 <h3>My Club Dashboard</h3>
                 <p>View your club's dashboard and activities</p>

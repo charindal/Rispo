@@ -225,6 +225,112 @@ const clubService = {
     }
   },
 
+  // Knockout Tournament Methods
+  getClubKnockoutTournaments: async (clubId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/clubs/${clubId}/knockout-tournaments`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching knockout tournaments:', error);
+      return [];
+    }
+  },
+
+  createWeeklyKnockoutTournament: async (clubId, userId, drawType = 'RANDOM') => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/clubs/${clubId}/knockout-tournaments/weekly?drawType=${drawType}`,
+        {},
+        { headers: { 'X-User-Id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to create tournament';
+    }
+  },
+
+  createKnockoutTournament: async (clubId, userId, options = {}) => {
+    try {
+      const { drawType = 'RANDOM', tournamentName = '', tournamentType = 'WEEKLY' } = options;
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.append('drawType', drawType);
+      if (tournamentName.trim()) {
+        params.append('tournamentName', tournamentName.trim());
+      }
+      params.append('tournamentType', tournamentType);
+      
+      const response = await axios.post(
+        `${API_BASE_URL}/clubs/${clubId}/knockout-tournaments?${params.toString()}`,
+        {},
+        { headers: { 'X-User-Id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to create tournament';
+    }
+  },
+
+  startKnockoutTournament: async (clubId, tournamentId, userId) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/clubs/${clubId}/knockout-tournaments/${tournamentId}/start`,
+        {},
+        { headers: { 'X-User-Id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to start tournament';
+    }
+  },
+
+  updateKnockoutMatchResult: async (clubId, tournamentId, matchId, resultData, userId) => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/clubs/${clubId}/knockout-tournaments/${tournamentId}/matches/${matchId}/result`,
+        resultData,
+        { headers: { 'X-User-Id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to update match result';
+    }
+  },
+
+  getClubTournamentLeaderboard: async (clubId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/clubs/${clubId}/tournament-leaderboard`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching tournament leaderboard:', error);
+      return [];
+    }
+  },
+
+  updateTournamentPointsConfig: async (clubId, pointsConfig, userId) => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/clubs/${clubId}/tournament-points-config`,
+        pointsConfig,
+        { headers: { 'X-User-Id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to update points configuration';
+    }
+  },
+
+  getTournamentPointsConfig: async (clubId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/clubs/${clubId}/tournament-points-config`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching points configuration:', error);
+      return { winner: 5, runnerUp: 3, semifinalist: 2, quarterfinalist: 1 };
+    }
+  },
+
   // Review club join request
   reviewClubJoinRequest: async (requestId, status, reviewNotes, userId) => {
     try {

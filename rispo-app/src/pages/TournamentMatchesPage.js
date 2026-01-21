@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import tournamentService from '../services/tournamentService';
 import matchService from '../services/matchService';
+import clubService from '../services/clubService';
 import authService from '../services/authService';
 import '../styles/TournamentMatchesPage.css';
 
 const TournamentMatchesPage = () => {
-    const { tournamentId } = useParams();
+    const { clubId, tournamentId } = useParams();
     const navigate = useNavigate();
     const [tournament, setTournament] = useState(null);
     const [matches, setMatches] = useState([]);
@@ -41,9 +42,49 @@ const TournamentMatchesPage = () => {
     const loadTournamentData = async () => {
         try {
             setLoading(true);
-            const tournamentRes = await tournamentService.getTournamentById(tournamentId);
-            setTournament(tournamentRes.data);
-            await loadMatches();
+            
+            // Check if this is a knockout tournament (clubId is present)
+            if (clubId) {
+                // This is a knockout tournament
+                const tournamentRes = await tournamentService.getKnockoutTournamentBracket(clubId, tournamentId);
+                const bracketData = tournamentRes.data;
+                
+                // Create a tournament-like object for knockout tournaments
+                setTournament({
+                    id: bracketData.tournamentId,
+                    name: bracketData.tournamentName,
+                    status: bracketData.status,
+                    format: "KNOCKOUT",
+                    isKnockout: true
+                });
+                
+                // Extract matches from bracket data
+                if (bracketData.rounds) {
+                    const allMatches = [];
+                    Object.keys(bracketData.rounds).forEach(round => {
+                        bracketData.rounds[round].forEach(match => {
+                            allMatches.push({
+                                ...match,
+                                round: parseInt(round)
+                            });
+                        });
+                    });
+                    setMatches(allMatches);
+                    
+                    // Find max round
+                    if (allMatches.length > 0) {
+                        const maxR = Math.max(...allMatches.map(m => m.round || 1));
+                        setMaxRound(maxR);
+                    }
+                } else {
+                    setMatches([]);
+                }
+            } else {
+                // This is a regular tournament
+                const tournamentRes = await tournamentService.getTournamentById(tournamentId);
+                setTournament({ ...tournamentRes.data, isKnockout: false });
+                await loadMatches();
+            }
         } catch (err) {
             setError('Failed to load tournament data');
             console.error(err);
@@ -53,6 +94,11 @@ const TournamentMatchesPage = () => {
     };
 
     const loadMatches = async () => {
+        // Skip loading if this is a knockout tournament (already loaded in loadTournamentData)
+        if (clubId) {
+            return;
+        }
+        
         try {
             const matchesRes = await tournamentService.getTournamentMatches(tournamentId);
             const allMatches = matchesRes.data || [];
@@ -84,7 +130,7 @@ const TournamentMatchesPage = () => {
 
     const handleSubmitResult = async (matchId) => {
         const input = resultInputs[matchId];
-        if (!input || !input.player1Games === undefined || input.player2Games === undefined) {
+        if (!input || input.player1Games === undefined || input.player2Games === undefined) {
             setError('Please enter game scores for both players');
             return;
         }
@@ -182,9 +228,16 @@ const TournamentMatchesPage = () => {
                 approve: true
             };
 
-            await tournamentService.updateMatchResult(tournamentId, matchId, resultData, userId);
+            // Use the correct tournament ID and service for both regular and knockout tournaments
+            if (tournament?.isKnockout) {
+                // For knockout tournaments, use the knockout-specific endpoint
+                await tournamentService.updateKnockoutMatchResult(clubId, tournamentId, matchId, resultData, userId);
+            } else {
+                // For regular tournaments, use the tournament service
+                await tournamentService.updateMatchResult(tournamentId, matchId, resultData, userId);
+            }
             setSuccessMessage('Match result submitted and approved successfully');
-            await loadMatches();
+            await loadTournamentData(); // Reload tournament data for knockout tournaments
             
             // Clear input
             setResultInputs(prev => {

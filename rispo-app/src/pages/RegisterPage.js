@@ -37,6 +37,22 @@ const RegisterPage = () => {
   const [searching, setSearching] = useState(false);
   const navigate = useNavigate();
 
+  // Check if mandatory fields are filled
+  const isMandatoryFieldsFilled = () => {
+    const basicFields = formData.username && formData.password && formData.confirmPassword && 
+                       formData.nationalId && formData.name;
+    
+    if (isAdminRole && !formData.adminToken) {
+      return false;
+    }
+    
+    if (formData.role === 'CLUB_ADMIN' && !formData.clubName) {
+      return false;
+    }
+    
+    return basicFields;
+  };
+
   useEffect(() => {
     // Load active clubs
     const fetchClubs = async () => {
@@ -74,16 +90,6 @@ const RegisterPage = () => {
       return;
     }
 
-    if (!formData.email || formData.email.trim() === '') {
-      setError('Email is required');
-      return;
-    }
-
-    if (!formData.phone || formData.phone.trim() === '') {
-      setError('Phone number is required');
-      return;
-    }
-
     // Validate club creation for CLUB_ADMIN
     if (formData.role === 'CLUB_ADMIN') {
       if (!formData.clubName || formData.clubName.trim() === '') {
@@ -99,10 +105,10 @@ const RegisterPage = () => {
       const registrationData = {
         username: formData.username,
         password: formData.password,
-        email: formData.email,
+        email: formData.email || null,
         nationalId: formData.nationalId,
         name: formData.name,
-        phone: formData.phone,
+        phone: formData.phone || null,
         role: formData.role,
         clubId: formData.clubId || null,
         adminToken: formData.adminToken || null,
@@ -172,37 +178,40 @@ const RegisterPage = () => {
         </div>
         
         <form onSubmit={handleSubmit} className="register-form">
-          <div className="form-row">
+          {/* Register Button at Top */}
+          <div className="register-action-top">
+            <button
+              type="submit"
+              className={`register-btn ${isMandatoryFieldsFilled() ? 'enabled' : 'disabled'}`}
+              disabled={loading || !isMandatoryFieldsFilled()}
+            >
+              {loading ? 'Creating Account...' : 'Register Account'}
+            </button>
+            {!isMandatoryFieldsFilled() && (
+              <small className="register-hint">Fill required fields to enable registration</small>
+            )}
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+
+          {/* Mandatory Fields Section */}
+          <div className="form-section">
+            <h3 className="section-title">Required Information</h3>
+            
             <div className="form-group">
-              <label htmlFor="username">Username *</label>
+              <label htmlFor="username">Username/Nickname *</label>
               <input
                 type="text"
                 id="username"
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                placeholder="Choose a username"
+                placeholder="Choose a username or nickname"
                 required
                 disabled={loading}
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="email">Email *</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="your.email@example.com"
-                required
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
             <div className="form-group">
               <label htmlFor="password">Password *</label>
               <input
@@ -230,23 +239,21 @@ const RegisterPage = () => {
                 disabled={loading}
               />
             </div>
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="nationalId">National ID / Passport *</label>
-            <input
-              type="text"
-              id="nationalId"
-              name="nationalId"
-              value={formData.nationalId}
-              onChange={handleChange}
-              placeholder="Enter your ID or passport number"
-              required
-              disabled={loading}
-            />
-          </div>
+            <div className="form-group">
+              <label htmlFor="nationalId">National ID / Passport *</label>
+              <input
+                type="text"
+                id="nationalId"
+                name="nationalId"
+                value={formData.nationalId}
+                onChange={handleChange}
+                placeholder="Enter your ID or passport number"
+                required
+                disabled={loading}
+              />
+            </div>
 
-          <div className="form-row">
             <div className="form-group">
               <label htmlFor="name">Full Name *</label>
               <input
@@ -262,72 +269,50 @@ const RegisterPage = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="phone">Phone Number *</label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
+              <label htmlFor="role">Account Type *</label>
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
                 onChange={handleChange}
-                placeholder="+27 123 456 7890"
-                required
                 disabled={loading}
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="role">Account Type *</label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              disabled={loading}
-            >
-              <option value="PLAYER">Player</option>
-              <option value="SYSTEM_ADMIN">System Admin</option>
-              <option value="CLUB_ADMIN">Club Admin</option>
-              <option value="RATING_ADMIN">Rating Admin</option>
-            </select>
-            <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
-              {isAdminRole ? 'Admin roles require a valid registration token' : 'Regular player account'}
-            </small>
-          </div>
-
-          {isAdminRole && (
-            <div className="form-group">
-              <label htmlFor="adminToken">Admin Registration Token *</label>
-              <input
-                type="text"
-                id="adminToken"
-                name="adminToken"
-                value={formData.adminToken}
-                onChange={handleChange}
-                placeholder="Enter your admin token"
-                required={isAdminRole}
-                disabled={loading}
-              />
+              >
+                <option value="PLAYER">Player</option>
+                <option value="SYSTEM_ADMIN">System Admin</option>
+                <option value="CLUB_ADMIN">Club Admin</option>
+                <option value="RATING_ADMIN">Rating Admin</option>
+              </select>
               <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
-                Contact a system admin to obtain a registration token
+                {isAdminRole ? 'Admin roles require a valid registration token' : 'Regular player account'}
               </small>
             </div>
-          )}
+
+            {isAdminRole && (
+              <div className="form-group">
+                <label htmlFor="adminToken">Admin Registration Token *</label>
+                <input
+                  type="text"
+                  id="adminToken"
+                  name="adminToken"
+                  value={formData.adminToken}
+                  onChange={handleChange}
+                  placeholder="Enter your admin token"
+                  required={isAdminRole}
+                  disabled={loading}
+                />
+                <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
+                  Contact a system admin to obtain a registration token
+                </small>
+              </div>
+            )}
+          </div>
 
           {/* Club Creation Section for CLUB_ADMIN */}
           {formData.role === 'CLUB_ADMIN' && (
-            <div className="club-creation-section" style={{
-              border: '2px solid #007bff',
-              borderRadius: '8px',
-              padding: '20px',
-              marginTop: '20px',
-              backgroundColor: '#f8f9fa'
-            }}>
-              <h3 style={{marginTop: 0, color: '#007bff'}}>
-                🏛️ Create Your Club
-              </h3>
-              <p style={{color: '#666', fontSize: '14px', marginBottom: '20px'}}>
-                As a Club Admin, you must create your club during registration. This club will be your primary affiliation.
+            <div className="form-section club-creation-section">
+              <h3 className="section-title">🏛️ Create Your Club *</h3>
+              <p className="section-description">
+                As a Club Admin, you must create your club during registration.
               </p>
 
               <div className="form-group">
@@ -474,33 +459,62 @@ const RegisterPage = () => {
             </div>
           )}
 
-          {isAdminRole && (
+          {/* Optional Fields Section */}
+          <div className="form-section optional-section">
+            <h3 className="section-title">Optional Information</h3>
+            <p className="section-description">
+              These fields are optional but help us provide a better experience.
+            </p>
+            
             <div className="form-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  name="createPlayerProfile"
-                  checked={formData.createPlayerProfile}
-                  onChange={handleChange}
-                  disabled={loading}
-                />
-                <span>Also create a player profile for me</span>
-              </label>
-              <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
-                Admins can also have player profiles to participate in matches
-              </small>
+              <label htmlFor="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="your.email@example.com"
+                disabled={loading}
+              />
+              <small>For notifications and account recovery</small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="phone">Phone Number</label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="+27 123 456 7890"
+                disabled={loading}
+              />
+              <small>For account verification and important updates</small>
+            </div>
+          </div>
+
+          {isAdminRole && (
+            <div className="form-section">
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="createPlayerProfile"
+                    checked={formData.createPlayerProfile}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                  <span>Also create a player profile for me</span>
+                </label>
+                <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
+                  Admins can also have player profiles to participate in matches
+                </small>
+              </div>
             </div>
           )}
 
-          {error && <div className="error-message">{error}</div>}
-
-          <button 
-            type="submit" 
-            className="register-button"
-            disabled={loading}
-          >
-            {loading ? 'Creating Account...' : 'Register'}
-          </button>
         </form>
 
         <div className="register-footer">

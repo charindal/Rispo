@@ -5,7 +5,7 @@ import authService from '../services/authService';
 import '../styles/TournamentBracketPage.css';
 
 const TournamentBracketPage = () => {
-    const { tournamentId } = useParams();
+    const { clubId, tournamentId } = useParams();
     const navigate = useNavigate();
     const [bracket, setBracket] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ const TournamentBracketPage = () => {
     const loadBracket = async () => {
         try {
             setLoading(true);
-            const response = await tournamentService.getKnockoutBracket(tournamentId);
+            const response = await tournamentService.getKnockoutTournamentBracket(clubId, tournamentId);
             setBracket(response.data);
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to load bracket');
@@ -140,7 +140,7 @@ const TournamentBracketPage = () => {
                     <button onClick={() => navigate('/player-dashboard')} className="nav-btn">🏠 Dashboard</button>
                     <button onClick={() => navigate('/rankings')} className="nav-btn">Rankings</button>
                     <button onClick={() => navigate('/profile')} className="nav-btn">Profile</button>
-                    <button onClick={() => navigate(`/tournament-matches/${tournamentId}`)} className="nav-btn">Matches</button>
+                    <button onClick={() => navigate(`/tournament-matches/${clubId}/${tournamentId}`)} className="nav-btn">Matches</button>
                     <button onClick={() => navigate(`/tournament-standings/${tournamentId}`)} className="nav-btn">Standings</button>
                     <button onClick={handleLogout} className="nav-btn logout-btn">Sign Out</button>
                 </div>

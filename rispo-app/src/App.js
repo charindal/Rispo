@@ -110,8 +110,9 @@ function App() {
         <Route path="/tournaments/manage" element={<TournamentManagementPage />} />
         <Route path="/tournament-requests/:tournamentId" element={<TournamentRequestsPage />} />
         <Route path="/tournament-matches/:tournamentId" element={<TournamentMatchesPage />} />
+        <Route path="/tournament-matches/:clubId/:tournamentId" element={<TournamentMatchesPage />} />
         <Route path="/tournament-standings/:tournamentId" element={<TournamentStandingsPage />} />
-        <Route path="/tournament-bracket/:tournamentId" element={<TournamentBracketPage />} />
+        <Route path="/tournament-bracket/:clubId/:tournamentId" element={<TournamentBracketPage />} />
         <Route path="/rankings" element={<RankingsPage />} />
       </Routes>
     </Router>

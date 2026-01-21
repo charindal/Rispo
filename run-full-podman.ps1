@@ -56,10 +56,6 @@ if (Test-Path "rispo-app/build") {
     Remove-Item -Recurse -Force "rispo-app/build"
     Write-Host "Removed React build directory" -ForegroundColor Gray
 }
-if (Test-Path "rispo-app/node_modules") {
-    Remove-Item -Recurse -Force "rispo-app/node_modules"
-    Write-Host "Removed React node_modules directory" -ForegroundColor Gray
-}
 
 # Build Spring Boot Backend
 Write-Host ""
@@ -81,10 +77,17 @@ Write-Host ""
 Write-Host "Building React frontend for local containers..." -ForegroundColor Cyan
 try {
     Set-Location "rispo-app"
-    npm ci
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Frontend npm install failed!" -ForegroundColor Red
-        exit 1
+    
+    # Check if node_modules exists, install only if missing
+    if (-not (Test-Path "node_modules")) {
+        Write-Host "Installing npm dependencies (node_modules not found)..." -ForegroundColor Yellow
+        npm ci
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Frontend npm install failed!" -ForegroundColor Red
+            exit 1
+        }
+    } else {
+        Write-Host "Using existing node_modules..." -ForegroundColor Gray
     }
     
     # Set environment for local container deployment

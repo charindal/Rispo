@@ -377,15 +377,9 @@ function ClubManagement() {
           </button>
           <button 
             className={`tab`}
-            onClick={() => navigate('/player-verification')}
+            onClick={() => navigate('/admin')}
           >
-            Admin Tokens
-          </button>
-          <button 
-            className={`tab`}
-            onClick={() => alert('Join requests are now handled in individual club dashboards. Click on a club to manage its requests.')}
-          >
-            Join Requests (Moved to Club Dashboards)
+            Player Verification
           </button>
         </div>
 

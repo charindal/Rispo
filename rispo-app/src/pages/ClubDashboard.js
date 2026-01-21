@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import authService from '../services/authService';
 import clubService from '../services/clubService';
 import HamburgerMenu from '../components/HamburgerMenu';
+import ClubTournaments from './ClubTournaments';
 import '../styles/ClubDashboard.css';
 
 const ClubDashboard = () => {
@@ -418,63 +419,11 @@ const ClubDashboard = () => {
           )}
 
           {activeTab === 'tournaments' && (
-            <div className="tournaments-content">
-              <div className="section-header">
-                <h3>Club Tournaments</h3>
-                {isClubAdmin() && (
-                  <button className="primary-btn">+ Create Tournament</button>
-                )}
-              </div>
-              
-              <div className="tournaments-grid">
-                {tournaments.map(tournament => (
-                  <div key={tournament.id} className="tournament-card">
-                    <div className="tournament-header">
-                      <h4>{tournament.name}</h4>
-                      <span className={`tournament-status ${tournament.status?.toLowerCase()}`}>
-                        {tournament.status}
-                      </span>
-                    </div>
-                    <div className="tournament-details">
-                      {tournament.description && (
-                        <p>{tournament.description}</p>
-                      )}
-                      <div className="tournament-dates">
-                        {tournament.startDate && (
-                          <div>
-                            <strong>Start:</strong> {new Date(tournament.startDate).toLocaleDateString()}
-                          </div>
-                        )}
-                        {tournament.endDate && (
-                          <div>
-                            <strong>End:</strong> {new Date(tournament.endDate).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                      <div className="tournament-info">
-                        <span>Players: {tournament.playerCount || 0}</span>
-                        <span>Format: {tournament.format || 'TBD'}</span>
-                      </div>
-                    </div>
-                    <div className="tournament-actions">
-                      <button className="view-btn">View Details</button>
-                      {isClubAdmin() && (
-                        <button className="manage-btn">Manage</button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {tournaments.length === 0 && (
-                <div className="no-tournaments">
-                  <p>No tournaments have been created yet.</p>
-                  {isClubAdmin() && (
-                    <p>Create your first tournament to get started!</p>
-                  )}
-                </div>
-              )}
-            </div>
+            <ClubTournaments 
+              clubId={club?.id} 
+              isClubAdmin={isClubAdmin()} 
+              currentUser={user}
+            />
           )}
 
           {activeTab === 'requests' && isClubAdmin() && (
