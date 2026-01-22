@@ -39,6 +39,9 @@ public class KnockoutTournamentDTO {
     private Integer participantCount;
     private KnockoutTournament.DrawType drawType;
     private Integer currentRound;
+    private Boolean round1Generated;
+    private Boolean round1Started;
+    private Boolean allowRound1Regenerate;
     
     // Constructor from entity
     public KnockoutTournamentDTO(KnockoutTournament tournament) {
@@ -58,5 +61,8 @@ public class KnockoutTournamentDTO {
         this.bracketData = tournament.getBracketData();
         this.drawType = tournament.getDrawType();
         this.currentRound = tournament.getCurrentRound();
+        this.round1Generated = tournament.getRound1Generated();
+        this.round1Started = tournament.getRound1Started();
+        this.allowRound1Regenerate = tournament.getAllowRound1Regenerate();
     }
 }

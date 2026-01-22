@@ -405,6 +405,34 @@ const clubService = {
     } catch (error) {
       throw error.response?.data || error.message || 'Failed to reject player';
     }
+  },
+
+  // Generate first round pairings
+  generateFirstRoundPairings: async (clubId, tournamentId, userId) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/clubs/${clubId}/knockout-tournaments/${tournamentId}/generate-round-1`,
+        {},
+        { headers: { 'X-User-Id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to generate pairings';
+    }
+  },
+
+  // Regenerate first round pairings (before any results are entered)
+  regenerateFirstRoundPairings: async (clubId, tournamentId, userId) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/clubs/${clubId}/knockout-tournaments/${tournamentId}/regenerate-round-1`,
+        {},
+        { headers: { 'X-User-Id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to regenerate pairings';
+    }
   }
 };
 

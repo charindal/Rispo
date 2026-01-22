@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import tournamentService from '../services/tournamentService';
+import clubService from '../services/clubService';
 import authService from '../services/authService';
 import '../styles/TournamentBracketPage.css';
 
@@ -10,6 +11,8 @@ const TournamentBracketPage = () => {
     const [bracket, setBracket] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [isClubAdmin, setIsClubAdmin] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
     
     const currentUser = authService.getCurrentUser();
 
@@ -20,7 +23,21 @@ const TournamentBracketPage = () => {
             return;
         }
         loadBracket();
+        checkClubAdmin();
     }, [tournamentId, clubId]);
+
+    const checkClubAdmin = async () => {
+        if (!clubId || clubId === 'undefined' || !currentUser?.userId) return;
+        try {
+            const clubData = await clubService.getClubDetails(clubId);
+            const isAdmin = clubData.members?.some(m => 
+                m.userId === currentUser.userId && m.role === 'ADMIN'
+            );
+            setIsClubAdmin(isAdmin);
+        } catch (err) {
+            console.error('Error checking club admin status:', err);
+        }
+    };
 
     const loadBracket = async () => {
         try {
@@ -45,6 +62,38 @@ const TournamentBracketPage = () => {
             console.error(err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGeneratePairings = async () => {
+        if (!window.confirm('Generate first round pairings? This will create the bracket based on approved players.')) {
+            return;
+        }
+        try {
+            setActionLoading(true);
+            await clubService.generateFirstRoundPairings(clubId, tournamentId, currentUser.userId);
+            await loadBracket();
+            alert('Round 1 pairings generated successfully!');
+        } catch (err) {
+            alert('Error generating pairings: ' + (err.message || err));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleRegenerateRound1 = async () => {
+        if (!window.confirm('Regenerate Round 1 pairings? This will create new matchups for all approved players. Use this if players have joined or left since the last draw.')) {
+            return;
+        }
+        try {
+            setActionLoading(true);
+            await clubService.regenerateFirstRoundPairings(clubId, tournamentId, currentUser.userId);
+            await loadBracket();
+            alert('Round 1 pairings regenerated successfully!');
+        } catch (err) {
+            alert('Error regenerating pairings: ' + (err.message || err));
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -171,6 +220,72 @@ const TournamentBracketPage = () => {
                         <span className="champion-name">{bracket.champion.name}</span>
                     </div>
                     <span className="champion-trophy">🏆</span>
+                </div>
+            )}
+
+            {/* Admin Controls for Round 1 Management */}
+            {isClubAdmin && clubId && clubId !== 'undefined' && (
+                <div className="admin-controls" style={{
+                    background: '#f5f5f5',
+                    padding: '15px 20px',
+                    borderRadius: '8px',
+                    marginBottom: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    flexWrap: 'wrap'
+                }}>
+                    <span style={{ fontWeight: 'bold', color: '#666' }}>🔧 Admin:</span>
+                    
+                    {/* Show Generate button if round 1 not yet generated */}
+                    {!bracket?.round1Generated && (
+                        <button 
+                            onClick={handleGeneratePairings}
+                            disabled={actionLoading}
+                            style={{
+                                background: '#4caf50',
+                                color: 'white',
+                                border: 'none',
+                                padding: '10px 20px',
+                                borderRadius: '5px',
+                                cursor: actionLoading ? 'not-allowed' : 'pointer',
+                                opacity: actionLoading ? 0.7 : 1
+                            }}
+                        >
+                            {actionLoading ? '⏳ Generating...' : '🎲 Generate Round 1 Pairings'}
+                        </button>
+                    )}
+                    
+                    {/* Show Regenerate button if round 1 generated but not started */}
+                    {bracket?.round1Generated && bracket?.allowRound1Regenerate && !bracket?.round1Started && (
+                        <button 
+                            onClick={handleRegenerateRound1}
+                            disabled={actionLoading}
+                            style={{
+                                background: '#ff9800',
+                                color: 'white',
+                                border: 'none',
+                                padding: '10px 20px',
+                                borderRadius: '5px',
+                                cursor: actionLoading ? 'not-allowed' : 'pointer',
+                                opacity: actionLoading ? 0.7 : 1
+                            }}
+                        >
+                            {actionLoading ? '⏳ Regenerating...' : '🔄 Regenerate Round 1'}
+                        </button>
+                    )}
+                    
+                    {bracket?.round1Generated && bracket?.allowRound1Regenerate && !bracket?.round1Started && (
+                        <span style={{ color: '#666', fontSize: '14px' }}>
+                            ℹ️ You can regenerate pairings until the first match result is entered.
+                        </span>
+                    )}
+                    
+                    {bracket?.round1Started && (
+                        <span style={{ color: '#4caf50', fontSize: '14px' }}>
+                            ✅ Round 1 has started - pairings are locked.
+                        </span>
+                    )}
                 </div>
             )}
 

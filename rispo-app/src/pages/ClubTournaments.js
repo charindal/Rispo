@@ -192,7 +192,7 @@ const ClubTournaments = () => {
                       >
                         View Bracket
                       </button>
-                      {isClubAdmin() && tournament.status === 'APPROVED' && (
+                      {isClubAdmin() && tournament.status === 'UPCOMING' && (
                         <button 
                           onClick={() => setShowApprovalModal(tournament)}
                           className="approval-btn"

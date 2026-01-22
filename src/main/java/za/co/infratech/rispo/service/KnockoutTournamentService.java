@@ -101,14 +101,11 @@ public class KnockoutTournamentService {
             tournament.setTournamentName(defaultName);
         }
         
-        // Generate bracket with specified draw type
-        BracketStructure bracket = generateBracket(activeMembers, drawType);
-        try {
-            tournament.setBracketData(objectMapper.writeValueAsString(bracket));
-        } catch (Exception e) {
-            log.error("Failed to serialize bracket data", e);
-            throw new RuntimeException("Failed to create tournament bracket");
-        }
+        // NOTE: Bracket is NOT generated at creation time
+        // It will be generated when tournament starts, using only APPROVED (paid) players
+        tournament.setRound1Generated(false);
+        tournament.setRound1Started(false);
+        tournament.setAllowRound1Regenerate(true);
         
         tournament = tournamentRepository.save(tournament);
         log.info("Created {} tournament '{}' for club {} - Week {}, Year {} with {} draw", 
@@ -235,6 +232,13 @@ public class KnockoutTournamentService {
         Boolean approve = (Boolean) request.get("approve");
         if (Boolean.TRUE.equals(approve)) {
             matchToUpdate.setStatus("APPROVED");
+            
+            // If this is a round 1 match approval, mark round 1 as started (no more regeneration)
+            if (matchToUpdate.getRound() == 1 && !Boolean.TRUE.equals(tournament.getRound1Started())) {
+                tournament.setRound1Started(true);
+                tournament.setAllowRound1Regenerate(false);
+                log.info("Round 1 started for tournament {} - pairings are now locked", tournamentId);
+            }
             
             // Apply ratings if both players exist (not a bye match)
             if (matchToUpdate.getPlayer1() != null && matchToUpdate.getPlayer2() != null && !matchToUpdate.isBye()) {
@@ -645,6 +649,29 @@ public class KnockoutTournamentService {
             throw new RuntimeException("Tournament can only be started when in UPCOMING status. Current status: " + tournament.getStatus());
         }
         
+        // Validate that there are enough approved (paid) players before starting
+        // Note: PENDING players haven't paid yet, so they are NOT included in the bracket
+        List<TournamentPlayerApproval> allApprovals = playerApprovalRepository.findByTournamentId(tournamentId);
+        long approvedCount = allApprovals.stream()
+            .filter(a -> a.getApprovalStatus() == TournamentPlayerApproval.ApprovalStatus.APPROVED)
+            .count();
+        
+        if (approvedCount < 2) {
+            throw new RuntimeException("Cannot start tournament: At least 2 approved (paid) players are required. Currently only " + approvedCount + " player(s) have paid.");
+        }
+        
+        // Generate bracket with ONLY approved (paid) players
+        List<Player> approvedPlayers = getApprovedPlayersForTournament(tournamentId);
+        BracketStructure bracket = generateBracket(approvedPlayers, tournament.getDrawType());
+        try {
+            tournament.setBracketData(objectMapper.writeValueAsString(bracket));
+            tournament.setRound1Generated(true);
+            log.info("Generated bracket for tournament {} with {} approved players", tournamentId, approvedPlayers.size());
+        } catch (Exception e) {
+            log.error("Failed to generate bracket for tournament {}", tournamentId, e);
+            throw new RuntimeException("Failed to generate tournament bracket");
+        }
+        
         // Update tournament status and start time
         tournament.setStatus(KnockoutTournament.TournamentStatus.IN_PROGRESS);
         tournament.setStartDate(LocalDateTime.now());
@@ -652,7 +679,7 @@ public class KnockoutTournamentService {
         
         tournament = tournamentRepository.save(tournament);
         
-        log.info("Started tournament {} for club {} - moved to IN_PROGRESS status", tournamentId, clubId);
+        log.info("Started tournament {} for club {} with {} approved players - moved to IN_PROGRESS status", tournamentId, clubId, approvedCount);
         
         return convertToDTO(tournament);
     }
@@ -1128,13 +1155,12 @@ public class KnockoutTournamentService {
             return false; // No players registered
         }
 
-        // At least 2 players must be approved, and we need a power of 2 bracket size
+        // At least 2 players must be approved (byes will handle odd numbers)
         long approvedCount = allApprovals.stream()
             .filter(a -> a.getApprovalStatus() == TournamentPlayerApproval.ApprovalStatus.APPROVED)
             .count();
 
-        // Check if it's a power of 2 (2, 4, 8, 16, 32, etc.)
-        return approvedCount >= 2 && (approvedCount & (approvedCount - 1)) == 0;
+        return approvedCount >= 2;
     }
 
     /**
@@ -1170,16 +1196,12 @@ public class KnockoutTournamentService {
         // Get approved players only
         List<Player> approvedPlayers = getApprovedPlayersForTournament(tournamentId);
 
-        // Validate bracket size (must be power of 2)
+        // Validate minimum players (byes will handle odd numbers)
         if (approvedPlayers.size() < 2) {
             throw new RuntimeException("At least 2 approved players required");
         }
-        
-        if ((approvedPlayers.size() & (approvedPlayers.size() - 1)) != 0) {
-            throw new RuntimeException("Number of approved players must be a power of 2 (2, 4, 8, 16, 32, etc.). Currently " + approvedPlayers.size() + " approved.");
-        }
 
-        // Generate bracket with approved players only
+        // Generate bracket with approved players only (byes will be added as needed)
         BracketStructure bracket = generateBracket(approvedPlayers, tournament.getDrawType());
         
         try {

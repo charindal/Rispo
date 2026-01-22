@@ -173,6 +173,9 @@ public class KnockoutTournamentController {
                     response.put("tournamentName", tournament.getTournamentName());
                     response.put("status", tournament.getStatus().toString());
                     response.put("format", "KNOCKOUT");
+                    response.put("round1Generated", tournament.getRound1Generated());
+                    response.put("round1Started", tournament.getRound1Started());
+                    response.put("allowRound1Regenerate", tournament.getAllowRound1Regenerate());
                     
                     // Parse matches and organize by rounds
                     java.util.Map<Integer, java.util.List<java.util.Map<String, Object>>> rounds = new java.util.LinkedHashMap<>();
@@ -303,6 +306,9 @@ public class KnockoutTournamentController {
                 response.put("tournamentId", tournament.getId());
                 response.put("tournamentName", tournament.getTournamentName());
                 response.put("status", tournament.getStatus());
+                response.put("round1Generated", tournament.getRound1Generated());
+                response.put("round1Started", tournament.getRound1Started());
+                response.put("allowRound1Regenerate", tournament.getAllowRound1Regenerate());
                 response.put("message", "Tournament bracket not yet generated");
                 return ResponseEntity.ok(response);
             }
