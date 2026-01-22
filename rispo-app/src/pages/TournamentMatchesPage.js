@@ -396,7 +396,7 @@ const TournamentMatchesPage = () => {
                 </button>
             </div>
 
-            {canManageMatches && isRoundComplete() && (
+            {canManageMatches && isRoundComplete() && currentRound === maxRound && !tournament?.isKnockout && (
                 <div className="generate-round-section">
                     <p>All matches in Round {currentRound} are complete!</p>
                     <button onClick={handleGenerateNextRound} className="generate-btn">
