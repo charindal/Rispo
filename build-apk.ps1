@@ -32,6 +32,7 @@ if (Test-Path $envFile) {
 
 Write-Host "Step 1: Building React app..." -ForegroundColor Green
 Set-Location rispo-app
+$env:NODE_ENV = "production"
 npm run build
 
 if ($LASTEXITCODE -ne 0) {
