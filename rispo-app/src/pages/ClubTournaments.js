@@ -271,7 +271,7 @@ const ClubTournaments = () => {
                   <input
                     type="number"
                     value={pointsConfig.winner}
-                    onChange={(e) => setPointsConfig({...pointsConfig, winner: parseInt(e.target.value)})}
+                    onChange={(e) => setPointsConfig({...pointsConfig, winner: parseInt(e.target.value) || 1})}
                     min="1"
                     max="10"
                   />
@@ -281,7 +281,7 @@ const ClubTournaments = () => {
                   <input
                     type="number"
                     value={pointsConfig.runnerUp}
-                    onChange={(e) => setPointsConfig({...pointsConfig, runnerUp: parseInt(e.target.value)})}
+                    onChange={(e) => setPointsConfig({...pointsConfig, runnerUp: parseInt(e.target.value) || 1})}
                     min="1"
                     max="10"
                   />
@@ -291,7 +291,7 @@ const ClubTournaments = () => {
                   <input
                     type="number"
                     value={pointsConfig.semifinalist}
-                    onChange={(e) => setPointsConfig({...pointsConfig, semifinalist: parseInt(e.target.value)})}
+                    onChange={(e) => setPointsConfig({...pointsConfig, semifinalist: parseInt(e.target.value) || 1})}
                     min="1"
                     max="10"
                   />
@@ -301,7 +301,7 @@ const ClubTournaments = () => {
                   <input
                     type="number"
                     value={pointsConfig.quarterfinalist}
-                    onChange={(e) => setPointsConfig({...pointsConfig, quarterfinalist: parseInt(e.target.value)})}
+                    onChange={(e) => setPointsConfig({...pointsConfig, quarterfinalist: parseInt(e.target.value) || 1})}
                     min="1"
                     max="10"
                   />

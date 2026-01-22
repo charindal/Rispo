@@ -264,7 +264,7 @@ public class KnockoutTournamentService {
     }
     
     /**
-     * Apply ELO ratings for a knockout match
+     * Apply ELO ratings for a knockout match and store the rating changes in the match
      */
     private void applyRatingsForKnockoutMatch(BracketMatch match, Long winnerId) {
         Long player1Id = match.getPlayer1().getPlayerId();
@@ -289,6 +289,18 @@ public class KnockoutTournamentService {
         int change1 = ratingChanges[0];
         int change2 = ratingChanges[1];
         
+        // Store rating changes in the match for display on bracket
+        match.setPlayer1RatingChange(change1);
+        match.setPlayer2RatingChange(change2);
+        
+        // Also update the participant objects with rating changes for the bracket display
+        if (match.getPlayer1() != null) {
+            match.getPlayer1().setRatingChange(change1);
+        }
+        if (match.getPlayer2() != null) {
+            match.getPlayer2().setRatingChange(change2);
+        }
+        
         // Apply new ratings
         player1.setRating(Math.max(400, Math.min(3000, player1.getRating() + change1)));
         player2.setRating(Math.max(400, Math.min(3000, player2.getRating() + change2)));
@@ -310,9 +322,9 @@ public class KnockoutTournamentService {
         playerRepository.save(player1);
         playerRepository.save(player2);
         
-        log.info("Applied ratings for knockout match: Player {} ({} -> {}) vs Player {} ({} -> {})",
-                player1Id, player1.getRating() - change1, player1.getRating(),
-                player2Id, player2.getRating() - change2, player2.getRating());
+        log.info("Applied ratings for knockout match: Player {} ({} -> {}, change: {}) vs Player {} ({} -> {}, change: {})",
+                player1Id, player1.getRating() - change1, player1.getRating(), change1,
+                player2Id, player2.getRating() - change2, player2.getRating(), change2);
     }
     
     /**
@@ -410,6 +422,7 @@ public class KnockoutTournamentService {
     
     /**
      * Generate next round matches if the current round is complete.
+     * Uses "lucky loser" system to avoid byes in semi-finals and later rounds.
      * @return true if the tournament is complete (final match has a winner), false otherwise
      */
     private boolean generateNextRoundIfNeeded(BracketStructure bracket, int currentRound) {
@@ -450,6 +463,17 @@ public class KnockoutTournamentService {
             return true;
         }
         
+        // IMPROVED BYE LOGIC: If odd number of winners and not the final, add a "lucky loser"
+        // This ensures semi-finals and finals never have byes
+        if (winners.size() % 2 != 0 && winners.size() > 2) {
+            BracketParticipant luckyLoser = findBestLoser(bracket, currentRound, winners);
+            if (luckyLoser != null) {
+                winners.add(luckyLoser);
+                log.info("Added lucky loser {} to round {} to avoid bye in later rounds", 
+                        luckyLoser.getPlayerName(), currentRound + 1);
+            }
+        }
+        
         // Create matches for next round
         int nextRound = currentRound + 1;
         int matchCounter = bracket.getMatches().stream()
@@ -462,7 +486,7 @@ public class KnockoutTournamentService {
             
             BracketMatch nextRoundMatch = new BracketMatch(matchCounter++, nextRound, player1, player2, null);
             if (player2 == null) {
-                // This is a bye match
+                // This is a bye match - should only happen in very rare edge cases now
                 nextRoundMatch.setBye(true);
                 nextRoundMatch.setWinner(player1);
             }
@@ -470,8 +494,97 @@ public class KnockoutTournamentService {
             bracket.getMatches().add(nextRoundMatch);
         }
         
-        log.info("Generated {} matches for round {}", winners.size() / 2, nextRound);
+        log.info("Generated {} matches for round {}", (winners.size() + 1) / 2, nextRound);
         return false; // Tournament continues
+    }
+    
+    /**
+     * Find the best loser from the current round to fill an odd bracket spot.
+     * Selection criteria:
+     * 1. Lost by the smallest game margin (closest match)
+     * 2. If tie, higher rated player gets preference
+     * This ensures the "lucky loser" is the most deserving player who almost won.
+     */
+    private BracketParticipant findBestLoser(BracketStructure bracket, int currentRound, List<BracketParticipant> currentWinners) {
+        // Get all completed matches from current round (non-bye matches with results)
+        List<BracketMatch> completedMatches = bracket.getMatches().stream()
+                .filter(m -> m.getRound() == currentRound)
+                .filter(m -> !m.isBye())
+                .filter(m -> m.getWinner() != null)
+                .filter(m -> m.getPlayer1() != null && m.getPlayer2() != null)
+                .collect(Collectors.toList());
+        
+        if (completedMatches.isEmpty()) {
+            return null;
+        }
+        
+        // Collect winner IDs to exclude them
+        Set<Long> winnerIds = currentWinners.stream()
+                .map(BracketParticipant::getPlayerId)
+                .collect(Collectors.toSet());
+        
+        // Find all losers with their match details
+        List<LoserCandidate> loserCandidates = new ArrayList<>();
+        
+        for (BracketMatch match : completedMatches) {
+            BracketParticipant loser;
+            int loserGames, winnerGames;
+            
+            if (match.getWinner().getPlayerId().equals(match.getPlayer1().getPlayerId())) {
+                loser = match.getPlayer2();
+                loserGames = match.getPlayer2Games();
+                winnerGames = match.getPlayer1Games();
+            } else {
+                loser = match.getPlayer1();
+                loserGames = match.getPlayer1Games();
+                winnerGames = match.getPlayer2Games();
+            }
+            
+            // Skip if this loser is somehow already a winner (shouldn't happen)
+            if (winnerIds.contains(loser.getPlayerId())) {
+                continue;
+            }
+            
+            // Calculate margin (smaller is better - closer match)
+            int margin = winnerGames - loserGames;
+            loserCandidates.add(new LoserCandidate(loser, margin, loser.getRating()));
+        }
+        
+        if (loserCandidates.isEmpty()) {
+            return null;
+        }
+        
+        // Sort by: smallest margin first, then highest rating (for ties)
+        loserCandidates.sort((a, b) -> {
+            int marginCompare = Integer.compare(a.margin, b.margin);
+            if (marginCompare != 0) return marginCompare;
+            return Double.compare(b.rating, a.rating); // Higher rating preferred
+        });
+        
+        BracketParticipant luckyLoser = loserCandidates.get(0).participant;
+        // Mark as lucky loser for display purposes
+        luckyLoser.setLuckyLoser(true);
+        log.info("Best loser selected: {} (margin: {}, rating: {})", 
+                luckyLoser.getPlayerName(), 
+                loserCandidates.get(0).margin,
+                luckyLoser.getRating());
+        
+        return luckyLoser;
+    }
+    
+    /**
+     * Helper class to track loser candidates for lucky loser selection
+     */
+    private static class LoserCandidate {
+        BracketParticipant participant;
+        int margin;
+        double rating;
+        
+        LoserCandidate(BracketParticipant participant, int margin, double rating) {
+            this.participant = participant;
+            this.margin = margin;
+            this.rating = rating;
+        }
     }
     
     /**
@@ -580,6 +693,166 @@ public class KnockoutTournamentService {
         }
         
         return leaderboard;
+    }
+    
+    /**
+     * Get standings for a specific knockout tournament showing each player's results.
+     */
+    public List<Map<String, Object>> getTournamentStandings(Long tournamentId, Long clubId) {
+        Optional<KnockoutTournament> tournamentOpt = tournamentRepository.findById(tournamentId);
+        
+        if (tournamentOpt.isEmpty()) {
+            throw new RuntimeException("Tournament not found");
+        }
+        
+        KnockoutTournament tournament = tournamentOpt.get();
+        
+        if (!tournament.getClubId().equals(clubId)) {
+            throw new RuntimeException("Tournament does not belong to this club");
+        }
+        
+        List<Map<String, Object>> standings = new ArrayList<>();
+        
+        if (tournament.getBracketData() == null || tournament.getBracketData().isEmpty()) {
+            return standings;
+        }
+        
+        try {
+            BracketStructure bracket = objectMapper.readValue(tournament.getBracketData(), BracketStructure.class);
+            
+            // Create a map to track each player's performance
+            Map<Long, Map<String, Object>> playerStats = new HashMap<>();
+            
+            // Initialize all participants
+            for (BracketParticipant participant : bracket.getParticipants()) {
+                Map<String, Object> stats = new HashMap<>();
+                stats.put("playerId", participant.getPlayerId());
+                stats.put("playerName", participant.getPlayerName());
+                stats.put("rating", participant.getRating().intValue());
+                stats.put("matchesPlayed", 0);
+                stats.put("wins", 0);
+                stats.put("losses", 0);
+                stats.put("gamesWon", 0);
+                stats.put("gamesLost", 0);
+                stats.put("ratingChange", 0);
+                stats.put("roundReached", 0);
+                stats.put("position", "Participant");
+                playerStats.put(participant.getPlayerId(), stats);
+            }
+            
+            // Calculate max round for position naming
+            int maxRound = bracket.getMatches().stream()
+                    .mapToInt(BracketMatch::getRound)
+                    .max().orElse(1);
+            
+            // Process all matches
+            for (BracketMatch match : bracket.getMatches()) {
+                if (match.isBye() || match.getPlayer1() == null || match.getPlayer2() == null) {
+                    // Update round reached for bye winners
+                    if (match.isBye() && match.getWinner() != null) {
+                        Map<String, Object> winnerStats = playerStats.get(match.getWinner().getPlayerId());
+                        if (winnerStats != null) {
+                            int currentRound = (int) winnerStats.get("roundReached");
+                            winnerStats.put("roundReached", Math.max(currentRound, match.getRound() + 1));
+                        }
+                    }
+                    continue;
+                }
+                
+                if (match.getWinner() == null || !"APPROVED".equals(match.getStatus())) {
+                    continue; // Match not yet completed
+                }
+                
+                Long player1Id = match.getPlayer1().getPlayerId();
+                Long player2Id = match.getPlayer2().getPlayerId();
+                Long winnerId = match.getWinner().getPlayerId();
+                
+                Map<String, Object> stats1 = playerStats.get(player1Id);
+                Map<String, Object> stats2 = playerStats.get(player2Id);
+                
+                if (stats1 != null) {
+                    stats1.put("matchesPlayed", (int) stats1.get("matchesPlayed") + 1);
+                    stats1.put("gamesWon", (int) stats1.get("gamesWon") + match.getPlayer1Games());
+                    stats1.put("gamesLost", (int) stats1.get("gamesLost") + match.getPlayer2Games());
+                    
+                    if (player1Id.equals(winnerId)) {
+                        stats1.put("wins", (int) stats1.get("wins") + 1);
+                        stats1.put("roundReached", Math.max((int) stats1.get("roundReached"), match.getRound() + 1));
+                    } else {
+                        stats1.put("losses", (int) stats1.get("losses") + 1);
+                        stats1.put("roundReached", Math.max((int) stats1.get("roundReached"), match.getRound()));
+                    }
+                    
+                    if (match.getPlayer1RatingChange() != null) {
+                        stats1.put("ratingChange", (int) stats1.get("ratingChange") + match.getPlayer1RatingChange());
+                    }
+                }
+                
+                if (stats2 != null) {
+                    stats2.put("matchesPlayed", (int) stats2.get("matchesPlayed") + 1);
+                    stats2.put("gamesWon", (int) stats2.get("gamesWon") + match.getPlayer2Games());
+                    stats2.put("gamesLost", (int) stats2.get("gamesLost") + match.getPlayer1Games());
+                    
+                    if (player2Id.equals(winnerId)) {
+                        stats2.put("wins", (int) stats2.get("wins") + 1);
+                        stats2.put("roundReached", Math.max((int) stats2.get("roundReached"), match.getRound() + 1));
+                    } else {
+                        stats2.put("losses", (int) stats2.get("losses") + 1);
+                        stats2.put("roundReached", Math.max((int) stats2.get("roundReached"), match.getRound()));
+                    }
+                    
+                    if (match.getPlayer2RatingChange() != null) {
+                        stats2.put("ratingChange", (int) stats2.get("ratingChange") + match.getPlayer2RatingChange());
+                    }
+                }
+            }
+            
+            // Assign position names based on round reached
+            for (Map<String, Object> stats : playerStats.values()) {
+                int roundReached = (int) stats.get("roundReached");
+                String position;
+                
+                if (roundReached > maxRound) {
+                    position = "Winner";
+                } else if (roundReached == maxRound) {
+                    position = "Runner-up";
+                } else if (roundReached == maxRound - 1) {
+                    position = "Semi-finalist";
+                } else if (roundReached == maxRound - 2) {
+                    position = "Quarter-finalist";
+                } else if (roundReached > 0) {
+                    position = "Round " + roundReached;
+                } else {
+                    position = "Participant";
+                }
+                stats.put("position", position);
+            }
+            
+            // Sort standings: by round reached (desc), then wins (desc), then game diff (desc)
+            standings = new ArrayList<>(playerStats.values());
+            standings.sort((a, b) -> {
+                int roundCompare = Integer.compare((int) b.get("roundReached"), (int) a.get("roundReached"));
+                if (roundCompare != 0) return roundCompare;
+                
+                int winsCompare = Integer.compare((int) b.get("wins"), (int) a.get("wins"));
+                if (winsCompare != 0) return winsCompare;
+                
+                int diffA = (int) a.get("gamesWon") - (int) a.get("gamesLost");
+                int diffB = (int) b.get("gamesWon") - (int) b.get("gamesLost");
+                return Integer.compare(diffB, diffA);
+            });
+            
+            // Assign ranks
+            for (int i = 0; i < standings.size(); i++) {
+                standings.get(i).put("rank", i + 1);
+            }
+            
+        } catch (Exception e) {
+            log.error("Failed to calculate standings for tournament {}", tournamentId, e);
+            throw new RuntimeException("Failed to calculate tournament standings");
+        }
+        
+        return standings;
     }
     
     public TournamentPointsConfig updateTournamentPointsConfig(Long clubId, TournamentPointsConfig config, Long userId) {
@@ -784,6 +1057,8 @@ public class KnockoutTournamentService {
         private String playerName;
         private String username;
         private Double rating;
+        private Integer ratingChange;
+        private boolean isLuckyLoser;
         
         public BracketParticipant() {}
         
@@ -792,6 +1067,7 @@ public class KnockoutTournamentService {
             this.playerName = playerName;
             this.username = username;
             this.rating = rating;
+            this.isLuckyLoser = false;
         }
         
         // Getters and setters
@@ -803,6 +1079,10 @@ public class KnockoutTournamentService {
         public void setUsername(String username) { this.username = username; }
         public Double getRating() { return rating; }
         public void setRating(Double rating) { this.rating = rating; }
+        public Integer getRatingChange() { return ratingChange; }
+        public void setRatingChange(Integer ratingChange) { this.ratingChange = ratingChange; }
+        public boolean isLuckyLoser() { return isLuckyLoser; }
+        public void setLuckyLoser(boolean luckyLoser) { isLuckyLoser = luckyLoser; }
     }
     
     public static class BracketMatch {
@@ -814,6 +1094,8 @@ public class KnockoutTournamentService {
         private boolean isBye;
         private int player1Games;
         private int player2Games;
+        private Integer player1RatingChange;
+        private Integer player2RatingChange;
         private String status; // PENDING, APPROVED
         
         public BracketMatch() {
@@ -847,6 +1129,10 @@ public class KnockoutTournamentService {
         public void setPlayer1Games(int player1Games) { this.player1Games = player1Games; }
         public int getPlayer2Games() { return player2Games; }
         public void setPlayer2Games(int player2Games) { this.player2Games = player2Games; }
+        public Integer getPlayer1RatingChange() { return player1RatingChange; }
+        public void setPlayer1RatingChange(Integer player1RatingChange) { this.player1RatingChange = player1RatingChange; }
+        public Integer getPlayer2RatingChange() { return player2RatingChange; }
+        public void setPlayer2RatingChange(Integer player2RatingChange) { this.player2RatingChange = player2RatingChange; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
     }

@@ -104,9 +104,16 @@ public class KnockoutTournamentController {
             @RequestHeader("X-User-Id") Long userId) {
         
         try {
-            log.info("Updating tournament points config for club {} by user {}", clubId, userId);
+            log.info("Updating tournament points config for club {} by user {}: winner={}, runnerUp={}, semi={}, quarter={}", 
+                    clubId, userId, config.getWinnerPoints(), config.getRunnerUpPoints(), 
+                    config.getSemifinalistPoints(), config.getQuarterfinalistPoints());
             
-            // Basic validation
+            // Basic validation - check for null values first
+            if (config.getWinnerPoints() == null || config.getRunnerUpPoints() == null || 
+                config.getSemifinalistPoints() == null || config.getQuarterfinalistPoints() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "All point values are required"));
+            }
+            
             if (config.getWinnerPoints() <= 0 || config.getRunnerUpPoints() <= 0 || 
                 config.getSemifinalistPoints() <= 0 || config.getQuarterfinalistPoints() <= 0) {
                 return ResponseEntity.badRequest().body(Map.of("error", "All point values must be greater than 0"));
@@ -204,6 +211,11 @@ public class KnockoutTournamentController {
                                 player1.put("playerId", player1Node.get("playerId").asLong());
                                 player1.put("name", player1Node.get("playerName").asText());
                                 player1.put("rating", player1Node.get("rating").asDouble());
+                                // Include rating change if available
+                                com.fasterxml.jackson.databind.JsonNode p1RatingChangeNode = player1Node.get("ratingChange");
+                                if (p1RatingChangeNode != null && !p1RatingChangeNode.isNull()) {
+                                    player1.put("ratingChange", p1RatingChangeNode.asInt());
+                                }
                                 matchData.put("player1", player1);
                                 matchData.put("player1Games", player1Games);
                             }
@@ -215,11 +227,26 @@ public class KnockoutTournamentController {
                                 player2.put("playerId", player2Node.get("playerId").asLong());
                                 player2.put("name", player2Node.get("playerName").asText());
                                 player2.put("rating", player2Node.get("rating").asDouble());
+                                // Include rating change if available
+                                com.fasterxml.jackson.databind.JsonNode p2RatingChangeNode = player2Node.get("ratingChange");
+                                if (p2RatingChangeNode != null && !p2RatingChangeNode.isNull()) {
+                                    player2.put("ratingChange", p2RatingChangeNode.asInt());
+                                }
                                 matchData.put("player2", player2);
                                 matchData.put("player2Games", player2Games);
                             } else {
                                 matchData.put("player2", null);
                                 matchData.put("player2Games", 0);
+                            }
+                            
+                            // Add match-level rating changes
+                            com.fasterxml.jackson.databind.JsonNode p1RcNode = matchNode.get("player1RatingChange");
+                            com.fasterxml.jackson.databind.JsonNode p2RcNode = matchNode.get("player2RatingChange");
+                            if (p1RcNode != null && !p1RcNode.isNull()) {
+                                matchData.put("player1RatingChange", p1RcNode.asInt());
+                            }
+                            if (p2RcNode != null && !p2RcNode.isNull()) {
+                                matchData.put("player2RatingChange", p2RcNode.asInt());
                             }
                             
                             // Winner
@@ -250,6 +277,20 @@ public class KnockoutTournamentController {
                         response.put("rounds", rounds);
                         response.put("roundNames", roundNames);
                         response.put("totalRounds", maxRound);
+                        
+                        // Add champion info if tournament is completed
+                        if (tournament.getStatus() == za.co.infratech.rispo.entity.KnockoutTournament.TournamentStatus.COMPLETED && maxRound > 0) {
+                            // Find the final match winner
+                            java.util.List<java.util.Map<String, Object>> finalRoundMatches = rounds.get(maxRound);
+                            if (finalRoundMatches != null && !finalRoundMatches.isEmpty()) {
+                                java.util.Map<String, Object> finalMatch = finalRoundMatches.get(0);
+                                @SuppressWarnings("unchecked")
+                                java.util.Map<String, Object> champion = (java.util.Map<String, Object>) finalMatch.get("winner");
+                                if (champion != null) {
+                                    response.put("champion", champion);
+                                }
+                            }
+                        }
                     }
                     
                     return ResponseEntity.ok(response);
@@ -311,6 +352,24 @@ public class KnockoutTournamentController {
         } catch (Exception e) {
             log.error("Error fetching points config for club {}", clubId, e);
             return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/{clubId}/knockout-tournaments/{tournamentId}/standings")
+    public ResponseEntity<?> getTournamentStandings(
+            @PathVariable Long clubId,
+            @PathVariable Long tournamentId) {
+        try {
+            log.info("Fetching standings for knockout tournament {} in club {}", tournamentId, clubId);
+            java.util.List<java.util.Map<String, Object>> standings = 
+                    tournamentService.getTournamentStandings(tournamentId, clubId);
+            return ResponseEntity.ok(standings);
+        } catch (RuntimeException e) {
+            log.warn("Failed to get tournament standings {}: {}", tournamentId, e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error fetching standings for tournament {}", tournamentId, e);
+            return ResponseEntity.internalServerError().body(java.util.Map.of("error", "Failed to get tournament standings"));
         }
     }
     

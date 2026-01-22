@@ -262,6 +262,123 @@
   color: #ff6b35;
 }
 
+/* Token Section Styles */
+.token-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.token-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.token-section h2 {
+  margin: 0;
+  color: #1e3c72;
+  font-size: 24px;
+}
+
+.generate-token-btn {
+  padding: 10px 20px;
+  background: var(--primary-green, #0d5e2f);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.generate-token-btn:hover {
+  background: #0a4a25;
+  transform: translateY(-1px);
+}
+
+.token-form-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.token-form-card h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
+.token-form-card .form-group {
+  margin-bottom: 16px;
+}
+
+.token-form-card label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #444;
+}
+
+.token-form-card select,
+.token-form-card input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.token-form-card .submit-btn {
+  padding: 12px 24px;
+  background: #1e3c72;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.token-form-card .submit-btn:hover {
+  background: #0d2847;
+}
+
+.tokens-table-container {
+  overflow-x: auto;
+}
+
+.tokens-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tokens-table th,
+.tokens-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.tokens-table th {
+  background: #f5f5f5;
+  font-weight: 600;
+  color: #333;
+}
+
+.tokens-table code {
+  background: #f0f0f0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
 /* Responsive design */
 @media (max-width: 1200px) {
   .players-table-container {
@@ -288,6 +405,16 @@
   }
 
   .refresh-button {
+    width: 100%;
+  }
+
+  .token-section .section-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .generate-token-btn {
     width: 100%;
   }
 }

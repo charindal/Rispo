@@ -33,9 +33,9 @@ const TournamentStandingsPage = () => {
             
             if (isKnockoutTournament && clubId && clubId !== 'undefined') {
                 // Load knockout tournament data
-                const [tournamentRes, leaderboardRes] = await Promise.all([
+                const [tournamentRes, standingsRes] = await Promise.all([
                     tournamentService.getKnockoutTournamentBracket(clubId, tournamentId),
-                    clubService.getClubTournamentLeaderboard(clubId)
+                    tournamentService.getKnockoutTournamentStandings(clubId, tournamentId)
                 ]);
                 
                 // Create tournament-like object from bracket data
@@ -47,7 +47,7 @@ const TournamentStandingsPage = () => {
                     format: "KNOCKOUT",
                     isKnockout: true
                 });
-                setStandings(leaderboardRes.data || []);
+                setStandings(standingsRes.data || []);
                 setCrossTable(null); // Knockout tournaments don't have cross tables
             } else {
                 // Load regular tournament data
@@ -162,12 +162,13 @@ const TournamentStandingsPage = () => {
                                 <th>Player</th>
                                 {isKnockoutTournament ? (
                                     <>
-                                        <th>Points</th>
-                                        <th>Tournaments</th>
-                                        <th>Wins</th>
-                                        <th>Runner-up</th>
-                                        <th>Semi-finals</th>
-                                        <th>Quarter-finals</th>
+                                        <th>Position</th>
+                                        <th>Played</th>
+                                        <th>W</th>
+                                        <th>L</th>
+                                        <th>Games (W-L)</th>
+                                        <th>Rating</th>
+                                        <th>Change</th>
                                     </>
                                 ) : (
                                     <>
@@ -185,7 +186,7 @@ const TournamentStandingsPage = () => {
                         <tbody>
                             {standings.length === 0 ? (
                                 <tr>
-                                    <td colSpan={isKnockoutTournament ? "8" : "9"} className="no-data">
+                                    <td colSpan={isKnockoutTournament ? "9" : "9"} className="no-data">
                                         {isKnockoutTournament ? 'No tournament data available' : 'No standings available yet'}
                                     </td>
                                 </tr>
@@ -204,12 +205,15 @@ const TournamentStandingsPage = () => {
                                         <td className="player-name">{player.playerName}</td>
                                         {isKnockoutTournament ? (
                                             <>
-                                                <td className="points">{player.totalPoints || 0}</td>
-                                                <td>{player.tournamentCount || 0}</td>
-                                                <td className="wins">{player.winCount || 0}</td>
-                                                <td className="runner-up">{player.runnerUpCount || 0}</td>
-                                                <td className="semi">{player.semifinalCount || 0}</td>
-                                                <td className="quarter">{player.quarterfinalCount || 0}</td>
+                                                <td className="position">{player.position || '-'}</td>
+                                                <td>{player.matchesPlayed || 0}</td>
+                                                <td className="wins">{player.wins || 0}</td>
+                                                <td className="losses">{player.losses || 0}</td>
+                                                <td className="games">{player.gamesWon || 0} - {player.gamesLost || 0}</td>
+                                                <td className="rating">{player.rating || '-'}</td>
+                                                <td className={`rating-change ${(player.ratingChange || 0) >= 0 ? 'positive' : 'negative'}`}>
+                                                    {(player.ratingChange || 0) >= 0 ? '+' : ''}{player.ratingChange || 0}
+                                                </td>
                                             </>
                                         ) : (
                                             <>

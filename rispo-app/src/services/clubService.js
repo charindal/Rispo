@@ -312,19 +312,23 @@ const clubService = {
     try {
       // Map frontend field names to backend expected field names
       const backendConfig = {
-        winnerPoints: pointsConfig.winner,
-        runnerUpPoints: pointsConfig.runnerUp,
-        semifinalistPoints: pointsConfig.semifinalist,
-        quarterfinalistPoints: pointsConfig.quarterfinalist
+        winnerPoints: pointsConfig.winner || 5,
+        runnerUpPoints: pointsConfig.runnerUp || 3,
+        semifinalistPoints: pointsConfig.semifinalist || 2,
+        quarterfinalistPoints: pointsConfig.quarterfinalist || 1
       };
+      
+      console.log('Saving points config:', backendConfig, 'for club:', clubId, 'user:', userId);
       
       const response = await axios.put(
         `${API_BASE_URL}/clubs/${clubId}/tournament-points-config`,
         backendConfig,
         { headers: { 'X-User-Id': userId } }
       );
+      console.log('Points config saved successfully:', response.data);
       return response.data;
     } catch (error) {
+      console.error('Error saving points config:', error.response?.data || error.message);
       throw error.response?.data || error.message || 'Failed to update points configuration';
     }
   },

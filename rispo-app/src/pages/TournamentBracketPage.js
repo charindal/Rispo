@@ -86,7 +86,10 @@ const TournamentBracketPage = () => {
         return (
             <div key={match.matchId} className={getMatchClassName(match)}>
                 <div className={getPlayerClassName(match, 1)}>
-                    <span className="player-name">{match.player1?.name || 'TBD'}</span>
+                    <span className="player-name">
+                        {match.player1?.name || 'TBD'}
+                        {match.player1?.isLuckyLoser && <span className="lucky-loser-badge" title="Lucky Loser">LL</span>}
+                    </span>
                     <span className="player-score">
                         {match.status === 'APPROVED' ? match.player1Games : '-'}
                     </span>
@@ -102,6 +105,7 @@ const TournamentBracketPage = () => {
                 <div className={getPlayerClassName(match, 2)}>
                     <span className="player-name">
                         {match.isBye ? 'BYE' : (match.player2?.name || 'TBD')}
+                        {match.player2?.isLuckyLoser && !match.isBye && <span className="lucky-loser-badge" title="Lucky Loser">LL</span>}
                     </span>
                     <span className="player-score">
                         {match.isBye ? '-' : (match.status === 'APPROVED' ? match.player2Games : '-')}

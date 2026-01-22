@@ -120,6 +120,10 @@ const tournamentService = {
         return axios.get(`${API_URL}/clubs/${clubId}/knockout-tournaments/${tournamentId}/bracket`);
     },
 
+    getKnockoutTournamentStandings: (clubId, tournamentId) => {
+        return axios.get(`${API_URL}/clubs/${clubId}/knockout-tournaments/${tournamentId}/standings`);
+    },
+
     updateMatchResult: (tournamentId, matchId, resultData, userId) => {
         return axios.put(
             `${API_URL}/tournaments/${tournamentId}/matches/${matchId}/result`,

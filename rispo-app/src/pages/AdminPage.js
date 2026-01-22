@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import authService from '../services/authService';
+import clubService from '../services/clubService';
 import Pagination from '../components/Pagination';
 import '../styles/AdminPage.css';
 
@@ -14,6 +15,15 @@ const AdminPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const currentUser = authService.getCurrentUser();
+
+  // Token generation state
+  const [showTokenForm, setShowTokenForm] = useState(false);
+  const [tokens, setTokens] = useState([]);
+  const [tokenForm, setTokenForm] = useState({
+    clubId: '',
+    role: currentUser?.role === 'SUPER_USER' ? 'SYSTEM_ADMIN' : 'CLUB_ADMIN',
+    validityDays: 30
+  });
 
   const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
@@ -36,7 +46,37 @@ const AdminPage = () => {
 
   useEffect(() => {
     fetchPlayers();
+    fetchTokens();
   }, [fetchPlayers]);
+
+  const fetchTokens = async () => {
+    if (!currentUser || (currentUser.role !== 'SUPER_USER' && currentUser.role !== 'SYSTEM_ADMIN')) {
+      return;
+    }
+    try {
+      const tokensData = currentUser.role === 'SYSTEM_ADMIN' 
+        ? await clubService.getMyTokens(currentUser.userId)
+        : await clubService.getUnusedTokens();
+      setTokens(tokensData || []);
+    } catch (err) {
+      console.error('Failed to fetch tokens:', err);
+    }
+  };
+
+  const handleGenerateToken = async (e) => {
+    e.preventDefault();
+    try {
+      const token = await clubService.generateToken(tokenForm, currentUser.userId);
+      alert(`Token generated successfully!\n\nToken: ${token.token}\n\nShare this token with the admin to register.`);
+      setShowTokenForm(false);
+      // Reset form with appropriate default role based on user
+      const defaultRole = currentUser.role === 'SUPER_USER' ? 'SYSTEM_ADMIN' : 'CLUB_ADMIN';
+      setTokenForm({ clubId: '', role: defaultRole, validityDays: 30 });
+      fetchTokens();
+    } catch (error) {
+      alert('Error: ' + (typeof error === 'string' ? error : error.message || 'Failed to generate token'));
+    }
+  };
 
   const handleVerify = async (playerId) => {
     if (!currentUser || !currentUser.userId) {
@@ -211,6 +251,93 @@ const AdminPage = () => {
             onPageChange={setCurrentPage}
           />
         </>
+      )}
+
+      {/* Token Generation Section - Only for SUPER_USER and SYSTEM_ADMIN */}
+      {(currentUser.role === 'SUPER_USER' || currentUser.role === 'SYSTEM_ADMIN') && (
+        <div className="token-section">
+          <div className="section-header">
+            <h2>🔑 Admin Registration Tokens</h2>
+            <button onClick={() => setShowTokenForm(!showTokenForm)} className="generate-token-btn">
+              {showTokenForm ? 'Cancel' : '+ Generate Token'}
+            </button>
+          </div>
+
+          {showTokenForm && (
+            <div className="token-form-card">
+              <h3>Generate Admin Token</h3>
+              <form onSubmit={handleGenerateToken}>
+                <div className="form-group">
+                  <label>Admin Role *</label>
+                  <select
+                    value={tokenForm.role}
+                    onChange={(e) => setTokenForm({...tokenForm, role: e.target.value})}
+                    required
+                  >
+                    {currentUser.role === 'SUPER_USER' && (
+                      <option value="SYSTEM_ADMIN">System Admin</option>
+                    )}
+                    {currentUser.role === 'SYSTEM_ADMIN' && (
+                      <>
+                        <option value="CLUB_ADMIN">Club Admin</option>
+                        <option value="RATING_ADMIN">Rating Admin</option>
+                      </>
+                    )}
+                  </select>
+                  <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
+                    {currentUser.role === 'SUPER_USER' ? 'System Admins manage the platform' : 'Admins assigned to clubs during registration'}
+                  </small>
+                </div>
+                
+                <div className="form-group">
+                  <label>Valid For (Days) *</label>
+                  <input
+                    type="number"
+                    value={tokenForm.validityDays}
+                    onChange={(e) => setTokenForm({...tokenForm, validityDays: parseInt(e.target.value) || 30})}
+                    min="1"
+                    max="365"
+                    required
+                  />
+                </div>
+                <button type="submit" className="submit-btn">Generate Token</button>
+              </form>
+            </div>
+          )}
+
+          <div className="tokens-table-container">
+            <table className="tokens-table">
+              <thead>
+                <tr>
+                  <th>Token</th>
+                  <th>Role</th>
+                  <th>Expires</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tokens.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" style={{textAlign: 'center', padding: '40px'}}>
+                      No unused tokens
+                    </td>
+                  </tr>
+                ) : (
+                  tokens.map(token => (
+                    <tr key={token.tokenId}>
+                      <td><code>{token.token?.substring(0, 20)}...</code></td>
+                      <td>{token.role}</td>
+                      <td>{token.expiresAt ? new Date(token.expiresAt).toLocaleDateString() : '-'}</td>
+                      <td>
+                        <span className="status-badge verified">Available</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );
