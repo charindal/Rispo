@@ -13,8 +13,10 @@ RUN npm ci
 # Copy source code
 COPY rispo-app/ ./
 
-# Set environment for local container deployment
-ENV REACT_APP_API_URL=http://localhost:8080/api
+# Set environment for production deployment
+# Use relative URL so API calls go to the same domain/host serving the frontend
+# This works because frontend and backend are served from the same container
+ENV REACT_APP_API_URL=/api
 
 # Build the React app
 RUN npm run build
