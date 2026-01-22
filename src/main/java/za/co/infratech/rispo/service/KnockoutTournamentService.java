@@ -114,6 +114,16 @@ public class KnockoutTournamentService {
         log.info("Created {} tournament '{}' for club {} - Week {}, Year {} with {} draw", 
                 frequency, tournament.getTournamentName(), clubId, currentWeek, currentYear, drawType);
         
+        // Auto-create player approvals with PENDING status for all active members
+        for (Player player : activeMembers) {
+            TournamentPlayerApproval approval = new TournamentPlayerApproval();
+            approval.setTournamentId(tournament.getId());
+            approval.setPlayerId(player.getId());
+            approval.setClubId(clubId);
+            approval.setApprovalStatus(TournamentPlayerApproval.ApprovalStatus.PENDING);
+            playerApprovalRepository.save(approval);
+        }
+        
         return convertToDTO(tournament);
     }
     
@@ -972,6 +982,261 @@ public class KnockoutTournamentService {
         }
         
         return convertToDTO(tournament);
+    }
+
+    /**
+     * Get all players for approval in a tournament
+     */
+    @Autowired
+    private TournamentPlayerApprovalRepository playerApprovalRepository;
+
+    public List<Map<String, Object>> getTournamentPlayersForApproval(Long clubId, Long tournamentId) {
+        KnockoutTournament tournament = tournamentRepository.findById(tournamentId)
+            .orElseThrow(() -> new RuntimeException("Tournament not found"));
+        
+        if (!tournament.getClubId().equals(clubId)) {
+            throw new RuntimeException("Tournament does not belong to this club");
+        }
+
+        // Get all players in the club
+        List<Player> clubPlayers = playerRepository.findByClubIdAndIsVerifiedOrderByNameAsc(clubId);
+
+        // Get approval statuses for this tournament
+        List<TournamentPlayerApproval> approvals = playerApprovalRepository.findByTournamentIdOrderByApprovalStatusDesc(tournamentId);
+        Map<Long, TournamentPlayerApproval> approvalMap = approvals.stream()
+            .collect(Collectors.toMap(TournamentPlayerApproval::getPlayerId, a -> a));
+
+        // Map players to approval DTOs
+        return clubPlayers.stream()
+            .map(player -> {
+                Map<String, Object> playerApprovalDTO = new HashMap<>();
+                playerApprovalDTO.put("playerId", player.getId());
+                playerApprovalDTO.put("playerName", player.getName());
+                playerApprovalDTO.put("rating", player.getRating());
+
+                TournamentPlayerApproval approval = approvalMap.get(player.getId());
+                if (approval != null) {
+                    playerApprovalDTO.put("approvalStatus", approval.getApprovalStatus().toString());
+                    playerApprovalDTO.put("approvalId", approval.getId());
+                    playerApprovalDTO.put("approvedBy", approval.getApprovedBy());
+                    playerApprovalDTO.put("approvedDate", approval.getApprovedDate());
+                    playerApprovalDTO.put("rejectionReason", approval.getRejectionReason());
+                } else {
+                    playerApprovalDTO.put("approvalStatus", "PENDING");
+                    playerApprovalDTO.put("approvalId", null);
+                }
+                return playerApprovalDTO;
+            })
+            .sorted((p1, p2) -> {
+                // Sort by approval status (APPROVED first, then PENDING, then REJECTED)
+                Map<String, Integer> statusOrder = Map.of("APPROVED", 0, "PENDING", 1, "REJECTED", 2);
+                int status1 = statusOrder.getOrDefault(p1.get("approvalStatus").toString(), 3);
+                int status2 = statusOrder.getOrDefault(p2.get("approvalStatus").toString(), 3);
+                return Integer.compare(status1, status2);
+            })
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Approve a player for tournament participation
+     */
+    public void approvePlayerForTournament(Long clubId, Long tournamentId, Long playerId, Long approvedByUserId) {
+        KnockoutTournament tournament = tournamentRepository.findById(tournamentId)
+            .orElseThrow(() -> new RuntimeException("Tournament not found"));
+        
+        if (!tournament.getClubId().equals(clubId)) {
+            throw new RuntimeException("Tournament does not belong to this club");
+        }
+
+        Player player = playerRepository.findById(playerId)
+            .orElseThrow(() -> new RuntimeException("Player not found"));
+
+        Optional<TournamentPlayerApproval> existingApproval = playerApprovalRepository
+            .findByTournamentIdAndPlayerId(tournamentId, playerId);
+
+        TournamentPlayerApproval approval;
+        if (existingApproval.isPresent()) {
+            approval = existingApproval.get();
+        } else {
+            approval = new TournamentPlayerApproval();
+            approval.setTournamentId(tournamentId);
+            approval.setPlayerId(playerId);
+            approval.setClubId(clubId);
+        }
+
+        approval.setApprovalStatus(TournamentPlayerApproval.ApprovalStatus.APPROVED);
+        approval.setApprovedBy(approvedByUserId);
+        approval.setApprovedDate(LocalDateTime.now());
+        approval.setRejectionReason(null);
+
+        playerApprovalRepository.save(approval);
+    }
+
+    /**
+     * Reject a player for tournament participation
+     */
+    public void rejectPlayerForTournament(Long clubId, Long tournamentId, Long playerId, String reason, Long rejectedByUserId) {
+        KnockoutTournament tournament = tournamentRepository.findById(tournamentId)
+            .orElseThrow(() -> new RuntimeException("Tournament not found"));
+        
+        if (!tournament.getClubId().equals(clubId)) {
+            throw new RuntimeException("Tournament does not belong to this club");
+        }
+
+        Player player = playerRepository.findById(playerId)
+            .orElseThrow(() -> new RuntimeException("Player not found"));
+
+        Optional<TournamentPlayerApproval> existingApproval = playerApprovalRepository
+            .findByTournamentIdAndPlayerId(tournamentId, playerId);
+
+        TournamentPlayerApproval approval;
+        if (existingApproval.isPresent()) {
+            approval = existingApproval.get();
+        } else {
+            approval = new TournamentPlayerApproval();
+            approval.setTournamentId(tournamentId);
+            approval.setPlayerId(playerId);
+            approval.setClubId(clubId);
+        }
+
+        approval.setApprovalStatus(TournamentPlayerApproval.ApprovalStatus.REJECTED);
+        approval.setApprovedBy(rejectedByUserId);
+        approval.setApprovedDate(LocalDateTime.now());
+        approval.setRejectionReason(reason);
+
+        playerApprovalRepository.save(approval);
+    }
+
+    /**
+     * Get count of approved players for a tournament
+     */
+    public int getApprovedPlayerCount(Long tournamentId) {
+        return playerApprovalRepository.countByTournamentIdAndApprovalStatus(
+            tournamentId, TournamentPlayerApproval.ApprovalStatus.APPROVED);
+    }
+
+    /**
+     * Check if all required players are approved to start tournament
+     */
+    public boolean canStartTournament(Long tournamentId) {
+        KnockoutTournament tournament = tournamentRepository.findById(tournamentId)
+            .orElseThrow(() -> new RuntimeException("Tournament not found"));
+
+        List<TournamentPlayerApproval> allApprovals = playerApprovalRepository.findByTournamentId(tournamentId);
+        
+        if (allApprovals.isEmpty()) {
+            return false; // No players registered
+        }
+
+        // At least 2 players must be approved, and we need a power of 2 bracket size
+        long approvedCount = allApprovals.stream()
+            .filter(a -> a.getApprovalStatus() == TournamentPlayerApproval.ApprovalStatus.APPROVED)
+            .count();
+
+        // Check if it's a power of 2 (2, 4, 8, 16, 32, etc.)
+        return approvedCount >= 2 && (approvedCount & (approvedCount - 1)) == 0;
+    }
+
+    /**
+     * Get list of approved players for first round pairing
+     */
+    public List<Player> getApprovedPlayersForTournament(Long tournamentId) {
+        List<TournamentPlayerApproval> approvals = playerApprovalRepository
+            .findByTournamentIdAndApprovalStatus(tournamentId, TournamentPlayerApproval.ApprovalStatus.APPROVED);
+
+        return approvals.stream()
+            .map(approval -> playerRepository.findById(approval.getPlayerId()).orElse(null))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Generate first round pairings based on approved players
+     * Can be regenerated multiple times until round 1 starts (results entered)
+     */
+    public void generateFirstRoundPairings(Long clubId, Long tournamentId) {
+        KnockoutTournament tournament = tournamentRepository.findById(tournamentId)
+            .orElseThrow(() -> new RuntimeException("Tournament not found"));
+        
+        if (!tournament.getClubId().equals(clubId)) {
+            throw new RuntimeException("Tournament does not belong to this club");
+        }
+
+        // Check if round 1 has already started (matches have results)
+        if (tournament.getRound1Started()) {
+            throw new RuntimeException("Cannot regenerate pairings - Round 1 has already started");
+        }
+
+        // Get approved players only
+        List<Player> approvedPlayers = getApprovedPlayersForTournament(tournamentId);
+
+        // Validate bracket size (must be power of 2)
+        if (approvedPlayers.size() < 2) {
+            throw new RuntimeException("At least 2 approved players required");
+        }
+        
+        if ((approvedPlayers.size() & (approvedPlayers.size() - 1)) != 0) {
+            throw new RuntimeException("Number of approved players must be a power of 2 (2, 4, 8, 16, 32, etc.). Currently " + approvedPlayers.size() + " approved.");
+        }
+
+        // Generate bracket with approved players only
+        BracketStructure bracket = generateBracket(approvedPlayers, tournament.getDrawType());
+        
+        try {
+            tournament.setBracketData(objectMapper.writeValueAsString(bracket));
+            tournament.setRound1Generated(true);
+            tournament.setCurrentRound(1);
+            tournamentRepository.save(tournament);
+            log.info("Generated round 1 pairings for tournament {} with {} approved players", tournamentId, approvedPlayers.size());
+        } catch (Exception e) {
+            log.error("Failed to generate round 1 pairings", e);
+            throw new RuntimeException("Failed to generate pairings: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Regenerate first round pairings (can be done multiple times before round 1 starts)
+     */
+    public void regenerateFirstRoundPairings(Long clubId, Long tournamentId) {
+        KnockoutTournament tournament = tournamentRepository.findById(tournamentId)
+            .orElseThrow(() -> new RuntimeException("Tournament not found"));
+        
+        if (!tournament.getClubId().equals(clubId)) {
+            throw new RuntimeException("Tournament does not belong to this club");
+        }
+
+        if (!tournament.getAllowRound1Regenerate()) {
+            throw new RuntimeException("Round 1 pairings cannot be regenerated at this stage");
+        }
+
+        // Clear existing bracket data
+        tournament.setBracketData(null);
+        tournament.setRound1Generated(false);
+        tournamentRepository.save(tournament);
+
+        // Generate new pairings
+        generateFirstRoundPairings(clubId, tournamentId);
+    }
+
+    /**
+     * Mark round 1 as started (no more regeneration allowed after this)
+     */
+    public void markRound1Started(Long clubId, Long tournamentId) {
+        KnockoutTournament tournament = tournamentRepository.findById(tournamentId)
+            .orElseThrow(() -> new RuntimeException("Tournament not found"));
+        
+        if (!tournament.getClubId().equals(clubId)) {
+            throw new RuntimeException("Tournament does not belong to this club");
+        }
+
+        if (!tournament.getRound1Generated()) {
+            throw new RuntimeException("Round 1 must be generated before starting");
+        }
+
+        tournament.setRound1Started(true);
+        tournament.setAllowRound1Regenerate(false);
+        tournamentRepository.save(tournament);
+        log.info("Round 1 started for tournament {}", tournamentId);
     }
     
     // Inner classes for bracket structure

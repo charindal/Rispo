@@ -355,6 +355,116 @@ public class KnockoutTournamentController {
         }
     }
     
+    @GetMapping("/{clubId}/knockout-tournaments/{tournamentId}/player-approvals")
+    public ResponseEntity<?> getTournamentPlayersForApproval(
+            @PathVariable Long clubId,
+            @PathVariable Long tournamentId) {
+        try {
+            log.info("Fetching players for approval in tournament {} for club {}", tournamentId, clubId);
+            List<java.util.Map<String, Object>> players = tournamentService.getTournamentPlayersForApproval(clubId, tournamentId);
+            return ResponseEntity.ok(players);
+        } catch (RuntimeException e) {
+            log.warn("Failed to get players for approval {}: {}", tournamentId, e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error fetching players for approval in tournament {}", tournamentId, e);
+            return ResponseEntity.internalServerError().body(java.util.Map.of("error", "Failed to get players for approval"));
+        }
+    }
+    
+    @PatchMapping("/{clubId}/knockout-tournaments/{tournamentId}/approve-player/{playerId}")
+    public ResponseEntity<?> approvePlayerForTournament(
+            @PathVariable Long clubId,
+            @PathVariable Long tournamentId,
+            @PathVariable Long playerId,
+            @RequestHeader("X-User-Id") Long userId) {
+        try {
+            log.info("Approving player {} for tournament {} in club {}", playerId, tournamentId, clubId);
+            tournamentService.approvePlayerForTournament(clubId, tournamentId, playerId, userId);
+            return ResponseEntity.ok(java.util.Map.of("message", "Player approved successfully"));
+        } catch (RuntimeException e) {
+            log.warn("Failed to approve player {}: {}", playerId, e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error approving player {} for tournament {}", playerId, tournamentId, e);
+            return ResponseEntity.internalServerError().body(java.util.Map.of("error", "Failed to approve player"));
+        }
+    }
+    
+    @PatchMapping("/{clubId}/knockout-tournaments/{tournamentId}/reject-player/{playerId}")
+    public ResponseEntity<?> rejectPlayerForTournament(
+            @PathVariable Long clubId,
+            @PathVariable Long tournamentId,
+            @PathVariable Long playerId,
+            @RequestParam String reason,
+            @RequestHeader("X-User-Id") Long userId) {
+        try {
+            log.info("Rejecting player {} for tournament {} in club {}", playerId, tournamentId, clubId);
+            tournamentService.rejectPlayerForTournament(clubId, tournamentId, playerId, reason, userId);
+            return ResponseEntity.ok(java.util.Map.of("message", "Player rejected successfully"));
+        } catch (RuntimeException e) {
+            log.warn("Failed to reject player {}: {}", playerId, e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error rejecting player {} for tournament {}", playerId, tournamentId, e);
+            return ResponseEntity.internalServerError().body(java.util.Map.of("error", "Failed to reject player"));
+        }
+    }
+    
+    @PostMapping("/{clubId}/knockout-tournaments/{tournamentId}/generate-round-1")
+    public ResponseEntity<?> generateFirstRoundPairings(
+            @PathVariable Long clubId,
+            @PathVariable Long tournamentId,
+            @RequestHeader("X-User-Id") Long userId) {
+        try {
+            log.info("Generating round 1 pairings for tournament {} in club {}", tournamentId, clubId);
+            tournamentService.generateFirstRoundPairings(clubId, tournamentId);
+            return ResponseEntity.ok(java.util.Map.of("message", "Round 1 pairings generated successfully"));
+        } catch (RuntimeException e) {
+            log.warn("Failed to generate round 1 pairings {}: {}", tournamentId, e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error generating round 1 pairings for tournament {}", tournamentId, e);
+            return ResponseEntity.internalServerError().body(java.util.Map.of("error", "Failed to generate pairings"));
+        }
+    }
+
+    @PostMapping("/{clubId}/knockout-tournaments/{tournamentId}/regenerate-round-1")
+    public ResponseEntity<?> regenerateFirstRoundPairings(
+            @PathVariable Long clubId,
+            @PathVariable Long tournamentId,
+            @RequestHeader("X-User-Id") Long userId) {
+        try {
+            log.info("Regenerating round 1 pairings for tournament {} in club {}", tournamentId, clubId);
+            tournamentService.regenerateFirstRoundPairings(clubId, tournamentId);
+            return ResponseEntity.ok(java.util.Map.of("message", "Round 1 pairings regenerated successfully"));
+        } catch (RuntimeException e) {
+            log.warn("Failed to regenerate round 1 pairings {}: {}", tournamentId, e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error regenerating round 1 pairings for tournament {}", tournamentId, e);
+            return ResponseEntity.internalServerError().body(java.util.Map.of("error", "Failed to regenerate pairings"));
+        }
+    }
+
+    @PostMapping("/{clubId}/knockout-tournaments/{tournamentId}/start-round-1")
+    public ResponseEntity<?> startRound1(
+            @PathVariable Long clubId,
+            @PathVariable Long tournamentId,
+            @RequestHeader("X-User-Id") Long userId) {
+        try {
+            log.info("Starting round 1 for tournament {} in club {}", tournamentId, clubId);
+            tournamentService.markRound1Started(clubId, tournamentId);
+            return ResponseEntity.ok(java.util.Map.of("message", "Round 1 started - pairings are now locked"));
+        } catch (RuntimeException e) {
+            log.warn("Failed to start round 1 {}: {}", tournamentId, e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error starting round 1 for tournament {}", tournamentId, e);
+            return ResponseEntity.internalServerError().body(java.util.Map.of("error", "Failed to start round 1"));
+        }
+    }
+    
     @GetMapping("/{clubId}/knockout-tournaments/{tournamentId}/standings")
     public ResponseEntity<?> getTournamentStandings(
             @PathVariable Long clubId,

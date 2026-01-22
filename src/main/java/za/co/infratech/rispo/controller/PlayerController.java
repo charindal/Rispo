@@ -13,7 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/players")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = {"http://localhost:3000", "https://135.125.133.211"})
 public class PlayerController {
 
     private final PlayerService playerService;

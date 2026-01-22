@@ -12,7 +12,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/clubs/{clubId}/tournaments")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = {"http://localhost:3000", "https://135.125.133.211"})
 public class ClubTournamentController {
     
     private final TournamentService tournamentService;
@@ -91,6 +91,22 @@ public class ClubTournamentController {
         try {
             TournamentResponse response = tournamentService.startClubTournament(tournamentId, userId);
             return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Delete a club tournament (club admin only)
+     */
+    @DeleteMapping("/{tournamentId}")
+    public ResponseEntity<?> deleteTournament(
+            @PathVariable Long clubId,
+            @PathVariable Long tournamentId,
+            @RequestHeader("X-User-Id") Long userId) {
+        try {
+            tournamentService.deleteTournament(tournamentId, userId);
+            return ResponseEntity.ok(Map.of("message", "Tournament deleted successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

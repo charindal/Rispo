@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import clubService from '../services/clubService';
 import authService from '../services/authService';
+import PlayerApprovalPage from './PlayerApprovalPage';
 import '../styles/ClubTournaments.css';
 
 const ClubTournaments = () => {
@@ -21,6 +22,7 @@ const ClubTournaments = () => {
   const [drawType, setDrawType] = useState('RANDOM');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('current');
+  const [showApprovalModal, setShowApprovalModal] = useState(null);
 
   const isClubAdmin = () => {
     return user && (['SUPER_USER', 'SYSTEM_ADMIN', 'CLUB_ADMIN'].includes(user.role) || 
@@ -190,6 +192,14 @@ const ClubTournaments = () => {
                       >
                         View Bracket
                       </button>
+                      {isClubAdmin() && tournament.status === 'APPROVED' && (
+                        <button 
+                          onClick={() => setShowApprovalModal(tournament)}
+                          className="approval-btn"
+                        >
+                          👥 Player Approval
+                        </button>
+                      )}
                       {isClubAdmin() && tournament.status === 'UPCOMING' && (
                         <button 
                           onClick={() => handleStartTournament(tournament.id)}
@@ -314,6 +324,20 @@ const ClubTournaments = () => {
           </div>
         )}
       </div>
+
+      {showApprovalModal && (
+        <div className="modal-overlay">
+          <PlayerApprovalPage 
+            clubId={clubId} 
+            tournamentId={showApprovalModal.id}
+            tournamentName={showApprovalModal.name}
+            onClose={() => {
+              setShowApprovalModal(null);
+              loadTournaments();
+            }}
+          />
+        </div>
+      )}
 
       {showCreateModal && (
         <div className="modal-overlay">

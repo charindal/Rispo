@@ -207,6 +207,12 @@ const tournamentService = {
         return axios.post(`${API_URL}/clubs/${clubId}/tournaments/${tournamentId}/start`, {}, {
             headers: { 'X-User-Id': userId }
         });
+    },
+
+    deleteClubTournament: (clubId, tournamentId, userId) => {
+        return axios.delete(`${API_URL}/clubs/${clubId}/tournaments/${tournamentId}`, {
+            headers: { 'X-User-Id': userId }
+        });
     }
 };
 

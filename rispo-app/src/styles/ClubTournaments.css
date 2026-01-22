@@ -215,6 +215,22 @@
   transform: translateY(-1px);
 }
 
+.approval-btn {
+  background: #2196F3;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-weight: 600;
+}
+
+.approval-btn:hover {
+  background: #0b7dda;
+  transform: translateY(-1px);
+}
+
 /* Annual Leaderboard */
 .leaderboard-info {
   background: #f8f9fa;

@@ -15,7 +15,7 @@ import za.co.infratech.rispo.service.AuthService;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = {"http://localhost:3000", "https://135.125.133.211"})
 public class AuthController {
 
     private final AuthService authService;

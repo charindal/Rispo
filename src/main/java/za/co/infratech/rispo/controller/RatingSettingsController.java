@@ -10,7 +10,7 @@ import za.co.infratech.rispo.service.RatingSettingsService;
 @RestController
 @RequestMapping("/api/rating-settings")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = {"http://localhost:3000", "https://135.125.133.211"})
 public class RatingSettingsController {
 
     private final RatingSettingsService ratingSettingsService;

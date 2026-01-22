@@ -339,6 +339,18 @@ function ClubManagement() {
     }
   };
 
+  const handleDeleteTournament = async (tournamentId) => {
+    if (!window.confirm('Are you sure you want to delete this tournament? This action cannot be undone.')) return;
+    try {
+      await tournamentService.deleteClubTournament(selectedClub.clubId, tournamentId, user.userId);
+      alert('Tournament deleted successfully');
+      const tournamentsResp = await tournamentService.getClubTournaments(selectedClub.clubId);
+      setClubTournaments(tournamentsResp.data || []);
+    } catch (error) {
+      alert('Error: ' + (error.response?.data?.message || error.message || 'Failed to delete'));
+    }
+  };
+
   if (loading || !user) {
     return <div className="loading-screen">Loading...</div>;
   }
@@ -1051,6 +1063,15 @@ function ClubManagement() {
                             style={{fontSize: '0.9em'}}
                           >
                             📊 View Tournament
+                          </button>
+                        )}
+                        {(tournament.approvalStatus === 'PENDING_APPROVAL' || tournament.approvalStatus === 'REJECTED') && (
+                          <button 
+                            onClick={() => handleDeleteTournament(tournament.id)}
+                            className="action-btn danger"
+                            style={{fontSize: '0.9em'}}
+                          >
+                            🗑️ Delete
                           </button>
                         )}
                       </div>

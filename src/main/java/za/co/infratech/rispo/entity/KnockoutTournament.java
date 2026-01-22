@@ -69,6 +69,15 @@ public class KnockoutTournament {
     @Column(name = "draw_type", nullable = false)
     private DrawType drawType = DrawType.RANDOM;
     
+    @Column(name = "round_1_generated")
+    private Boolean round1Generated = false;
+    
+    @Column(name = "round_1_started")
+    private Boolean round1Started = false;
+    
+    @Column(name = "allow_round_1_regenerate")
+    private Boolean allowRound1Regenerate = true;
+    
     @PrePersist
     protected void onCreate() {
         if (createdDate == null) {

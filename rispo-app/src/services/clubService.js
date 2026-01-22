@@ -362,6 +362,49 @@ const clubService = {
     } catch (error) {
       throw error.response?.data || error.message || 'Failed to review join request';
     }
+  },
+
+  // Get players for tournament approval
+  getTournamentPlayersForApproval: async (clubId, tournamentId) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/clubs/${clubId}/knockout-tournaments/${tournamentId}/player-approvals`
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to get players for approval';
+    }
+  },
+
+  // Approve player for tournament
+  approvePlayerForTournament: async (clubId, tournamentId, playerId, userId) => {
+    try {
+      const response = await axios.patch(
+        `${API_BASE_URL}/clubs/${clubId}/knockout-tournaments/${tournamentId}/approve-player/${playerId}`,
+        {},
+        { headers: { 'X-User-Id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to approve player';
+    }
+  },
+
+  // Reject player for tournament
+  rejectPlayerForTournament: async (clubId, tournamentId, playerId, reason, userId) => {
+    try {
+      const response = await axios.patch(
+        `${API_BASE_URL}/clubs/${clubId}/knockout-tournaments/${tournamentId}/reject-player/${playerId}`,
+        {},
+        { 
+          params: { reason },
+          headers: { 'X-User-Id': userId }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message || 'Failed to reject player';
+    }
   }
 };
 

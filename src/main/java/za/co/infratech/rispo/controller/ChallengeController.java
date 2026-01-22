@@ -21,7 +21,7 @@ import java.util.List;
 @RequestMapping("/api/challenges")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = {"http://localhost:3000", "https://135.125.133.211"})
 public class ChallengeController {
 
     private final ChallengeService challengeService;
