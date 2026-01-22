@@ -180,7 +180,7 @@
             "uid": "Loki"
           },
           "editorMode": "code",
-          "expr": "{job=\"rispo\"} ${log_level}",
+          "expr": "{application=\"rispo\"} $log_level",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
@@ -246,7 +246,7 @@
             "uid": "Loki"
           },
           "editorMode": "code",
-          "expr": "{job=\"rispo\"} ${log_level}",
+          "expr": "{application=\"rispo\"} $log_level",
           "queryType": "range",
           "refId": "A"
         }

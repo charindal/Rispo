@@ -105,7 +105,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"Login successful\" [$__interval]))",
+          "expr": "sum(count_over_time({application=\"rispo\"} |~ \"Login successful\" [$__interval]))",
           "legendFormat": "Successful Logins",
           "queryType": "range",
           "refId": "A"
@@ -113,7 +113,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"Login failed\" [$__interval]))",
+          "expr": "sum(count_over_time({application=\"rispo\"} |~ \"Login failed\" [$__interval]))",
           "legendFormat": "Failed Logins",
           "queryType": "range",
           "refId": "B"
@@ -173,7 +173,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"Login successful\" [$__range]))",
+          "expr": "sum(count_over_time({application=\"rispo\"} |~ \"Login successful\" [$__range]))",
           "legendFormat": "",
           "queryType": "instant",
           "refId": "A"
@@ -233,7 +233,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"rispo\"} |~ \"Login failed\" [$__range]))",
+          "expr": "sum(count_over_time({application=\"rispo\"} |~ \"Login failed\" [$__range]))",
           "legendFormat": "",
           "queryType": "instant",
           "refId": "A"
@@ -322,7 +322,7 @@
         {
           "datasource": "Loki",
           "editorMode": "code",
-          "expr": "{job=\"rispo\"} |~ \"(?i)(Login (attempt|successful|failed))\" | regexp \"(?P<status>Login (attempt|successful|failed)).*username: (?P<username>[^ ),]+)(.*userId: (?P<userId>\\\\d+))?(.*role: (?P<role>[^ )]+))?\"",
+          "expr": "{application=\"rispo\"} |~ \"(?i)(Login (attempt|successful|failed))\" | regexp \"(?P<status>Login (attempt|successful|failed)).*username: (?P<username>[^ ),]+)(.*userId: (?P<userId>\\\\d+))?(.*role: (?P<role>[^ )]+))?\"",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
