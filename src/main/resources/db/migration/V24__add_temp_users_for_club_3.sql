@@ -47,17 +47,4 @@ AND NOT EXISTS (
     SELECT 1 FROM player p WHERE p.user_id = u.id AND p.club_id = 3
 );
 
--- Set initial ELO ratings for new players (1200 is typical starting rating)
-INSERT INTO player_rating (player_id, club_id, current_rating, peak_rating, games_played, wins, losses, draws, created_at, updated_at)
-SELECT p.id, p.club_id, 1200, 1200, 0, 0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-FROM player p
-JOIN users u ON u.id = p.user_id
-WHERE u.username IN (
-    'Mzaya', 'Monyira', 'Matemai', 'Ama2k', 'Lemuel', 'OKS', 'D_Trump', 'Whezha', 'Stones', 'Mandhla',
-    'Senator', 'B4', 'Ferris', 'Chichena', 'Igwe', 'Putin', 'Zeto', 'Taflo', 'Nyags', 'Floyd',
-    'Izzy', 'General', 'Kamuzu', 'OTF', 'Cde'
-)
-AND p.club_id = 3
-ON CONFLICT (player_id, club_id) DO NOTHING;
-
 COMMENT ON COLUMN users.username IS 'Temporary users created for club_id = 3, password is 1234';
