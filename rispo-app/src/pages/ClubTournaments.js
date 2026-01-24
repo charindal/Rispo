@@ -172,7 +172,7 @@ const ClubTournaments = () => {
                 {tournaments.map(tournament => (
                   <div key={tournament.id} className="tournament-card">
                     <div className="tournament-header">
-                      <h4>{tournament.name}</h4>
+                      <h4>{tournament.tournamentName}</h4>
                       <span className={`status ${tournament.status.toLowerCase()}`}>
                         {tournament.status}
                       </span>
@@ -328,7 +328,7 @@ const ClubTournaments = () => {
           <PlayerApprovalPage 
             clubId={clubId} 
             tournamentId={showApprovalModal.id}
-            tournamentName={showApprovalModal.name}
+            tournamentName={showApprovalModal.tournamentName}
             onClose={() => {
               setShowApprovalModal(null);
               loadTournaments();

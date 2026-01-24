@@ -86,9 +86,6 @@ public class KnockoutTournament {
         if (createdDate == null) {
             createdDate = LocalDateTime.now();
         }
-        if (tournamentName == null || tournamentName.isEmpty()) {
-            tournamentName = "Weekly Tournament - Week " + weekNumber + ", " + tournamentYear;
-        }
     }
     
     public enum TournamentStatus {
