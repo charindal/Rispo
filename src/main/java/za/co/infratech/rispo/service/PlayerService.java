@@ -236,7 +236,7 @@ public class PlayerService {
         PlayerRankingDTO dto = new PlayerRankingDTO();
         dto.setId(player.getId());
         dto.setUserId(player.getUser().getId());
-        dto.setName(player.getName());
+        dto.setName(player.getUser().getUsername()); // Use username for display
         dto.setRating(player.getRating());
         dto.setMatchesPlayed(player.getMatchesPlayed());
         dto.setWins(player.getWins());
@@ -251,7 +251,8 @@ public class PlayerService {
         PlayerDTO dto = new PlayerDTO();
         dto.setId(player.getId());
         dto.setUserId(player.getUser().getId());
-        dto.setName(player.getName());
+        dto.setName(player.getUser().getUsername()); // Use username for display
+        dto.setRealName(player.getName()); // Keep real name
         dto.setEmail(player.getEmail());
         dto.setPhone(player.getPhone());
         dto.setRating(player.getRating());

@@ -15,6 +15,7 @@ public class UserProfileResponse {
     // Player profile fields
     private Long playerId;
     private String name;
+    private String realName;
     private String phone;
     private Integer rating;
     private Boolean isVerified;

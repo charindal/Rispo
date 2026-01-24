@@ -19,4 +19,5 @@ public class TournamentLeaderboardDTO {
     private Integer semifinalCount;
     private Integer quarterfinalCount;
     private Integer rank;
+    private String bestFinish;
 }

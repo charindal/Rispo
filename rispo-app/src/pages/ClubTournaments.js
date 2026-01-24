@@ -80,7 +80,7 @@ const ClubTournaments = () => {
       setShowCreateModal(false);
       setDrawType('RANDOM'); // Reset to default
       loadTournaments();
-      alert('Weekly knockout tournament created successfully!');
+      alert('Knockout tournament created successfully!');
     } catch (error) {
       alert('Error creating tournament: ' + error.message);
     }
@@ -128,7 +128,7 @@ const ClubTournaments = () => {
             onClick={() => setShowCreateModal(true)} 
             className="create-tournament-btn"
           >
-            🏆 Create Weekly Tournament
+            🏆 Create Tournament
           </button>
         )}
       </div>
@@ -178,9 +178,7 @@ const ClubTournaments = () => {
                       </span>
                     </div>
                     <div className="tournament-info">
-                      <p>Week: {tournament.weekNumber}</p>
                       <p>Participants: {tournament.participantCount}</p>
-                      <p>Round: {tournament.currentRound}</p>
                       {tournament.winner && (
                         <p className="winner">Winner: {tournament.winner}</p>
                       )}
@@ -259,8 +257,8 @@ const ClubTournaments = () => {
                       </td>
                       <td className="player-name">{player.playerName}</td>
                       <td className="points">{player.totalPoints}</td>
-                      <td>{player.tournamentsPlayed}</td>
-                      <td>{player.bestFinish}</td>
+                      <td>{player.tournamentCount || 0}</td>
+                      <td>{player.bestFinish || 'Participant'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -342,8 +340,8 @@ const ClubTournaments = () => {
       {showCreateModal && (
         <div className="modal-overlay">
           <div className="create-tournament-modal">
-            <h3>Create Weekly Knockout Tournament</h3>
-            <p>This will create a new knockout tournament for all club members.</p>
+            <h3>Create Knockout Tournament</h3>
+            <p>Create a new knockout tournament for all club members. Multiple tournaments can be created per week.</p>
             
             <div className="tournament-options">
               <div className="option-group">

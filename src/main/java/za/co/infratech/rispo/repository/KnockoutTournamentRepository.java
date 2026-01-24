@@ -17,9 +17,14 @@ public interface KnockoutTournamentRepository extends JpaRepository<KnockoutTour
     List<KnockoutTournament> findByClubIdAndTournamentYearOrderByWeekNumberDesc(Long clubId, Integer year);
     
     @Query("SELECT kt FROM KnockoutTournament kt WHERE kt.clubId = :clubId AND kt.tournamentYear = :year AND kt.weekNumber = :weekNumber")
-    Optional<KnockoutTournament> findByClubIdAndYearAndWeek(@Param("clubId") Long clubId, 
-                                                           @Param("year") Integer year, 
-                                                           @Param("weekNumber") Integer weekNumber);
+    List<KnockoutTournament> findByClubIdAndYearAndWeek(@Param("clubId") Long clubId, 
+                                                        @Param("year") Integer year, 
+                                                        @Param("weekNumber") Integer weekNumber);
+    
+    @Query("SELECT COALESCE(MAX(kt.sequenceNumber), 0) FROM KnockoutTournament kt WHERE kt.clubId = :clubId AND kt.tournamentYear = :year AND kt.weekNumber = :weekNumber")
+    Integer findMaxSequenceNumberForWeek(@Param("clubId") Long clubId, 
+                                         @Param("year") Integer year, 
+                                         @Param("weekNumber") Integer weekNumber);
     
     @Query("SELECT MAX(kt.weekNumber) FROM KnockoutTournament kt WHERE kt.clubId = :clubId AND kt.tournamentYear = :year")
     Optional<Integer> findMaxWeekNumberForYear(@Param("clubId") Long clubId, @Param("year") Integer year);

@@ -11,6 +11,7 @@ public class PlayerDTO {
     private Long id;
     private Long userId;
     private String name;
+    private String realName; // Real name of the player
     private String email;
     private String phone;
     private Integer rating;

@@ -687,7 +687,7 @@ public class TournamentService {
         response.setTournamentId(tp.getTournament().getId());
         response.setTournamentName(tp.getTournament().getName());
         response.setPlayerId(tp.getPlayer().getId());
-        response.setPlayerName(tp.getPlayer().getName());
+        response.setPlayerName(tp.getPlayer().getUser().getUsername());
         response.setPlayerRating(tp.getPlayer().getRating());
         response.setStatus(tp.getStatus());
         response.setRequestedAt(tp.getRequestedAt());
@@ -720,7 +720,7 @@ public class TournamentService {
             Map<String, Object> playerStanding = new java.util.HashMap<>();
             
             playerStanding.put("playerId", player.getId());
-            playerStanding.put("playerName", player.getName());
+            playerStanding.put("playerName", player.getUser().getUsername());
             playerStanding.put("currentRating", player.getRating());
             
             // Calculate score from completed matches
@@ -914,7 +914,7 @@ public class TournamentService {
             // Player 1 info
             Map<String, Object> player1 = new java.util.HashMap<>();
             player1.put("playerId", match.getPlayer1().getId());
-            player1.put("name", match.getPlayer1().getName());
+            player1.put("name", match.getPlayer1().getUser().getUsername()); // Use username for display
             player1.put("rating", match.getPlayer1().getRating());
             player1.put("ratingBefore", match.getPlayer1RatingBefore());
             player1.put("ratingChange", match.getPlayer1RatingChange());
@@ -924,7 +924,7 @@ public class TournamentService {
             if (match.getPlayer2() != null) {
                 Map<String, Object> player2 = new java.util.HashMap<>();
                 player2.put("playerId", match.getPlayer2().getId());
-                player2.put("name", match.getPlayer2().getName());
+                player2.put("name", match.getPlayer2().getUser().getUsername()); // Use username for display
                 player2.put("rating", match.getPlayer2().getRating());
                 player2.put("ratingBefore", match.getPlayer2RatingBefore());
                 player2.put("ratingChange", match.getPlayer2RatingChange());
@@ -937,7 +937,7 @@ public class TournamentService {
             if (match.getWinner() != null) {
                 Map<String, Object> winner = new java.util.HashMap<>();
                 winner.put("playerId", match.getWinner().getId());
-                winner.put("name", match.getWinner().getName());
+                winner.put("name", match.getWinner().getUser().getUsername()); // Use username for display
                 matchData.put("winner", winner);
             } else {
                 matchData.put("winner", null);

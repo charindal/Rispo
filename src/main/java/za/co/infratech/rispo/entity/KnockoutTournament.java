@@ -31,6 +31,9 @@ public class KnockoutTournament {
     @Column(name = "week_number", nullable = false)
     private Integer weekNumber;
     
+    @Column(name = "sequence_number", nullable = false)
+    private Integer sequenceNumber = 1; // Allows multiple tournaments per week/day
+    
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private TournamentStatus status = TournamentStatus.UPCOMING;

@@ -18,6 +18,7 @@ public class KnockoutTournamentDTO {
     private String tournamentName;
     private Integer tournamentYear;
     private Integer weekNumber;
+    private Integer sequenceNumber;
     private KnockoutTournament.TournamentStatus status;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -50,6 +51,7 @@ public class KnockoutTournamentDTO {
         this.tournamentName = tournament.getTournamentName();
         this.tournamentYear = tournament.getTournamentYear();
         this.weekNumber = tournament.getWeekNumber();
+        this.sequenceNumber = tournament.getSequenceNumber();
         this.status = tournament.getStatus();
         this.createdDate = tournament.getCreatedDate();
         this.startDate = tournament.getStartDate();

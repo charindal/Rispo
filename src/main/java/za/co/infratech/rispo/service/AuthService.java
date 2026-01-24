@@ -249,7 +249,8 @@ public class AuthService {
         if (playerOpt.isPresent()) {
             Player player = playerOpt.get();
             response.setPlayerId(player.getId());
-            response.setName(player.getName());
+            response.setName(player.getUser().getUsername()); // Use username for display
+            response.setRealName(player.getName()); // Keep real name separate
             response.setPhone(player.getPhone());
             response.setRating(player.getRating());
             response.setIsVerified(player.getIsVerified());

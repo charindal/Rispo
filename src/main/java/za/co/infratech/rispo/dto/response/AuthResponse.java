@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
 public class AuthResponse {
     private Long userId;
     private String username;
+    private String name; // Display name (username)
+    private String realName; // Real name of the player
     private String email;
     private String role;
     private Long playerId;

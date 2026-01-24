@@ -67,15 +67,11 @@ public class KnockoutTournamentService {
         int currentYear = now.getYear();
         int currentWeek = now.get(WeekFields.of(Locale.getDefault()).weekOfYear());
         
-        // For weekly tournaments, check if tournament already exists for this week
-        if (frequency == TournamentFrequency.WEEKLY) {
-            Optional<KnockoutTournament> existingTournament = 
-                tournamentRepository.findByClubIdAndYearAndWeek(clubId, currentYear, currentWeek);
-            
-            if (existingTournament.isPresent()) {
-                throw new RuntimeException("Tournament already exists for week " + currentWeek + " of " + currentYear);
-            }
-        }
+        // Multiple tournaments per week are now allowed - removed the restriction check
+        
+        // Determine the next sequence number for this week
+        Integer maxSequence = tournamentRepository.findMaxSequenceNumberForWeek(clubId, currentYear, currentWeek);
+        int nextSequence = (maxSequence != null) ? maxSequence + 1 : 1;
         
         // Get active club members (players with verified status and belonging to the club)
         List<Player> activeMembers = playerRepository.findByClubIdAndIsVerifiedOrderByNameAsc(clubId);
@@ -89,6 +85,7 @@ public class KnockoutTournamentService {
         tournament.setClubId(clubId);
         tournament.setTournamentYear(currentYear);
         tournament.setWeekNumber(currentWeek);
+        tournament.setSequenceNumber(nextSequence);
         tournament.setStatus(KnockoutTournament.TournamentStatus.UPCOMING);
         tournament.setStartDate(now.plusDays(1)); // Start tomorrow
         tournament.setDrawType(drawType);
@@ -97,7 +94,7 @@ public class KnockoutTournamentService {
         if (tournamentName != null && !tournamentName.trim().isEmpty()) {
             tournament.setTournamentName(tournamentName.trim());
         } else {
-            String defaultName = generateTournamentName(frequency, currentWeek, currentYear);
+            String defaultName = generateTournamentName(frequency, currentWeek, currentYear, nextSequence);
             tournament.setTournamentName(defaultName);
         }
         
@@ -124,18 +121,38 @@ public class KnockoutTournamentService {
         return convertToDTO(tournament);
     }
     
-    private String generateTournamentName(TournamentFrequency frequency, int week, int year) {
+    private String generateTournamentName(TournamentFrequency frequency, int week, int year, int sequenceNumber) {
+        LocalDateTime now = LocalDateTime.now();
+        java.time.format.DateTimeFormatter dayFormatter = java.time.format.DateTimeFormatter.ofPattern("EEE", java.util.Locale.ENGLISH);
+        java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("d/MMM", java.util.Locale.ENGLISH);
+        
+        String dayName = now.format(dayFormatter); // e.g., "Mon"
+        String dateStr = now.format(dateFormatter); // e.g., "15/Jan"
+        String timeStr = String.format("%dh%02d", now.getHour(), now.getMinute()); // e.g., "10h00" or "22h30"
+        
+        String baseName;
         switch (frequency) {
             case WEEKLY:
-                return "Weekly Tournament - Week " + week + ", " + year;
+                baseName = dayName + "/" + dateStr + "/" + timeStr;
+                break;
             case MONTHLY:
                 java.time.Month month = java.time.LocalDate.now().getMonth();
-                return month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH) + " " + year + " Monthly Tournament";
+                baseName = month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH) + " " + year + " Monthly Tournament";
+                break;
             case ONCE_OFF:
-                return "Special Tournament - " + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy"));
+                baseName = "Special " + dayName + "/" + dateStr + "/" + timeStr;
+                break;
             default:
-                return "Tournament - Week " + week + ", " + year;
+                baseName = dayName + "/" + dateStr + "/" + timeStr;
+                break;
         }
+        
+        // Add sequence number if it's not the first tournament of the week
+        if (sequenceNumber > 1) {
+            baseName += " (#" + sequenceNumber + ")";
+        }
+        
+        return baseName;
     }
     
     public void updateKnockoutMatchResult(Long clubId, Long tournamentId, Long matchId, java.util.Map<String, Object> request, Long userId) {
@@ -713,9 +730,21 @@ public class KnockoutTournamentService {
                             Collectors.counting()
                         ));
                 
+                // Determine best finish
+                String bestFinish = "Participant";
+                if (positionCounts.getOrDefault(PlayerTournamentPoints.TournamentPosition.WINNER, 0L) > 0) {
+                    bestFinish = "Winner";
+                } else if (positionCounts.getOrDefault(PlayerTournamentPoints.TournamentPosition.RUNNER_UP, 0L) > 0) {
+                    bestFinish = "Runner-up";
+                } else if (positionCounts.getOrDefault(PlayerTournamentPoints.TournamentPosition.SEMIFINALIST, 0L) > 0) {
+                    bestFinish = "Semi-finalist";
+                } else if (positionCounts.getOrDefault(PlayerTournamentPoints.TournamentPosition.QUARTERFINALIST, 0L) > 0) {
+                    bestFinish = "Quarter-finalist";
+                }
+                
                 TournamentLeaderboardDTO dto = new TournamentLeaderboardDTO();
                 dto.setPlayerId(playerId);
-                dto.setPlayerName(player.getName());
+                dto.setPlayerName(player.getUser().getUsername());
                 dto.setUsername(player.getUser().getUsername());
                 dto.setTotalPoints(totalPoints.intValue());
                 dto.setTournamentCount(tournamentCount.intValue());
@@ -724,6 +753,7 @@ public class KnockoutTournamentService {
                 dto.setSemifinalCount(positionCounts.getOrDefault(PlayerTournamentPoints.TournamentPosition.SEMIFINALIST, 0L).intValue());
                 dto.setQuarterfinalCount(positionCounts.getOrDefault(PlayerTournamentPoints.TournamentPosition.QUARTERFINALIST, 0L).intValue());
                 dto.setRank(rank++);
+                dto.setBestFinish(bestFinish);
                 
                 leaderboard.add(dto);
             }
@@ -929,12 +959,12 @@ public class KnockoutTournamentService {
         // Add winner and runner-up names if available
         if (tournament.getWinnerPlayerId() != null) {
             playerRepository.findById(tournament.getWinnerPlayerId())
-                    .ifPresent(player -> dto.setWinnerPlayerName(player.getName()));
+                    .ifPresent(player -> dto.setWinnerPlayerName(player.getUser().getUsername()));
         }
         
         if (tournament.getRunnerUpPlayerId() != null) {
             playerRepository.findById(tournament.getRunnerUpPlayerId())
-                    .ifPresent(player -> dto.setRunnerUpPlayerName(player.getName()));
+                    .ifPresent(player -> dto.setRunnerUpPlayerName(player.getUser().getUsername()));
         }
         
         // Calculate participant count from bracket data
@@ -956,7 +986,7 @@ public class KnockoutTournamentService {
                 .map(player -> {
                     return new BracketParticipant(
                         player.getId(),
-                        player.getName(), // Using name field from Player entity
+                        player.getUser().getUsername(), // Using username from user relationship
                         player.getUser().getUsername(), // Getting username from user relationship
                         player.getRating() != null ? player.getRating().doubleValue() : 1200.0 // Default rating
                     );
@@ -1038,7 +1068,7 @@ public class KnockoutTournamentService {
             .map(player -> {
                 Map<String, Object> playerApprovalDTO = new HashMap<>();
                 playerApprovalDTO.put("playerId", player.getId());
-                playerApprovalDTO.put("playerName", player.getName());
+                playerApprovalDTO.put("playerName", player.getUser().getUsername());
                 playerApprovalDTO.put("rating", player.getRating());
 
                 TournamentPlayerApproval approval = approvalMap.get(player.getId());

@@ -243,7 +243,7 @@ public class MatchService {
         // Player 1
         MatchResponse.PlayerSummary p1 = new MatchResponse.PlayerSummary();
         p1.setPlayerId(match.getPlayer1().getId());
-        p1.setName(match.getPlayer1().getName());
+        p1.setName(match.getPlayer1().getUser().getUsername()); // Use username for display
         p1.setRating(match.getPlayer1().getRating());
         p1.setEmail(match.getPlayer1().getEmail());
         response.setPlayer1(p1);
@@ -251,7 +251,7 @@ public class MatchService {
         // Player 2
         MatchResponse.PlayerSummary p2 = new MatchResponse.PlayerSummary();
         p2.setPlayerId(match.getPlayer2().getId());
-        p2.setName(match.getPlayer2().getName());
+        p2.setName(match.getPlayer2().getUser().getUsername()); // Use username for display
         p2.setRating(match.getPlayer2().getRating());
         p2.setEmail(match.getPlayer2().getEmail());
         response.setPlayer2(p2);
@@ -260,7 +260,7 @@ public class MatchService {
         if (match.getWinner() != null) {
             MatchResponse.PlayerSummary winner = new MatchResponse.PlayerSummary();
             winner.setPlayerId(match.getWinner().getId());
-            winner.setName(match.getWinner().getName());
+            winner.setName(match.getWinner().getUser().getUsername()); // Use username for display
             winner.setRating(match.getWinner().getRating());
             response.setWinner(winner);
         }
