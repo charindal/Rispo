@@ -124,35 +124,56 @@ public class KnockoutTournamentService {
     private String generateTournamentName(TournamentFrequency frequency, int week, int year, int sequenceNumber) {
         LocalDateTime now = LocalDateTime.now();
         java.time.format.DateTimeFormatter dayFormatter = java.time.format.DateTimeFormatter.ofPattern("EEE", java.util.Locale.ENGLISH);
-        java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("d/MMM", java.util.Locale.ENGLISH);
+        java.time.format.DateTimeFormatter monthFormatter = java.time.format.DateTimeFormatter.ofPattern("MMM", java.util.Locale.ENGLISH);
         
         String dayName = now.format(dayFormatter); // e.g., "Mon"
-        String dateStr = now.format(dateFormatter); // e.g., "15/Jan"
-        String timeStr = String.format("%dh%02d", now.getHour(), now.getMinute()); // e.g., "10h00" or "22h30"
+        String dayNumber = getDayWithSuffix(now.getDayOfMonth()); // e.g., "14th"
+        String monthName = now.format(monthFormatter); // e.g., "Jun"
+        String timeStr = getTimeStr(now); // e.g., "7pm"
         
         String baseName;
         switch (frequency) {
             case WEEKLY:
-                baseName = dayName + "/" + dateStr + "/" + timeStr;
+                baseName = dayName + "_" + dayNumber + "_" + monthName + "_" + timeStr;
                 break;
             case MONTHLY:
-                java.time.Month month = java.time.LocalDate.now().getMonth();
-                baseName = month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH) + " " + year + " Monthly Tournament";
+                baseName = monthName + "_" + year + "_Monthly_" + timeStr;
                 break;
             case ONCE_OFF:
-                baseName = "Special " + dayName + "/" + dateStr + "/" + timeStr;
+                baseName = "Special_" + dayName + "_" + dayNumber + "_" + monthName + "_" + timeStr;
                 break;
             default:
-                baseName = dayName + "/" + dateStr + "/" + timeStr;
+                baseName = dayName + "_" + dayNumber + "_" + monthName + "_" + timeStr;
                 break;
         }
         
         // Add sequence number if it's not the first tournament of the week
         if (sequenceNumber > 1) {
-            baseName += " (#" + sequenceNumber + ")";
+            baseName += "_#" + sequenceNumber;
         }
         
         return baseName;
+    }
+    
+    private String getDayWithSuffix(int day) {
+        if (day >= 11 && day <= 13) {
+            return day + "th";
+        }
+        switch (day % 10) {
+            case 1: return day + "st";
+            case 2: return day + "nd";
+            case 3: return day + "rd";
+            default: return day + "th";
+        }
+    }
+    
+    private String getTimeStr(LocalDateTime dateTime) {
+        int hour = dateTime.getHour();
+        // Ignore minutes - only use the hour
+        if (hour == 0) return "12AM";
+        if (hour < 12) return hour + "AM";
+        if (hour == 12) return "12PM";
+        return (hour - 12) + "PM";
     }
     
     public void updateKnockoutMatchResult(Long clubId, Long tournamentId, Long matchId, java.util.Map<String, Object> request, Long userId) {
