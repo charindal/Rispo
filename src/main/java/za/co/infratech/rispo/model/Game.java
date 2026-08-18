@@ -30,11 +30,7 @@ public class Game {
 
     @ManyToOne
     @JoinColumn(name = "match_id")
-    private Match match; // Optional: game may or may not be linked to a match
-
-    @ManyToOne
-    @JoinColumn(name = "tournament_id")
-    private Tournament tournament; // Optional: game may or may not be part of a tournament
+    private Match match;
 
     @Enumerated(EnumType.STRING)
     private GameResult result;
@@ -45,7 +41,7 @@ public class Game {
 
     @ManyToOne
     @JoinColumn(name = "winner_id")
-    private Player winner; // Nullable if draw
+    private Player winner;
 
     @Column(name = "player1_score")
     private Integer player1Score;
@@ -54,7 +50,7 @@ public class Game {
     private Integer player2Score;
 
     @Column(name = "game_number")
-    private Integer gameNumber; // Optional: to track game order in match
+    private Integer gameNumber;
 
     @CreationTimestamp
     @Column(name = "date_played")

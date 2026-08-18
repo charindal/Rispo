@@ -10,17 +10,4 @@ public class RegisterRequest {
     private String nationalId;
     private String name;
     private String phone;
-    private String role; // PLAYER, CLUB_ADMIN, RATING_ADMIN, SYSTEM_ADMIN
-    private String adminToken; // Required for admin roles
-    private Long clubId; // Optional club affiliation
-    private Boolean createPlayerProfile = false; // For admins who want player profiles
-    
-    // Club creation fields (required for CLUB_ADMIN)
-    private String clubName;
-    private String clubDescription;
-    private String clubAddress;
-    private String clubCity;
-    private String clubSuburb;
-    private String clubContactEmail;
-    private String clubContactPhone;
 }

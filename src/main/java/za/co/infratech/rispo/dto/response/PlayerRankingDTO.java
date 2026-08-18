@@ -16,8 +16,6 @@ public class PlayerRankingDTO {
     private Integer wins;
     private Integer losses;
     private Integer draws;
-    private Long clubId;
-    private String clubName;
     private Integer rank;
     private Boolean isCurrentUser;
 }

@@ -14,8 +14,6 @@ public class MatchResponse {
     private PlayerSummary winner;
     private String status;
     private Boolean isRated;
-    private Long challengeId;
-    private Long tournamentId;
     private Integer round;
     private Integer player1RatingBefore;
     private Integer player2RatingBefore;

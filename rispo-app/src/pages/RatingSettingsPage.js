@@ -28,9 +28,9 @@ const RatingSettingsPage = () => {
       return;
     }
 
-    // Only administrators can access
-    if (currentUser.role !== 'SUPER_USER' && currentUser.role !== 'SYSTEM_ADMIN' && currentUser.role !== 'RATING_ADMIN' && currentUser.role !== 'CLUB_ADMIN') {
-      navigate('/admin-dashboard');
+    // Only system administrators can access
+    if (currentUser.role !== 'SYSTEM_ADMIN') {
+      navigate('/players');
       return;
     }
 
@@ -94,7 +94,7 @@ const RatingSettingsPage = () => {
           <h2>Rating System Configuration</h2>
         </div>
         <div className="navbar-actions">
-          <button onClick={() => navigate('/admin-dashboard')} className="back-btn">
+          <button onClick={() => navigate('/players')} className="back-btn">
             🏠 Home
           </button>
         </div>

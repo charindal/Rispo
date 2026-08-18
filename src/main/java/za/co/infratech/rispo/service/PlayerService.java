@@ -44,7 +44,7 @@ public class PlayerService {
     }
 
     @Transactional
-    @CacheEvict(value = {"players", "clubPlayers"}, allEntries = true)
+    @CacheEvict(value = "players", allEntries = true)
     public PlayerDTO verifyPlayer(Long playerId, Long adminUserId) {
         Player player = playerRepository.findById(playerId)
                 .orElseThrow(() -> new RuntimeException("Player not found"));
@@ -52,50 +52,18 @@ public class PlayerService {
         UserEntity admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new RuntimeException("Admin user not found"));
 
-        // Check if admin has permission (all admin roles can verify)
-        if (admin.getRole() != UserEntity.Role.SUPER_USER &&
-            admin.getRole() != UserEntity.Role.SYSTEM_ADMIN &&
-            admin.getRole() != UserEntity.Role.RATING_ADMIN &&
-            admin.getRole() != UserEntity.Role.CLUB_ADMIN) {
-            throw new RuntimeException("Only administrators can verify players");
-        }
-
-        // SuperUser and SystemAdmin can verify any player, skip club checks
-        if (admin.getRole() == UserEntity.Role.SUPER_USER || 
-            admin.getRole() == UserEntity.Role.SYSTEM_ADMIN) {
-            // No restrictions
-        }
-        // Club admins can only verify players from their club
-        else if (admin.getRole() == UserEntity.Role.CLUB_ADMIN) {
-            if (admin.getClub() == null) {
-                throw new RuntimeException("Admin is not associated with any club");
-            }
-            if (player.getClub() == null || !player.getClub().getClubId().equals(admin.getClub().getClubId())) {
-                throw new RuntimeException("Club admins can only verify players from their own club");
-            }
-        }
-
-        // Rating admins can verify players from their club (faster) or unaffiliated players
-        else if (admin.getRole() == UserEntity.Role.RATING_ADMIN) {
-            if (admin.getClub() != null && player.getClub() != null) {
-                // If both have clubs, they must match
-                if (!player.getClub().getClubId().equals(admin.getClub().getClubId())) {
-                    throw new RuntimeException("Rating admins can only verify players from their club or unaffiliated players");
-                }
-            }
+        if (admin.getRole() != UserEntity.Role.SYSTEM_ADMIN) {
+            throw new RuntimeException("Only System Administrators can verify players");
         }
 
         player.setIsVerified(true);
         player.setVerifiedBy(admin);
         player.setVerifiedAt(LocalDateTime.now());
-        
-        player = playerRepository.save(player);
-        
-        return convertToDTO(player);
+        return convertToDTO(playerRepository.save(player));
     }
 
     @Transactional
-    @CacheEvict(value = {"players", "clubPlayers"}, allEntries = true)
+    @CacheEvict(value = "players", allEntries = true)
     public PlayerDTO unverifyPlayer(Long playerId, Long adminUserId) {
         Player player = playerRepository.findById(playerId)
                 .orElseThrow(() -> new RuntimeException("Player not found"));
@@ -103,113 +71,53 @@ public class PlayerService {
         UserEntity admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new RuntimeException("Admin user not found"));
 
-        // Check if admin has permission (all admin roles can unverify)
-        if (admin.getRole() != UserEntity.Role.SUPER_USER &&
-            admin.getRole() != UserEntity.Role.SYSTEM_ADMIN &&
-            admin.getRole() != UserEntity.Role.RATING_ADMIN &&
-            admin.getRole() != UserEntity.Role.CLUB_ADMIN) {
-            throw new RuntimeException("Only administrators can unverify players");
-        }
-
-        // SuperUser, SystemAdmin, and RatingAdmin can unverify any player
-        if (admin.getRole() == UserEntity.Role.SUPER_USER || 
-            admin.getRole() == UserEntity.Role.SYSTEM_ADMIN ||
-            admin.getRole() == UserEntity.Role.RATING_ADMIN) {
-            // No restrictions
-        }
-        // Club admins can only unverify players from their club
-        else if (admin.getRole() == UserEntity.Role.CLUB_ADMIN) {
-            if (admin.getClub() == null) {
-                throw new RuntimeException("Admin is not associated with any club");
-            }
-            if (player.getClub() == null || !player.getClub().getClubId().equals(admin.getClub().getClubId())) {
-                throw new RuntimeException("Club admins can only unverify players from their own club");
-            }
+        if (admin.getRole() != UserEntity.Role.SYSTEM_ADMIN) {
+            throw new RuntimeException("Only System Administrators can unverify players");
         }
 
         player.setIsVerified(false);
         player.setVerifiedBy(null);
         player.setVerifiedAt(null);
-        
-        player = playerRepository.save(player);
-        
-        return convertToDTO(player);
+        return convertToDTO(playerRepository.save(player));
     }
 
-    @Cacheable(value = "clubPlayers", key = "#clubId + '_' + (#searchTerm ?: 'all')")
-    public List<PlayerDTO> searchPlayersByClub(Long clubId, String searchTerm) {
+    public List<PlayerDTO> searchPlayersGlobal(String name) {
         List<Player> players;
-        
-        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-            players = playerRepository.searchByClubIdAndName(clubId, searchTerm.trim());
-        } else {
-            players = playerRepository.findByClubIdAndIsVerifiedOrderByNameAsc(clubId);
-        }
-        
-        return players.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    public List<PlayerDTO> searchPlayersGlobal(String name, Long clubId) {
-        List<Player> players;
-        
-        if (name != null && !name.trim().isEmpty() && clubId != null) {
-            // Search by both name and club
-            players = playerRepository.searchByClubIdAndName(clubId, name.trim());
-        } else if (name != null && !name.trim().isEmpty()) {
-            // Search by name only
+        if (name != null && !name.trim().isEmpty()) {
             players = playerRepository.findByNameContainingIgnoreCaseOrderByRatingDesc(name.trim());
-        } else if (clubId != null) {
-            // Search by club only
-            players = playerRepository.findByClubIdAndIsVerifiedOrderByNameAsc(clubId);
         } else {
-            // Return all players sorted by rating
             players = playerRepository.findAllByOrderByRatingDesc();
         }
-        
-        return players.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        return players.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     public List<PlayerDTO> getTop10Players() {
         return playerRepository.findTop10ByIsVerifiedTrueOrderByRatingDesc()
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+                .stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     public List<PlayerRankingDTO> getTop10Rankings() {
         List<Player> topPlayers = playerRepository.findTop10ByIsVerifiedTrueOrderByRatingDesc();
         List<PlayerRankingDTO> rankings = new ArrayList<>();
-        
         for (int i = 0; i < topPlayers.size(); i++) {
-            Player player = topPlayers.get(i);
-            PlayerRankingDTO dto = convertToRankingDTO(player);
+            PlayerRankingDTO dto = convertToRankingDTO(topPlayers.get(i));
             dto.setRank(i + 1);
             dto.setIsCurrentUser(false);
             rankings.add(dto);
         }
-        
         return rankings;
     }
 
     public PlayerRankingDTO getPlayerRanking(Long playerId) {
         Player player = playerRepository.findById(playerId)
                 .orElseThrow(() -> new RuntimeException("Player not found"));
-        
         if (!player.getIsVerified()) {
             throw new RuntimeException("Player is not verified");
         }
-        
-        // Get the rank by counting how many verified players have a higher rating
         Long rank = playerRepository.countByIsVerifiedTrueAndRatingGreaterThan(player.getRating()) + 1;
-        
         PlayerRankingDTO dto = convertToRankingDTO(player);
         dto.setRank(rank.intValue());
         dto.setIsCurrentUser(false);
-        
         return dto;
     }
 
@@ -217,10 +125,8 @@ public class PlayerService {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        
         List<Player> players = playerRepository.findByIsVerifiedTrueAndNameContainingIgnoreCaseOrderByRatingDesc(searchTerm.trim());
         List<PlayerRankingDTO> rankings = new ArrayList<>();
-        
         for (Player player : players) {
             Long rank = playerRepository.countByIsVerifiedTrueAndRatingGreaterThan(player.getRating()) + 1;
             PlayerRankingDTO dto = convertToRankingDTO(player);
@@ -228,7 +134,6 @@ public class PlayerService {
             dto.setIsCurrentUser(false);
             rankings.add(dto);
         }
-        
         return rankings;
     }
 
@@ -236,14 +141,12 @@ public class PlayerService {
         PlayerRankingDTO dto = new PlayerRankingDTO();
         dto.setId(player.getId());
         dto.setUserId(player.getUser().getId());
-        dto.setName(player.getUser().getUsername()); // Use username for display
+        dto.setName(player.getUser().getUsername());
         dto.setRating(player.getRating());
         dto.setMatchesPlayed(player.getMatchesPlayed());
         dto.setWins(player.getWins());
         dto.setLosses(player.getLosses());
         dto.setDraws(player.getDraws());
-        dto.setClubId(player.getClub() != null ? player.getClub().getClubId() : null);
-        dto.setClubName(player.getClub() != null ? player.getClub().getName() : null);
         return dto;
     }
 
@@ -251,8 +154,8 @@ public class PlayerService {
         PlayerDTO dto = new PlayerDTO();
         dto.setId(player.getId());
         dto.setUserId(player.getUser().getId());
-        dto.setName(player.getUser().getUsername()); // Use username for display
-        dto.setRealName(player.getName()); // Keep real name
+        dto.setName(player.getUser().getUsername());
+        dto.setRealName(player.getName());
         dto.setEmail(player.getEmail());
         dto.setPhone(player.getPhone());
         dto.setRating(player.getRating());
@@ -264,8 +167,6 @@ public class PlayerService {
         dto.setIsVerified(player.getIsVerified());
         dto.setVerifiedBy(player.getVerifiedBy() != null ? player.getVerifiedBy().getUsername() : null);
         dto.setVerifiedAt(player.getVerifiedAt() != null ? player.getVerifiedAt().toString() : null);
-        dto.setClubId(player.getClub() != null ? player.getClub().getClubId() : null);
-        dto.setClubName(player.getClub() != null ? player.getClub().getName() : null);
         dto.setCreatedAt(player.getCreatedAt() != null ? player.getCreatedAt().toString() : null);
         return dto;
     }

@@ -20,29 +20,28 @@ public class DatabaseInitService implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        initializeSuperUser();
+        initializeSystemAdmin();
     }
 
-    private void initializeSuperUser() {
-        // Check if SuperUser already exists
-        if (userRepository.findByRole(UserEntity.Role.SUPER_USER).isEmpty()) {
-            log.info("No SuperUser found. Creating default SuperUser...");
-            
-            UserEntity superUser = new UserEntity();
-            superUser.setUsername("admin");
-            superUser.setPassword(passwordEncoder.encode("admin"));
-            superUser.setEmail("admin@rispo.system");
-            superUser.setNationalId("SUPERUSER-001");
-            superUser.setRole(UserEntity.Role.SUPER_USER);
-            superUser.setIsActive(true);
-            superUser.setMustChangePassword(true); // Force password change on first login
-            
-            userRepository.save(superUser);
-            
-            log.info("SuperUser created successfully with username: admin, password: admin");
-            log.warn("IMPORTANT: Please change the default SuperUser password immediately!");
+    private void initializeSystemAdmin() {
+        if (userRepository.findByRole(UserEntity.Role.SYSTEM_ADMIN).isEmpty()) {
+            log.info("No System Admin found. Creating default System Admin...");
+
+            UserEntity admin = new UserEntity();
+            admin.setUsername("admin");
+            admin.setPassword(passwordEncoder.encode("admin"));
+            admin.setEmail("admin@rispo.system");
+            admin.setNationalId("SYSADMIN-001");
+            admin.setRole(UserEntity.Role.SYSTEM_ADMIN);
+            admin.setIsActive(true);
+            admin.setMustChangePassword(true);
+
+            userRepository.save(admin);
+
+            log.info("System Admin created with username: admin, password: admin");
+            log.warn("IMPORTANT: Please change the default System Admin password immediately!");
         } else {
-            log.info("SuperUser already exists. Skipping initialization.");
+            log.info("System Admin already exists. Skipping initialization.");
         }
     }
 }

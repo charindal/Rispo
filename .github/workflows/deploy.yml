@@ -94,39 +94,51 @@ jobs:
           envs: IMAGE_TAG
           script: |
             set -e
-            
+
             echo "🚀 Starting TEST deployment from development branch..."
-            
-            cd /opt/rispo || { echo "❌ Directory /opt/rispo not found"; exit 1; }
-            
+
+            REPO="${{ github.repository }}"
+            APP_DIR="$HOME/rispo-test"
+
+            # ── Bootstrap on first run (own folder, isolated from prod) ──────
+            if [ ! -d "$APP_DIR/.git" ]; then
+              echo "📦 First run — bootstrapping $APP_DIR..."
+              rm -rf "$APP_DIR"
+              git clone https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${REPO}.git "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+
             echo "📥 Pulling latest code from development..."
+            git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${REPO}.git
             git fetch origin
-            git checkout development
+            git checkout development 2>/dev/null || git checkout -b development origin/development
             git pull origin development
-            
+
             echo "🔐 Logging in to GitHub Container Registry..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
+
             echo "🐳 Pulling Docker image..."
             docker pull ghcr.io/charindal/rispo:development || \
             docker pull ghcr.io/charindal/rispo:latest
-            
-            echo "� Performing zero-downtime deployment..."
+
+            echo "🔄 Performing zero-downtime deployment..."
             export DOCKER_IMAGE=ghcr.io/charindal/rispo
             export IMAGE_TAG=development
-            
+
             # Start all services (creates new containers, keeps old running)
+            # Scoped to the rispo-test compose project only — never touches rispo-prod
             docker compose -f docker-compose.test.yml up -d --no-recreate
-            
+
             # Force recreate only the app with zero-downtime
             echo "📦 Updating application container..."
             docker compose -f docker-compose.test.yml up -d --wait --wait-timeout 60 app
-            
+
             # Wait for health checks
             echo "⏳ Waiting for health checks (60s max)..."
             timeout=60
             while [ $timeout -gt 0 ]; do
-              health=$(docker inspect --format='{{.State.Health.Status}}' rispo-app 2>/dev/null || echo "starting")
+              health=$(docker inspect --format='{{.State.Health.Status}}' rispo-test-app 2>/dev/null || echo "starting")
               if [ "$health" = "healthy" ]; then
                 echo "✅ Application is healthy!"
                 break
@@ -135,15 +147,15 @@ jobs:
               sleep 5
               timeout=$((timeout - 5))
             done
-            
+
             if [ $timeout -le 0 ]; then
               echo "⚠️ Warning: Health check timeout, but continuing..."
             fi
-            
+
             # Remove only dangling/orphaned containers (not running ones)
             echo "🧹 Cleaning up orphaned containers..."
             docker container prune -f || true
-            
+
             echo "✅ TEST deployment completed!"
             docker compose -f docker-compose.test.yml ps
 
@@ -172,39 +184,53 @@ jobs:
           envs: IMAGE_TAG
           script: |
             set -e
-            
-            echo "🚀 Starting deployment..."
-            
-            # Navigate to application directory
-            cd /opt/rispo || { echo "❌ Directory /opt/rispo not found"; exit 1; }
-            
+
+            echo "🚀 Starting PRODUCTION deployment..."
+
+            REPO="${{ github.repository }}"
+            APP_DIR="$HOME/rispo-prod"
+
+            # ── Bootstrap on first run (own folder, isolated from test) ──────
+            if [ ! -d "$APP_DIR/.git" ]; then
+              echo "📦 First run — bootstrapping $APP_DIR..."
+              rm -rf "$APP_DIR"
+              git clone https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${REPO}.git "$APP_DIR"
+              echo "⚠️ Remember to place .env.prod in $APP_DIR before the first compose up!"
+            fi
+
+            cd "$APP_DIR"
+
             # Pull latest changes
             echo "📥 Pulling latest code..."
+            git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${REPO}.git
+            git fetch origin
+            git checkout main 2>/dev/null || git checkout -b main origin/main
             git pull origin main
-            
+
             # Log in to GitHub Container Registry
             echo "🔐 Logging in to GitHub Container Registry..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
+
             # Pull latest Docker image
             echo "🐳 Pulling Docker image..."
             docker pull ghcr.io/charindal/rispo:latest
-            
+
             # Update environment file with new image tag
             sed -i "s/IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env.prod
-            
+
             # Stop and remove old containers
+            # Scoped to the rispo-prod compose project only — never touches rispo-test
             echo "🛑 Stopping old containers..."
             docker compose -f docker-compose.prod.yml down app-1 app-2 || true
-            
+
             # Start new containers with zero-downtime deployment
             echo "🔄 Starting new containers..."
             docker compose -f docker-compose.prod.yml up -d --no-deps --force-recreate app-1 app-2
-            
+
             # Wait for health checks
             echo "⏳ Waiting for health checks..."
             sleep 15
-            
+
             # Verify deployment
             echo "✅ Verifying deployment..."
             if docker compose -f docker-compose.prod.yml ps | grep -q "unhealthy"; then
@@ -212,11 +238,13 @@ jobs:
               docker compose -f docker-compose.prod.yml logs app-1 app-2
               exit 1
             fi
-            
+
             # Cleanup old images
             echo "🧹 Cleaning up old images..."
-            docker iPRODUCTION deployment completed successfully!"
-            
+            docker image prune -f || true
+
+            echo "✅ PRODUCTION deployment completed successfully!"
+
             # Display running containers
             docker compose -f docker-compose.prod.yml ps
 
@@ -252,7 +280,6 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
-            cd /opt/rispo
+            cd "$HOME/rispo-prod"
             ./scripts/backup.sh
-            echo "✅ Backup completed!"
             echo "✅ Backup completed!"

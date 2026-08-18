@@ -1,21 +1,23 @@
 version: "3.9"
 
+name: rispo-prod
+
 services:
   # ========================
   # Traefik Reverse Proxy
   # ========================
   traefik:
     image: traefik:v2.11
-    container_name: rispo-traefik
+    container_name: rispo-prod-traefik
     command:
       # API and Dashboard
       - "--api.dashboard=true"
       - "--api.insecure=false"
-      
+
       # Providers
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=rispo-net"
+      - "--providers.docker.network=rispo-prod-net"
       
       # Entry Points
       - "--entrypoints.web.address=:80"
@@ -48,7 +50,7 @@ services:
       - ./traefik/letsencrypt:/letsencrypt
       - ./traefik/logs:/logs
     networks:
-      - rispo-net
+      - rispo-prod-net
     restart: unless-stopped
     labels:
       # Dashboard
@@ -66,7 +68,7 @@ services:
   # ========================
   db:
     image: postgres:17
-    container_name: rispo-db
+    container_name: rispo-prod-db
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
@@ -76,7 +78,7 @@ services:
       # Backup location
       - ./backups:/backups
     networks:
-      - rispo-net
+      - rispo-prod-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
@@ -89,12 +91,12 @@ services:
   # ========================
   redis:
     image: redis:7-alpine
-    container_name: rispo-redis
+    container_name: rispo-prod-redis
     command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis-data:/data
     networks:
-      - rispo-net
+      - rispo-prod-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
@@ -107,14 +109,14 @@ services:
   # ========================
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    container_name: rispo-rabbitmq
+    container_name: rispo-prod-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
-      - rispo-net
+      - rispo-prod-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
@@ -135,7 +137,7 @@ services:
   # Instance 1
   app-1:
     image: ${DOCKER_IMAGE}:${IMAGE_TAG:-latest}
-    container_name: rispo-app-1
+    container_name: rispo-prod-app-1
     depends_on:
       db:
         condition: service_healthy
@@ -164,7 +166,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       INSTANCE_ID: "app-1"
     networks:
-      - rispo-net
+      - rispo-prod-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
@@ -196,7 +198,7 @@ services:
   # Instance 2 (for load balancing)
   app-2:
     image: ${DOCKER_IMAGE}:${IMAGE_TAG:-latest}
-    container_name: rispo-app-2
+    container_name: rispo-prod-app-2
     depends_on:
       db:
         condition: service_healthy
@@ -224,7 +226,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       INSTANCE_ID: "app-2"
     networks:
-      - rispo-net
+      - rispo-prod-net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
@@ -242,17 +244,17 @@ services:
   # ========================
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    container_name: rispo-otel-collector
+    container_name: rispo-prod-otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./telemetry/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     networks:
-      - rispo-net
+      - rispo-prod-net
     restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:latest
-    container_name: rispo-prometheus
+    container_name: rispo-prod-prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yaml'
       - '--storage.tsdb.path=/prometheus'
@@ -263,7 +265,7 @@ services:
       - ./telemetry/prometheus.yaml:/etc/prometheus/prometheus.yaml
       - prometheus-data:/prometheus
     networks:
-      - rispo-net
+      - rispo-prod-net
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -277,7 +279,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    container_name: rispo-grafana
+    container_name: rispo-prod-grafana
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
@@ -288,7 +290,7 @@ services:
       - grafana-data:/var/lib/grafana
       - ./telemetry/grafana/provisioning:/etc/grafana/provisioning
     networks:
-      - rispo-net
+      - rispo-prod-net
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -305,7 +307,7 @@ services:
   # ========================
   backup:
     image: postgres:17
-    container_name: rispo-backup
+    container_name: rispo-prod-backup
     depends_on:
       - db
     environment:
@@ -317,7 +319,7 @@ services:
       - ./backups:/backups
       - ./scripts:/scripts:ro
     networks:
-      - rispo-net
+      - rispo-prod-net
     entrypoint: /scripts/backup.sh
     restart: "no"
     profiles:
@@ -334,6 +336,6 @@ volumes:
   grafana-data:
 
 networks:
-  rispo-net:
-    name: rispo-net
+  rispo-prod-net:
+    name: rispo-prod-net
     driver: bridge

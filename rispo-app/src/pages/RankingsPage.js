@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import playerService from '../services/playerService';
 import authService from '../services/authService';
-import AdPanel from '../components/AdPanel';
+import HamburgerMenu from '../components/HamburgerMenu';
 import Pagination from '../components/Pagination';
 import '../styles/RankingsPage.css';
 
@@ -55,10 +55,10 @@ const RankingsPage = () => {
 
     useEffect(() => {
         if (!currentUser?.userId) {
-            setError('Please log in to view rankings');
-            setLoading(false);
+            navigate('/login');
             return;
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         loadRankings();
     }, [currentUser?.userId, loadRankings]);
 
@@ -90,7 +90,7 @@ const RankingsPage = () => {
         setSearchPage(1);
     };
 
-    const handleLogout = () => {
+    const handleSignOut = () => {
         authService.logout();
         navigate('/login');
     };
@@ -120,7 +120,6 @@ const RankingsPage = () => {
                     {isCurrentUser && <span className="you-badge">You</span>}
                 </td>
                 <td className="rating-cell">{ranking.rating}</td>
-                <td className="club-cell">{ranking.clubName || 'N/A'}</td>
             </tr>
         );
     };
@@ -141,16 +140,15 @@ const RankingsPage = () => {
 
     return (
         <div className="rankings-page">
-            <div className="nav-header">
-                <div className="nav-left">
+            <nav className="match-navbar">
+                <div className="navbar-brand">
                     <h2>Player Rankings</h2>
                 </div>
-                <div className="nav-right">
-                    <button onClick={() => navigate('/player-dashboard')} className="nav-btn">🏠 Home</button>
-                    <button onClick={() => navigate('/profile')} className="nav-btn">Profile</button>
-                    <button onClick={handleLogout} className="nav-btn logout-btn">Sign Out</button>
+                <div className="navbar-user">
+                    <span className="username">{currentUser?.username}</span>
+                    <HamburgerMenu user={currentUser} onSignOut={handleSignOut} />
                 </div>
-            </div>
+            </nav>
 
             {error && <div className="error-message">{error}</div>}
 
@@ -186,7 +184,6 @@ const RankingsPage = () => {
                                     <th>Rank</th>
                                     <th>Player Name</th>
                                     <th>Rating</th>
-                                    <th>Club</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -213,7 +210,7 @@ const RankingsPage = () => {
                                 <th>Rank</th>
                                 <th>Player Name</th>
                                 <th>Rating</th>
-                                <th>Club</th>
+
                             </tr>
                         </thead>
                         <tbody>
@@ -240,7 +237,6 @@ const RankingsPage = () => {
                                     <th>Rank</th>
                                     <th>Player Name</th>
                                     <th>Rating</th>
-                                    <th>Club</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -268,11 +264,6 @@ const RankingsPage = () => {
                         <span className="legend-badge current-user-badge">You</span> Your Ranking
                     </span>
                 </div>
-            </div>
-
-            {/* Advertisement Sidebar */}
-            <div className="ad-sidebar-section">
-                <AdPanel placement="sidebar" size="medium" />
             </div>
         </div>
     );

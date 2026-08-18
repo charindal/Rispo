@@ -26,11 +26,9 @@ public class PlayerController {
     @GetMapping("/{playerId}")
     public ResponseEntity<?> getPlayerById(@PathVariable Long playerId) {
         try {
-            PlayerDTO player = playerService.getPlayerById(playerId);
-            return ResponseEntity.ok(player);
+            return ResponseEntity.ok(playerService.getPlayerById(playerId));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ErrorResponse(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         }
     }
 
@@ -44,11 +42,9 @@ public class PlayerController {
             @PathVariable Long playerId,
             @RequestParam Long adminUserId) {
         try {
-            PlayerDTO player = playerService.verifyPlayer(playerId, adminUserId);
-            return ResponseEntity.ok(player);
+            return ResponseEntity.ok(playerService.verifyPlayer(playerId, adminUserId));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorResponse(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage()));
         }
     }
 
@@ -57,26 +53,16 @@ public class PlayerController {
             @PathVariable Long playerId,
             @RequestParam Long adminUserId) {
         try {
-            PlayerDTO player = playerService.unverifyPlayer(playerId, adminUserId);
-            return ResponseEntity.ok(player);
+            return ResponseEntity.ok(playerService.unverifyPlayer(playerId, adminUserId));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorResponse(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage()));
         }
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<PlayerDTO>> searchPlayers(
-            @RequestParam Long clubId,
-            @RequestParam(required = false) String searchTerm) {
-        return ResponseEntity.ok(playerService.searchPlayersByClub(clubId, searchTerm));
-    }
-
-    @GetMapping("/search/global")
-    public ResponseEntity<List<PlayerDTO>> searchPlayersGlobal(
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) Long clubId) {
-        return ResponseEntity.ok(playerService.searchPlayersGlobal(name, clubId));
+            @RequestParam(required = false) String name) {
+        return ResponseEntity.ok(playerService.searchPlayersGlobal(name));
     }
 
     @GetMapping("/rankings/top10")
@@ -92,11 +78,9 @@ public class PlayerController {
     @GetMapping("/{playerId}/ranking")
     public ResponseEntity<?> getPlayerRanking(@PathVariable Long playerId) {
         try {
-            PlayerRankingDTO ranking = playerService.getPlayerRanking(playerId);
-            return ResponseEntity.ok(ranking);
+            return ResponseEntity.ok(playerService.getPlayerRanking(playerId));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorResponse(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage()));
         }
     }
 
@@ -106,6 +90,5 @@ public class PlayerController {
         return ResponseEntity.ok(playerService.searchPlayerRankings(searchTerm));
     }
 
-    // Inner class for error responses
     private record ErrorResponse(String message) {}
 }

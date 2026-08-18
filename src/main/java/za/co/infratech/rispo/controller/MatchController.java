@@ -44,6 +44,11 @@ public class MatchController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<List<MatchResponse>> getAllMatches() {
+        return ResponseEntity.ok(matchService.getAllMatches());
+    }
+
     @GetMapping("/pending")
     public ResponseEntity<List<MatchResponse>> getPendingMatches() {
         return ResponseEntity.ok(matchService.getPendingMatches());

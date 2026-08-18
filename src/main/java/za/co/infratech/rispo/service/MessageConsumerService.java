@@ -16,7 +16,7 @@ public class MessageConsumerService {
     private final RatingEngine ratingEngine;
 
     @RabbitListener(queues = RabbitMQConfig.RATING_CALCULATION_QUEUE)
-    @CacheEvict(value = {"players", "clubPlayers"}, allEntries = true)
+    @CacheEvict(value = {"players", "matches"}, allEntries = true)
     public void handleRatingCalculation(RatingCalculationMessage message) {
         log.info("Received rating calculation message for match {}: type={}",
                 message.getMatchId(), message.getCalculationType());

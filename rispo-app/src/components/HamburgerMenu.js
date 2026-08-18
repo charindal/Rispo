@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/HamburgerMenu.css';
 
-const HamburgerMenu = ({ user, onSignOut, isAdmin = false }) => {
+const HamburgerMenu = ({ user, onSignOut }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -13,20 +13,13 @@ const HamburgerMenu = ({ user, onSignOut, isAdmin = false }) => {
     } else {
       document.body.style.overflow = 'unset';
     }
-    
-    // Cleanup on unmount
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
 
-  const toggleMenu = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const closeMenu = () => {
-    setIsOpen(false);
-  };
+  const toggleMenu = () => setIsOpen(!isOpen);
+  const closeMenu = () => setIsOpen(false);
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -41,8 +34,8 @@ const HamburgerMenu = ({ user, onSignOut, isAdmin = false }) => {
   return (
     <>
       {/* Hamburger Icon */}
-      <button 
-        className={`hamburger-btn ${isOpen ? 'open' : ''}`} 
+      <button
+        className={`hamburger-btn ${isOpen ? 'open' : ''}`}
         onClick={toggleMenu}
         aria-label="Menu"
       >
@@ -64,139 +57,33 @@ const HamburgerMenu = ({ user, onSignOut, isAdmin = false }) => {
             <div className="user-details">
               <h3>{user?.username}</h3>
               <span className="user-role">
-                {user?.role === 'SUPER_USER' ? 'Super User' :
-                 user?.role === 'SYSTEM_ADMIN' ? 'Admin' :
-                 user?.role === 'RATING_ADMIN' ? 'Rating Admin' :
-                 user?.role === 'CLUB_ADMIN' ? 'Club Admin' : 'Player'}
+                {user?.role === 'SYSTEM_ADMIN' ? 'System Admin' : 'Player'}
               </span>
             </div>
           </div>
         </div>
 
         <nav className="menu-nav">
-          <button 
-            onClick={() => handleNavigation('/profile')} 
-            className="menu-item"
-          >
-            <span className="menu-icon">👤</span>
-            <span>My Profile</span>
+          <button onClick={() => handleNavigation('/players')} className="menu-item">
+            <span className="menu-icon">🏅</span>
+            <span>Players</span>
           </button>
 
-          {isAdmin ? (
-            <>
-              {/* Admin Menu Items */}
-              <button 
-                onClick={() => handleNavigation('/review-matches')} 
-                className="menu-item"
-              >
-                <span className="menu-icon">⚖️</span>
-                <span>Review Matches</span>
-              </button>
+          <button onClick={() => handleNavigation('/matches')} className="menu-item">
+            <span className="menu-icon">🎮</span>
+            <span>Matches</span>
+          </button>
 
-              <button 
-                onClick={() => handleNavigation('/admin')} 
-                className="menu-item"
-              >
-                <span className="menu-icon">✓</span>
-                <span>Player Verification</span>
-              </button>
-
-              {(user?.role === 'SUPER_USER' || user?.role === 'SYSTEM_ADMIN' || 
-                user?.role === 'CLUB_ADMIN' || user?.role === 'RATING_ADMIN') && (
-                <>
-                  <button 
-                    onClick={() => handleNavigation('/club-management')} 
-                    className="menu-item"
-                  >
-                    <span className="menu-icon">🏢</span>
-                    <span>Club Management</span>
-                  </button>
-                </>
-              )}
-
-              {(user?.role === 'SUPER_USER' || user?.role === 'SYSTEM_ADMIN' || 
-                user?.role === 'RATING_ADMIN') && (
-                <button 
-                  onClick={() => handleNavigation('/rating-settings')} 
-                  className="menu-item"
-                >
-                  <span className="menu-icon">⚙️</span>
-                  <span>Rating Settings</span>
-                </button>
-              )}
-
-              <button 
-                onClick={() => handleNavigation('/tournaments/manage')} 
-                className="menu-item"
-              >
-                <span className="menu-icon">🏆</span>
-                <span>Manage Tournaments</span>
-              </button>
-
-              {user?.playerId && (
-                <button 
-                  onClick={() => handleNavigation('/player-dashboard')} 
-                  className="menu-item admin-item"
-                >
-                  <span className="menu-icon">🎱</span>
-                  <span>Player Mode</span>
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Player Menu Items */}
-              <button 
-                onClick={() => handleNavigation('/rankings')} 
-                className="menu-item"
-              >
-                <span className="menu-icon">📊</span>
-                <span>Rankings</span>
-              </button>
-
-              <button 
-                onClick={() => handleNavigation('/tournaments')} 
-                className="menu-item"
-              >
-                <span className="menu-icon">🏆</span>
-                <span>Tournaments</span>
-              </button>
-
-              <button 
-                onClick={() => handleNavigation('/challenges')} 
-                className="menu-item"
-              >
-                <span className="menu-icon">⚔️</span>
-                <span>Challenges</span>
-              </button>
-
-              <button 
-                onClick={() => handleNavigation('/submit-match')} 
-                className="menu-item"
-              >
-                <span className="menu-icon">📝</span>
-                <span>Submit Match</span>
-              </button>
-
-              {(user?.role === 'SUPER_USER' || user?.role === 'SYSTEM_ADMIN' || 
-                user?.role === 'RATING_ADMIN' || user?.role === 'CLUB_ADMIN') && (
-                <button 
-                  onClick={() => handleNavigation('/admin-dashboard')} 
-                  className="menu-item admin-item"
-                >
-                  <span className="menu-icon">⚙️</span>
-                  <span>Admin Mode</span>
-                </button>
-              )}
-            </>
+          {user?.role === 'SYSTEM_ADMIN' && (
+            <button onClick={() => handleNavigation('/rating-settings')} className="menu-item">
+              <span className="menu-icon">⚙️</span>
+              <span>Rating Settings</span>
+            </button>
           )}
 
           <div className="menu-divider"></div>
 
-          <button 
-            onClick={handleSignOut} 
-            className="menu-item signout-item"
-          >
+          <button onClick={handleSignOut} className="menu-item signout-item">
             <span className="menu-icon">🚪</span>
             <span>Sign Out</span>
           </button>

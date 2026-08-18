@@ -19,11 +19,8 @@ public class Match {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "tournament_id")
-    private Tournament tournament;
-
     @Column(nullable = false)
+    @Builder.Default
     private Integer round = 1;
 
     @ManyToOne
@@ -37,14 +34,6 @@ public class Match {
     @ManyToOne
     @JoinColumn(name = "winner_id")
     private Player winner;
-
-    @ManyToOne
-    @JoinColumn(name = "challenge_id")
-    private Challenge challenge;
-
-    @Column(name = "admin_created", nullable = false)
-    @Builder.Default
-    private Boolean adminCreated = false;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -71,10 +60,6 @@ public class Match {
     @Column(name = "is_rated", nullable = false)
     @Builder.Default
     private Boolean isRated = false;
-
-    @Column(name = "is_bye", nullable = false)
-    @Builder.Default
-    private Boolean isBye = false;
 
     @Column(name = "player1_rating_before")
     private Integer player1RatingBefore;

@@ -25,116 +25,110 @@ public class MatchService {
     private final GameRepository gameRepository;
     private final UserRepository userRepository;
     private final RatingEngine ratingEngine;
-    private final ChallengeRepository challengeRepository;
     private final MessageProducerService messageProducer;
 
+    /**
+     * Submit a match result. Any authenticated user can submit a match;
+     * a SYSTEM_ADMIN submission is auto-approved and triggers rating calculation.
+     * A PLAYER submission enters PENDING_REVIEW status for admin approval.
+     */
     @Transactional
     public MatchResponse submitMatch(SubmitMatchRequest request, Long submitterUserId) throws Exception {
-        // Get submitter and their player profile
         UserEntity submitter = userRepository.findById(submitterUserId)
                 .orElseThrow(() -> new Exception("User not found"));
-        
-        Player submitterPlayer = playerRepository.findByUserId(submitterUserId)
-                .orElseThrow(() -> new Exception("Submitter must have a player profile"));
 
-        // Get opponent
-        Player opponent = playerRepository.findById(request.getOpponentPlayerId())
-                .orElseThrow(() -> new Exception("Opponent player not found"));
+        Player player1 = playerRepository.findById(request.getPlayer1Id())
+                .orElseThrow(() -> new Exception("Player 1 not found"));
 
-        if (submitterPlayer.getId().equals(opponent.getId())) {
-            throw new Exception("Cannot submit a match against yourself");
+        Player player2 = playerRepository.findById(request.getPlayer2Id())
+                .orElseThrow(() -> new Exception("Player 2 not found"));
+
+        if (player1.getId().equals(player2.getId())) {
+            throw new Exception("Cannot submit a match between the same player");
         }
 
-        // Check if this is from an accepted challenge
-        Challenge challenge = null;
-        Match existingMatch = null;
-        
-        if (request.getChallengeId() != null) {
-            challenge = challengeRepository.findById(request.getChallengeId())
-                    .orElseThrow(() -> new Exception("Challenge not found"));
-            
-            if (challenge.getStatus() != Challenge.ChallengeStatus.ACCEPTED) {
-                throw new Exception("Challenge must be accepted before submitting match result");
-            }
-            
-            // Check if match already exists for this challenge
-            existingMatch = matchRepository.findByChallenge(challenge).orElse(null);
-            
-            if (existingMatch != null && existingMatch.getSubmittedBy() != null) {
-                throw new Exception("Match result has already been submitted for this challenge");
-            }
-            
-            // Verify this is NOT a tournament match
-            if (existingMatch != null && existingMatch.getTournament() != null) {
-                throw new Exception("Tournament matches cannot be submitted by players. Only tournament administrators can update tournament match results.");
-            }
-        } else {
-            throw new Exception("Match submission is only allowed for challenge matches. Please use the challenge feature to create matches.");
-        }
-
-        // Create or update match
-        Match match = existingMatch != null ? existingMatch : new Match();
-        match.setPlayer1(submitterPlayer);
-        match.setPlayer2(opponent);
+        Match match = new Match();
+        match.setPlayer1(player1);
+        match.setPlayer2(player2);
         match.setSubmittedBy(submitter);
         match.setSubmittedAt(LocalDateTime.now());
-        match.setStatus(Match.MatchStatus.PENDING_REVIEW);
+        match.setRound(request.getRound() != null ? request.getRound() : 1);
         match.setIsRated(false);
-        match.setTournament(null); // Individual match
-        match.setRound(1);
-        match.setChallenge(challenge);
-        
-        // Determine if admin created (SYSTEM_ADMIN cannot process match results)
-        boolean isAdmin = submitter.getRole() == UserEntity.Role.RATING_ADMIN ||
-                         submitter.getRole() == UserEntity.Role.SUPER_USER ||
-                         submitter.getRole() == UserEntity.Role.CLUB_ADMIN;
-        
-        match.setAdminCreated(isAdmin);
+
+        boolean isAdmin = submitter.getRole() == UserEntity.Role.SYSTEM_ADMIN;
+
+        if (isAdmin) {
+            // Admin uploads are auto-approved
+            match.setStatus(Match.MatchStatus.APPROVED);
+            match.setReviewedBy(submitter);
+            match.setReviewedAt(LocalDateTime.now());
+        } else {
+            match.setStatus(Match.MatchStatus.PENDING_REVIEW);
+        }
+
+        // Set winner if provided
+        if (request.getWinnerId() != null) {
+            Player winner = playerRepository.findById(request.getWinnerId())
+                    .orElseThrow(() -> new Exception("Winner player not found"));
+            if (!winner.getId().equals(player1.getId()) && !winner.getId().equals(player2.getId())) {
+                throw new Exception("Winner must be one of the two players");
+            }
+            match.setWinner(winner);
+        }
 
         match = matchRepository.save(match);
 
-        // Create games
+        // Save individual game records if provided
         List<Game> games = new ArrayList<>();
-        int gameNumber = 1;
-        for (SubmitMatchRequest.GameResultRequest gameReq : request.getGames()) {
-            Game game = new Game();
-            game.setMatch(match);
-            game.setPlayer1(submitterPlayer);
-            game.setPlayer2(opponent);
-            game.setGameNumber(gameNumber++);
-            game.setPlayer1Score(gameReq.getPlayer1Score());
-            game.setPlayer2Score(gameReq.getPlayer2Score());
-            
-            // Set result type
-            try {
-                game.setResultType(Game.GameResultType.valueOf(gameReq.getResultType()));
-            } catch (Exception e) {
-                game.setResultType(Game.GameResultType.COMPLETED);
-            }
-
-            // Set winner
-            if (gameReq.getWinnerId() != null) {
-                Player winner = playerRepository.findById(gameReq.getWinnerId())
-                        .orElseThrow(() -> new Exception("Winner player not found"));
-                game.setWinner(winner);
-                
-                // Set game result enum
-                if (winner.getId().equals(submitterPlayer.getId())) {
-                    game.setResult(za.co.infratech.rispo.dto.enums.GameResult.PLAYER1_WIN);
-                } else {
-                    game.setResult(za.co.infratech.rispo.dto.enums.GameResult.PLAYER2_WIN);
+        if (request.getGames() != null) {
+            int gameNumber = 1;
+            for (SubmitMatchRequest.GameResultRequest gameReq : request.getGames()) {
+                Game game = new Game();
+                game.setMatch(match);
+                game.setPlayer1(player1);
+                game.setPlayer2(player2);
+                game.setGameNumber(gameNumber++);
+                game.setPlayer1Score(gameReq.getPlayer1Score());
+                game.setPlayer2Score(gameReq.getPlayer2Score());
+                try {
+                    game.setResultType(Game.GameResultType.valueOf(gameReq.getResultType()));
+                } catch (Exception e) {
+                    game.setResultType(Game.GameResultType.COMPLETED);
                 }
-            } else {
-                game.setWinner(null);
-                game.setResult(za.co.infratech.rispo.dto.enums.GameResult.DRAW);
+                if (gameReq.getWinnerId() != null) {
+                    Player gameWinner = playerRepository.findById(gameReq.getWinnerId())
+                            .orElseThrow(() -> new Exception("Game winner player not found"));
+                    game.setWinner(gameWinner);
+                    game.setResult(gameWinner.getId().equals(player1.getId())
+                            ? za.co.infratech.rispo.dto.enums.GameResult.PLAYER1_WIN
+                            : za.co.infratech.rispo.dto.enums.GameResult.PLAYER2_WIN);
+                } else {
+                    game.setResult(za.co.infratech.rispo.dto.enums.GameResult.DRAW);
+                }
+                games.add(gameRepository.save(game));
             }
+        }
 
-            games.add(gameRepository.save(game));
+        // Trigger async rating calculation for auto-approved admin submissions
+        if (isAdmin && match.getStatus() == Match.MatchStatus.APPROVED) {
+            Long winnerId = match.getWinner() != null ? match.getWinner().getId() : null;
+            messageProducer.sendRatingCalculationMessage(
+                    za.co.infratech.rispo.dto.request.RatingCalculationMessage.builder()
+                            .matchId(match.getId())
+                            .player1Id(player1.getId())
+                            .player2Id(player2.getId())
+                            .winnerId(winnerId)
+                            .calculationType("MATCH_APPROVE")
+                            .build()
+            );
         }
 
         return convertToResponse(match, games);
     }
 
+    /**
+     * Review a pending match result. Only SYSTEM_ADMIN can approve/reject.
+     */
     @Transactional
     public MatchResponse reviewMatch(Long matchId, ReviewMatchRequest request, Long reviewerUserId) throws Exception {
         Match match = matchRepository.findById(matchId)
@@ -147,53 +141,28 @@ public class MatchService {
         UserEntity reviewer = userRepository.findById(reviewerUserId)
                 .orElseThrow(() -> new Exception("Reviewer not found"));
 
-        // Check if reviewer is an admin
-        if (reviewer.getRole() != UserEntity.Role.RATING_ADMIN && 
-            reviewer.getRole() != UserEntity.Role.SUPER_USER &&
-            reviewer.getRole() != UserEntity.Role.SYSTEM_ADMIN &&
-            reviewer.getRole() != UserEntity.Role.CLUB_ADMIN) {
-            throw new Exception("Only SuperUser, System Admins, Rating Admins, and Club Admins can review matches");
+        if (reviewer.getRole() != UserEntity.Role.SYSTEM_ADMIN) {
+            throw new Exception("Only System Administrators can review matches");
         }
 
-        // For club admins, verify they can only review matches from their club
-        if (reviewer.getRole() == UserEntity.Role.CLUB_ADMIN) {
-            if (reviewer.getClub() == null) {
-                throw new Exception("Club admin must be affiliated with a club");
-            }
-            
-            boolean player1InClub = match.getPlayer1().getClub() != null && 
-                                   match.getPlayer1().getClub().getClubId().equals(reviewer.getClub().getClubId());
-            boolean player2InClub = match.getPlayer2().getClub() != null && 
-                                   match.getPlayer2().getClub().getClubId().equals(reviewer.getClub().getClubId());
-            
-            if (!player1InClub && !player2InClub) {
-                throw new Exception("Club admins can only review matches involving players from their club");
-            }
-        }
-
-        // Update match status
         Match.MatchStatus newStatus = Match.MatchStatus.valueOf(request.getStatus());
         match.setStatus(newStatus);
         match.setReviewedBy(reviewer);
         match.setReviewedAt(LocalDateTime.now());
         match.setReviewNotes(request.getReviewNotes());
-
         match = matchRepository.save(match);
 
-        // If approved, publish rating calculation message for async processing
         if (newStatus == Match.MatchStatus.APPROVED) {
-            // Publish to queue instead of calculating synchronously
             Long winnerId = match.getWinner() != null ? match.getWinner().getId() : null;
             messageProducer.sendRatingCalculationMessage(
-                za.co.infratech.rispo.dto.request.RatingCalculationMessage.builder()
-                    .matchId(matchId)
-                    .player1Id(match.getPlayer1().getId())
-                    .player2Id(match.getPlayer2().getId())
-                    .winnerId(winnerId)
-                    .calculationType("MATCH_APPROVE")
-                    .build()
+                    za.co.infratech.rispo.dto.request.RatingCalculationMessage.builder()
+                            .matchId(matchId)
+                            .player1Id(match.getPlayer1().getId())
+                            .player2Id(match.getPlayer2().getId())
+                            .winnerId(winnerId)
+                            .calculationType("MATCH_APPROVE")
+                            .build()
             );
-            // Refresh match to get any updates (will be updated by async worker)
             match = matchRepository.findById(matchId).orElseThrow();
         }
 
@@ -202,19 +171,13 @@ public class MatchService {
     }
 
     public List<MatchResponse> getPendingMatches() {
-        List<Match> matches = matchRepository.findByStatus(Match.MatchStatus.PENDING_REVIEW);
-        // Filter out tournament matches - they should be managed through the tournament screen
-        return matches.stream()
-                .filter(match -> match.getTournament() == null)
+        return matchRepository.findByStatus(Match.MatchStatus.PENDING_REVIEW).stream()
                 .map(match -> convertToResponse(match, gameRepository.findByMatchId(match.getId())))
                 .collect(Collectors.toList());
     }
 
-
-
     public List<MatchResponse> getMatchesByPlayer(Long playerId) {
-        List<Match> matches = matchRepository.findByPlayer1IdOrPlayer2Id(playerId, playerId);
-        return matches.stream()
+        return matchRepository.findByPlayer1IdOrPlayer2Id(playerId, playerId).stream()
                 .map(match -> convertToResponse(match, gameRepository.findByMatchId(match.getId())))
                 .collect(Collectors.toList());
     }
@@ -226,6 +189,12 @@ public class MatchService {
         return convertToResponse(match, games);
     }
 
+    public List<MatchResponse> getAllMatches() {
+        return matchRepository.findAll().stream()
+                .map(match -> convertToResponse(match, gameRepository.findByMatchId(match.getId())))
+                .collect(Collectors.toList());
+    }
+
     private MatchResponse convertToResponse(Match match, List<Game> games) {
         MatchResponse response = new MatchResponse();
         response.setMatchId(match.getId());
@@ -233,39 +202,33 @@ public class MatchService {
         response.setPlayer2Id(match.getPlayer2().getId());
         response.setStatus(match.getStatus().toString());
         response.setIsRated(match.getIsRated());
-        response.setChallengeId(match.getChallenge() != null ? match.getChallenge().getChallengeId() : null);
-        response.setTournamentId(match.getTournament() != null ? match.getTournament().getId() : null);
         response.setRound(match.getRound());
         response.setSubmittedAt(match.getSubmittedAt());
         response.setReviewedAt(match.getReviewedAt());
         response.setReviewNotes(match.getReviewNotes());
 
-        // Player 1
         MatchResponse.PlayerSummary p1 = new MatchResponse.PlayerSummary();
         p1.setPlayerId(match.getPlayer1().getId());
-        p1.setName(match.getPlayer1().getUser().getUsername()); // Use username for display
+        p1.setName(match.getPlayer1().getUser().getUsername());
         p1.setRating(match.getPlayer1().getRating());
         p1.setEmail(match.getPlayer1().getEmail());
         response.setPlayer1(p1);
 
-        // Player 2
         MatchResponse.PlayerSummary p2 = new MatchResponse.PlayerSummary();
         p2.setPlayerId(match.getPlayer2().getId());
-        p2.setName(match.getPlayer2().getUser().getUsername()); // Use username for display
+        p2.setName(match.getPlayer2().getUser().getUsername());
         p2.setRating(match.getPlayer2().getRating());
         p2.setEmail(match.getPlayer2().getEmail());
         response.setPlayer2(p2);
 
-        // Winner
         if (match.getWinner() != null) {
             MatchResponse.PlayerSummary winner = new MatchResponse.PlayerSummary();
             winner.setPlayerId(match.getWinner().getId());
-            winner.setName(match.getWinner().getUser().getUsername()); // Use username for display
+            winner.setName(match.getWinner().getUser().getUsername());
             winner.setRating(match.getWinner().getRating());
             response.setWinner(winner);
         }
 
-        // Ratings
         response.setPlayer1RatingBefore(match.getPlayer1RatingBefore());
         response.setPlayer2RatingBefore(match.getPlayer2RatingBefore());
         response.setPlayer1RatingAfter(match.getPlayer1RatingAfter());
@@ -273,15 +236,9 @@ public class MatchService {
         response.setPlayer1RatingChange(match.getPlayer1RatingChange());
         response.setPlayer2RatingChange(match.getPlayer2RatingChange());
 
-        // Submitter and reviewer
-        if (match.getSubmittedBy() != null) {
-            response.setSubmittedBy(match.getSubmittedBy().getUsername());
-        }
-        if (match.getReviewedBy() != null) {
-            response.setReviewedBy(match.getReviewedBy().getUsername());
-        }
+        if (match.getSubmittedBy() != null) response.setSubmittedBy(match.getSubmittedBy().getUsername());
+        if (match.getReviewedBy() != null) response.setReviewedBy(match.getReviewedBy().getUsername());
 
-        // Games
         List<MatchResponse.GameSummary> gameSummaries = games.stream()
                 .map(game -> {
                     MatchResponse.GameSummary gs = new MatchResponse.GameSummary();
@@ -300,24 +257,5 @@ public class MatchService {
         response.setGames(gameSummaries);
 
         return response;
-    }
-
-    public List<MatchResponse> getTournamentMatches(Long tournamentId, Integer round) {
-        List<Match> matches;
-        if (round != null) {
-            matches = matchRepository.findByTournamentIdOrderByRoundAsc(tournamentId)
-                    .stream()
-                    .filter(m -> m.getRound() == round)
-                    .collect(Collectors.toList());
-        } else {
-            matches = matchRepository.findByTournamentIdOrderByRoundAsc(tournamentId);
-        }
-        
-        return matches.stream()
-                .map(match -> {
-                    List<Game> games = gameRepository.findByMatchId(match.getId());
-                    return convertToResponse(match, games);
-                })
-                .collect(Collectors.toList());
     }
 }

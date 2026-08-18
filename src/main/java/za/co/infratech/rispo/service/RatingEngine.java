@@ -114,17 +114,9 @@ public class RatingEngine {
             throw new Exception("Only approved matches can be rated");
         }
 
-        // Skip bye matches - they don't affect rating
-        if (Boolean.TRUE.equals(match.getIsBye())) {
-            log.info("Skipping rating calculation for bye match {}", matchId);
-            match.setIsRated(true);
-            matchRepository.save(match);
-            return;
-        }
-
         // Get all completed games for this match
         List<Game> games = gameRepository.findByMatchId(matchId);
-        
+
         // Filter only completed games (exclude NO_RESULT, ABANDONED, CANCELLED)
         List<Game> completedGames = games.stream()
                 .filter(g -> g.getResultType() == Game.GameResultType.COMPLETED)
@@ -132,34 +124,23 @@ public class RatingEngine {
 
         // Determine player1Score
         double player1Score;
-        
-        // For tournament matches with no games, use the match winner directly
+
         if (completedGames.isEmpty()) {
-            if (match.getTournament() != null) {
-                // Tournament match without games - use winner directly
-                if (match.getWinner() == null) {
-                    player1Score = 0.5; // Draw
-                } else if (match.getWinner().getId().equals(match.getPlayer1().getId())) {
-                    player1Score = 1.0;
-                } else {
-                    player1Score = 0.0;
-                }
-                log.info("Tournament match {} rated using winner (no games): player1Score={}", 
-                        matchId, player1Score);
+            // No game records — use the match winner field directly
+            if (match.getWinner() == null) {
+                player1Score = 0.5; // Draw
+            } else if (match.getWinner().getId().equals(match.getPlayer1().getId())) {
+                player1Score = 1.0;
             } else {
-                throw new Exception("No completed games found for this match");
+                player1Score = 0.0;
             }
         } else {
-            // Calculate winner from games
             long player1Wins = completedGames.stream()
                     .filter(g -> g.getWinner() != null && g.getWinner().getId().equals(match.getPlayer1().getId()))
                     .count();
-            
             long player2Wins = completedGames.stream()
                     .filter(g -> g.getWinner() != null && g.getWinner().getId().equals(match.getPlayer2().getId()))
                     .count();
-
-            // Calculate match score (1 = player1 won, 0 = player2 won, 0.5 = draw)
             if (player1Wins > player2Wins) {
                 player1Score = 1.0;
                 match.setWinner(match.getPlayer1());
@@ -167,7 +148,7 @@ public class RatingEngine {
                 player1Score = 0.0;
                 match.setWinner(match.getPlayer2());
             } else {
-                player1Score = 0.5; // Draw
+                player1Score = 0.5;
                 match.setWinner(null);
             }
         }
@@ -175,32 +156,25 @@ public class RatingEngine {
         Player player1 = match.getPlayer1();
         Player player2 = match.getPlayer2();
 
-        // Save ratings before calculation
         match.setPlayer1RatingBefore(player1.getRating());
         match.setPlayer2RatingBefore(player2.getRating());
 
-        // Calculate rating changes
         int[] changes = calculateRatingChanges(player1, player2, player1Score);
         int change1 = changes[0];
         int change2 = changes[1];
 
-        // Apply new ratings with bounds
         int newRating1 = applyRatingBounds(player1.getRating() + change1);
         int newRating2 = applyRatingBounds(player2.getRating() + change2);
 
-        // Update players
         player1.setRating(newRating1);
         player2.setRating(newRating2);
 
-        // Update match statistics
         player1.setMatchesPlayed(player1.getMatchesPlayed() + 1);
         player2.setMatchesPlayed(player2.getMatchesPlayed() + 1);
 
-        // Update games played count (only completed games)
-        player1.setGamesPlayed(player1.getGamesPlayed() + (int) completedGames.size());
-        player2.setGamesPlayed(player2.getGamesPlayed() + (int) completedGames.size());
+        player1.setGamesPlayed(player1.getGamesPlayed() + completedGames.size());
+        player2.setGamesPlayed(player2.getGamesPlayed() + completedGames.size());
 
-        // Update win/loss/draw counts
         if (player1Score == 1.0) {
             player1.setWins(player1.getWins() + 1);
             player2.setLosses(player2.getLosses() + 1);
@@ -212,74 +186,12 @@ public class RatingEngine {
             player2.setDraws(player2.getDraws() + 1);
         }
 
-        // Save rating changes to match
         match.setPlayer1RatingAfter(newRating1);
         match.setPlayer2RatingAfter(newRating2);
         match.setPlayer1RatingChange(change1);
         match.setPlayer2RatingChange(change2);
         match.setIsRated(true);
 
-        // Persist changes
-        playerRepository.save(player1);
-        playerRepository.save(player2);
-        matchRepository.save(match);
-    }
-
-    /**
-     * Reverse ratings if a match is rejected after being rated
-     */
-    @Transactional
-    public void reverseMatchRating(Long matchId) throws Exception {
-        Match match = matchRepository.findById(matchId)
-                .orElseThrow(() -> new Exception("Match not found"));
-
-        if (!match.getIsRated()) {
-            throw new Exception("Match has not been rated");
-        }
-
-        Player player1 = match.getPlayer1();
-        Player player2 = match.getPlayer2();
-
-        // Reverse the rating changes
-        player1.setRating(match.getPlayer1RatingBefore());
-        player2.setRating(match.getPlayer2RatingBefore());
-
-        // Reverse match count
-        player1.setMatchesPlayed(Math.max(0, player1.getMatchesPlayed() - 1));
-        player2.setMatchesPlayed(Math.max(0, player2.getMatchesPlayed() - 1));
-
-        // Get completed games count
-        List<Game> games = gameRepository.findByMatchId(matchId);
-        int completedGamesCount = (int) games.stream()
-                .filter(g -> g.getResultType() == Game.GameResultType.COMPLETED)
-                .count();
-
-        // Reverse games played count
-        player1.setGamesPlayed(Math.max(0, player1.getGamesPlayed() - completedGamesCount));
-        player2.setGamesPlayed(Math.max(0, player2.getGamesPlayed() - completedGamesCount));
-
-        // Reverse win/loss/draw counts
-        if (match.getWinner() != null) {
-            if (match.getWinner().getId().equals(player1.getId())) {
-                player1.setWins(Math.max(0, player1.getWins() - 1));
-                player2.setLosses(Math.max(0, player2.getLosses() - 1));
-            } else {
-                player2.setWins(Math.max(0, player2.getWins() - 1));
-                player1.setLosses(Math.max(0, player1.getLosses() - 1));
-            }
-        } else {
-            player1.setDraws(Math.max(0, player1.getDraws() - 1));
-            player2.setDraws(Math.max(0, player2.getDraws() - 1));
-        }
-
-        // Mark as not rated
-        match.setIsRated(false);
-        match.setPlayer1RatingAfter(null);
-        match.setPlayer2RatingAfter(null);
-        match.setPlayer1RatingChange(null);
-        match.setPlayer2RatingChange(null);
-
-        // Persist changes
         playerRepository.save(player1);
         playerRepository.save(player2);
         matchRepository.save(match);

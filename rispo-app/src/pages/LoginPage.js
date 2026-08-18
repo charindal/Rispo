@@ -44,21 +44,7 @@ const LoginPage = () => {
         return;
       }
       
-      // Route based on user role and player profile
-      console.log('Navigating user. Role:', userData.role, 'PlayerId:', userData.playerId);
-      if (userData.role === 'SUPER_USER' || userData.role === 'SYSTEM_ADMIN' || userData.role === 'RATING_ADMIN' || userData.role === 'CLUB_ADMIN') {
-        // If admin has a player profile, go to player dashboard, otherwise admin dashboard
-        if (userData.playerId) {
-          console.log('Navigating to player dashboard');
-          navigate('/player-dashboard');
-        } else {
-          console.log('Navigating to admin dashboard');
-          navigate('/admin-dashboard');
-        }
-      } else {
-        console.log('Navigating to player dashboard');
-        navigate('/player-dashboard');
-      }
+      navigate('/players');
     } catch (err) {
       console.error('Login failed in component:', err);
       setError(err.toString());

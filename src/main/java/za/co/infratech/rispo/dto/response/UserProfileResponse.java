@@ -9,9 +9,7 @@ public class UserProfileResponse {
     private String email;
     private String nationalId;
     private String role;
-    private Long clubId;
-    private String clubName;
-    
+
     // Player profile fields
     private Long playerId;
     private String name;

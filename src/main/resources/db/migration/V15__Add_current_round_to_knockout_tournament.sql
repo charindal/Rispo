@@ -1,4 +1,0 @@
--- V15__Add_current_round_to_knockout_tournament.sql
--- NOTE: This migration is superseded by V18__Fix_current_round_column_idempotent.sql
--- The current_round column is already created in V14, so this migration does nothing.
--- See V18 for the actual idempotent handling of this column.

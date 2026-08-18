@@ -50,10 +50,6 @@ public class Player {
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "club_id")
-    private Club club;
-
     private String email;
 
     private String phone;
@@ -63,15 +59,6 @@ public class Player {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-
-    @Column(name = "unresolved_flags_count", nullable = false)
-    private Integer unresolvedFlagsCount = 0;
-
-    @Column(name = "total_flags_count", nullable = false)
-    private Integer totalFlagsCount = 0;
-
-    @Column(name = "is_tournament_eligible", nullable = false)
-    private Boolean isTournamentEligible = true;
 
     @PrePersist
     protected void onCreate() {
@@ -83,6 +70,4 @@ public class Player {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
-
 }

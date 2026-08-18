@@ -11,7 +11,7 @@ public class PlayerDTO {
     private Long id;
     private Long userId;
     private String name;
-    private String realName; // Real name of the player
+    private String realName;
     private String email;
     private String phone;
     private Integer rating;
@@ -23,7 +23,5 @@ public class PlayerDTO {
     private Boolean isVerified;
     private String verifiedBy;
     private String verifiedAt;
-    private Long clubId;
-    private String clubName;
     private String createdAt;
 }

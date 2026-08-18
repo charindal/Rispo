@@ -5,8 +5,10 @@ import java.util.List;
 
 @Data
 public class SubmitMatchRequest {
-    private Long opponentPlayerId;
-    private Long challengeId; // Optional - if this match is from a challenge
+    private Long player1Id;
+    private Long player2Id;
+    private Long winnerId; // Null for draw
+    private Integer round;
     private List<GameResultRequest> games;
 
     @Data

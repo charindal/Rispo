@@ -46,19 +46,7 @@ public class CacheConfig {
         
         // Player profile cache - 5 minutes (frequently accessed, changes rarely)
         cacheConfigurations.put("players", defaultConfig.entryTtl(Duration.ofMinutes(5)));
-        
-        // Club player list cache - 10 minutes (medium frequency, more stable)
-        cacheConfigurations.put("clubPlayers", defaultConfig.entryTtl(Duration.ofMinutes(10)));
-        
-        // Challenge counts cache - 1 minute (changes frequently)
-        cacheConfigurations.put("challengeCounts", defaultConfig.entryTtl(Duration.ofMinutes(1)));
-        
-        // Player challenges list - 2 minutes (updated often)
-        cacheConfigurations.put("playerChallenges", defaultConfig.entryTtl(Duration.ofMinutes(2)));
-        
-        // Tournament data - 15 minutes (changes less frequently)
-        cacheConfigurations.put("tournaments", defaultConfig.entryTtl(Duration.ofMinutes(15)));
-        
+
         // Match history - 5 minutes
         cacheConfigurations.put("matches", defaultConfig.entryTtl(Duration.ofMinutes(5)));
 

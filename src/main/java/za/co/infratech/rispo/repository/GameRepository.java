@@ -6,8 +6,6 @@ import za.co.infratech.rispo.model.Game;
 import java.util.List;
 
 public interface GameRepository extends JpaRepository<Game, Long> {
-    List<Game> findAllByMatchId(Long matchId);
     List<Game> findByMatchId(Long matchId);
-    List<Game> findAllByTournamentId(Long tournamentId);
     List<Game> findAllByPlayer1IdOrPlayer2Id(Long player1Id, Long player2Id);
 }
